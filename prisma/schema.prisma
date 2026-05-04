@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────
+enum UserRole {
+  RIDER
+  DRIVER
+  ADMIN
+}
+
+enum RideStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+// ─── USERS ───────────────────────────────────────────
+model User {
+  id          String   @id @default(uuid())
+  phone       String   @unique
+  name        String?
+  email       String?
+  role        UserRole @default(RIDER)
+  avatar_url  String?
+  is_verified Boolean  @default(false)
+  fcm_token   String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  driver_profile   DriverProfile?
+  rides_driven     Ride[]         @relation("DriverRides")
+  bookings         Booking[]
+  ratings_given    Rating[]       @relation("RaterRatings")
+  ratings_received Rating[]       @relation("RatedUser")
+}
+
+// ─── DRIVER PROFILE ──────────────────────────────────
+model DriverProfile {
+  id             String  @id @default(uuid())
+  user_id        String  @unique
+  vehicle_type   String
+  vehicle_number String
+  vehicle_model  String
+  license_number String
+  license_photo  String?
+  is_approved    Boolean @default(false)
+  avg_rating     Float   @default(0.0)
+  total_trips    Int     @default(0)
+  created_at     DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+}
+
+// ─── KNOWN ROUTES (admin-managed) ────────────────────
+model RouteConfig {
+  id           String   @id @default(uuid())
+  from_city    String
+  to_city      String
+  distance_km  Float
+  duration_min Int
+  base_fare    Int
+  is_active    Boolean  @default(true)
+  updated_at   DateTime @updatedAt
+
+  fare_rule FareRule?
+
+  @@unique([from_city, to_city])
+}
+
+// ─── FARE RULES (discount system) ────────────────────
+model FareRule {
+  id             String   @id @default(uuid())
+  route_id       String   @unique
+  discount_pct   Int      @default(0)
+  discount_on    Boolean  @default(false)
+  discount_label String?
+  global_offer   Boolean  @default(false)
+  updated_at     DateTime @updatedAt
+
+  route RouteConfig @relation(fields: [route_id], references: [id])
+}
+
+// ─── RIDES (posted by drivers) ───────────────────────
+model Ride {
+  id              String     @id @default(uuid())
+  driver_id       String
+  from_city       String
+  to_city         String
+  departure_time  DateTime
+  total_seats     Int
+  available_seats Int
+  fare_paise      Int
+  pickup_points   String[]
+  notes           String?
+  status          RideStatus @default(SCHEDULED)
+  created_at      DateTime   @default(now())
+  updated_at      DateTime   @updatedAt
+
+  driver   User      @relation("DriverRides", fields: [driver_id], references: [id])
+  bookings Booking[]
+}
+
+// ─── BOOKINGS ────────────────────────────────────────
+model Booking {
+  id           String        @id @default(uuid())
+  ride_id      String
+  rider_id     String
+  seats        Int           @default(1)
+  pickup_point String
+  amount_paise Int
+  status       BookingStatus @default(PENDING)
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
+
+  ride    Ride     @relation(fields: [ride_id], references: [id])
+  rider   User     @relation(fields: [rider_id], references: [id])
+  payment Payment?
+  rating  Rating?
+}
+
+// ─── PAYMENTS ────────────────────────────────────────
+model Payment {
+  id                  String        @id @default(uuid())
+  booking_id          String        @unique
+  razorpay_order_id   String        @unique
+  razorpay_payment_id String?
+  amount_paise        Int
+  status              PaymentStatus @default(PENDING)
+  method              String?
+  created_at          DateTime      @default(now())
+  updated_at          DateTime      @updatedAt
+
+  booking Booking @relation(fields: [booking_id], references: [id])
+}
+
+// ─── RATINGS ─────────────────────────────────────────
+model Rating {
+  id         String   @id @default(uuid())
+  booking_id String   @unique
+  rater_id   String
+  rated_id   String
+  score      Int
+  comment    String?
+  created_at DateTime @default(now())
+
+  booking Booking @relation(fields: [booking_id], references: [id])
+  rater   User    @relation("RaterRatings", fields: [rater_id], references: [id])
+  rated   User    @relation("RatedUser", fields: [rated_id], references: [id])
+}
