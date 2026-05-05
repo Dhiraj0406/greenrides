@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { Suspense, useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Leaf, Loader2, ChevronLeft } from "lucide-react";
 
-export default function VerifyPage() {
+function VerifyForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const phone        = searchParams.get("phone") ?? "";
@@ -79,7 +79,6 @@ export default function VerifyPage() {
       </div>
 
       <div className="flex-1 px-6 pt-8">
-        {/* OTP input grid */}
         <div className="flex gap-3 justify-center mb-6">
           {code.map((digit, idx) => (
             <input
@@ -93,8 +92,7 @@ export default function VerifyPage() {
               onKeyDown={(e) => handleKeyDown(idx, e)}
               className="w-12 h-14 rounded-xl border-2 text-center text-xl
                          font-mono-green font-bold text-text outline-none
-                         transition-colors
-                         border-border focus:border-leaf bg-white"
+                         transition-colors border-border focus:border-leaf bg-white"
             />
           ))}
         </div>
@@ -130,5 +128,17 @@ export default function VerifyPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function VerifyPage() {
+  return (
+    <Suspense fallback={
+      <div className="green-container min-h-screen bg-cream flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-leaf" />
+      </div>
+    }>
+      <VerifyForm />
+    </Suspense>
   );
 }
