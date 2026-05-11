@@ -12,12 +12,47 @@ const FEATURED: Record<string, string[]> = {
   Jeypore: ["Koraput", "Rayagada", "Nabarangpur", "Visakhapatnam", "Vizianagaram", "Malkangiri"],
 };
 
+interface SuggestionRowProps {
+  route: RouteInfo;
+  highlighted: boolean;
+  onMouseDown: () => void;
+  onMouseEnter: () => void;
+  fromLabel?: string;
+}
+
+function SuggestionRow({ route, highlighted, onMouseDown, onMouseEnter, fromLabel }: SuggestionRowProps) {
+  return (
+    <button
+      onMouseDown={(e) => { e.preventDefault(); onMouseDown(); }}
+      onMouseEnter={onMouseEnter}
+      className={cn(
+        "w-full flex items-center justify-between py-3 px-4 text-left transition-colors duration-100",
+        highlighted ? "bg-pale" : "hover:bg-pale"
+      )}
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <MapPin className="w-4 h-4 text-leaf flex-shrink-0" />
+        <div className="min-w-0">
+          <div className="font-semibold text-sm text-text leading-tight truncate">{route.to_city}</div>
+          <div className="text-xs text-sub font-mono-green mt-0.5">
+            {route.distance_km} km · {formatDuration(route.duration_min)}
+            {fromLabel && <span className="text-leaf ml-1">· {fromLabel}</span>}
+          </div>
+        </div>
+      </div>
+      <div className="font-display text-base text-forest flex-shrink-0 ml-4">
+        ₹{route.fare_rupees.toLocaleString("en-IN")}
+      </div>
+    </button>
+  );
+}
+
 interface Props {
   initialRoutes?: RouteInfo[];
 }
 
 export function DestinationGrid({ initialRoutes }: Props) {
-  const { origin, destination, setDestination, setRouteData, setDiscount } = useBookingStore();
+  const { origin, destination, setOrigin, setDestination, setRouteData, setDiscount } = useBookingStore();
 
   // Ref-based cache to avoid stale closure issues in effects
   const routeCacheRef = useRef<Record<string, RouteInfo[]>>({
@@ -88,9 +123,17 @@ export function DestinationGrid({ initialRoutes }: Props) {
 
   const trimmed = query.trim().toLowerCase();
 
-  // Dropdown suggestions: filter by query, max 6
+  // Primary: routes from current origin
   const suggestions: RouteInfo[] = trimmed.length >= 1
     ? allRoutes.filter((r) => r.to_city.toLowerCase().includes(trimmed)).slice(0, 6)
+    : [];
+
+  // Fallback: cross-origin results from cache when current origin has no match
+  const crossSuggestions: RouteInfo[] = !loading && trimmed.length >= 1 && suggestions.length === 0
+    ? Object.entries(routeCacheRef.current)
+        .flatMap(([, routes]) => routes)
+        .filter((r) => r.from_city !== origin && r.to_city.toLowerCase().includes(trimmed))
+        .slice(0, 4)
     : [];
 
   // Grid display logic (unchanged from original, but only shown when dropdown is not active)
@@ -128,6 +171,21 @@ export function DestinationGrid({ initialRoutes }: Props) {
     setShowDropdown(false);
     setQuery("");
     setHighlightedIndex(-1);
+  }
+
+  function handleSelectCrossOrigin(route: RouteInfo) {
+    // Switch origin, then set destination + fare atomically
+    setOrigin(route.from_city);
+    setDestination(route.to_city);
+    setRouteData({ km: route.distance_km, min: route.duration_min, text: route.duration_text, fare: route.fare_rupees });
+    setDiscount(0, route.discount_label ?? "");
+    track.destinationSelected(route.from_city, route.to_city, route.fare_rupees);
+    setShowDropdown(false);
+    setQuery("");
+    setHighlightedIndex(-1);
+    setTimeout(() => {
+      document.getElementById("fare-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -239,45 +297,36 @@ export function DestinationGrid({ initialRoutes }: Props) {
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-leaf flex-shrink-0" />
                 Loading routes…
               </div>
-            ) : suggestions.length === 0 ? (
-              <div className="py-3 px-4 text-sm text-sub">
-                No direct route found. Try the custom route estimator below.
-              </div>
-            ) : (
+            ) : suggestions.length > 0 ? (
               suggestions.map((route, idx) => (
-                <button
+                <SuggestionRow
                   key={route.to_city}
-                  onMouseDown={(e) => {
-                    // Use mousedown so it fires before blur
-                    e.preventDefault();
-                    handleSelectSuggestion(route);
-                  }}
+                  route={route}
+                  highlighted={idx === highlightedIndex}
+                  onMouseDown={() => handleSelectSuggestion(route)}
                   onMouseEnter={() => setHighlightedIndex(idx)}
-                  className={cn(
-                    "w-full flex items-center justify-between py-3 px-4 text-left",
-                    "transition-colors duration-100",
-                    idx === highlightedIndex ? "bg-pale" : "hover:bg-pale"
-                  )}
-                >
-                  {/* Left: icon + city name + distance */}
-                  <div className="flex items-center gap-3 min-w-0">
-                    <MapPin className="w-4 h-4 text-leaf flex-shrink-0" />
-                    <div className="min-w-0">
-                      <div className="font-semibold text-sm text-text leading-tight truncate">
-                        {route.to_city}
-                      </div>
-                      <div className="text-xs text-sub font-mono-green mt-0.5">
-                        {route.distance_km} km · {formatDuration(route.duration_min)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: fare */}
-                  <div className="font-display text-base text-forest flex-shrink-0 ml-4">
-                    ₹{route.fare_rupees.toLocaleString("en-IN")}
-                  </div>
-                </button>
+                />
               ))
+            ) : crossSuggestions.length > 0 ? (
+              <>
+                <div className="px-4 pt-2 pb-1 text-[10px] font-semibold text-sub uppercase tracking-wide">
+                  Switch origin
+                </div>
+                {crossSuggestions.map((route) => (
+                  <SuggestionRow
+                    key={`${route.from_city}-${route.to_city}`}
+                    route={route}
+                    highlighted={false}
+                    onMouseDown={() => handleSelectCrossOrigin(route)}
+                    onMouseEnter={() => {}}
+                    fromLabel={`from ${route.from_city}`}
+                  />
+                ))}
+              </>
+            ) : (
+              <div className="py-3 px-4 text-sm text-sub">
+                No route found. Try the custom estimator below.
+              </div>
             )}
           </div>
         )}

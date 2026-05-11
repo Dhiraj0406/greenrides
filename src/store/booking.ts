@@ -65,7 +65,8 @@ export const useBookingStore = create<BookingState>((set) => ({
   setOrigin: (city) =>
     set({ origin: city, destination: null, distanceKm: null,
           durationMin: null, durationText: null, fareRupees: null,
-          fareBase: null, selectedRide: null }),
+          fareBase: null, discountPct: 0, discountLabel: "",
+          selectedRide: null }),
 
   setDestination: (city) => set({ destination: city }),
 

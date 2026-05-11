@@ -8,6 +8,7 @@ function VerifyForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const phone        = searchParams.get("phone") ?? "";
+  const next         = searchParams.get("next") ?? "/";
 
   const [code, setCode]       = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
@@ -46,7 +47,7 @@ function VerifyForm() {
         type:  "sms",
       });
       if (authError) throw authError;
-      router.replace("/");
+      router.replace(next);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Invalid code. Try again.");
       setCode(["", "", "", "", "", ""]);
@@ -120,7 +121,7 @@ function VerifyForm() {
         <p className="text-xs text-sub text-center mt-4">
           Didn't receive it?{" "}
           <button
-            onClick={() => router.replace(`/login`)}
+            onClick={() => router.replace(`/login?next=${encodeURIComponent(next)}`)}
             className="text-leaf font-semibold"
           >
             Resend

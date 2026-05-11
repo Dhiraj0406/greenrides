@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Leaf, Loader2 } from "lucide-react";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { Leaf, Loader2, ArrowLeft } from "lucide-react";
 
-export default function LoginPage() {
+function LoginForm() {
   const router            = useRouter();
+  const searchParams      = useSearchParams();
+  const next              = searchParams.get("next") ?? "/";
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -20,11 +23,11 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const { data, error: authError } = await import("@/lib/supabase").then(
+      const { error: authError } = await import("@/lib/supabase").then(
         (m) => m.supabase.auth.signInWithOtp({ phone: `+91${cleaned}` })
       );
       if (authError) throw authError;
-      router.push(`/verify?phone=%2B91${cleaned}`);
+      router.push(`/verify?phone=%2B91${cleaned}&next=${encodeURIComponent(next)}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to send OTP. Try again.");
     } finally {
@@ -34,6 +37,17 @@ export default function LoginPage() {
 
   return (
     <div className="green-container min-h-screen bg-forest flex flex-col">
+      {/* Back link */}
+      <div className="px-6 pt-safe-top pt-4">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-lime/70 text-sm hover:text-lime transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Browse routes
+        </Link>
+      </div>
+
       {/* Brand */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
         <div className="w-16 h-16 rounded-2xl bg-leaf flex items-center justify-center mb-4">
@@ -94,5 +108,17 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="green-container min-h-screen bg-forest flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-lime" />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

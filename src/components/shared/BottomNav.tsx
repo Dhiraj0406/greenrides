@@ -1,30 +1,44 @@
 "use client";
-
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Ticket, Plus, User } from "lucide-react";
+import { Home, Ticket, Plus, User, LogIn } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 interface NavItem {
-  href:   string;
-  label:  string;
-  icon:   React.ComponentType<{ className?: string }>;
+  href:        string;
+  label:       string;
+  icon:        React.ComponentType<{ className?: string }>;
   driverOnly?: boolean;
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { href: "/",          label: "Home",     icon: Home   },
-  { href: "/bookings",  label: "Trips",    icon: Ticket },
-  { href: "/driver/post-ride", label: "Post", icon: Plus, driverOnly: true },
-  { href: "/profile",   label: "Profile",  icon: User   },
+const BASE_NAV_ITEMS: NavItem[] = [
+  { href: "/",                 label: "Home",  icon: Home   },
+  { href: "/bookings",         label: "Trips", icon: Ticket },
+  { href: "/driver/post-ride", label: "Post",  icon: Plus,  driverOnly: true },
 ];
 
 export function BottomNav({ isDriver = false }: { isDriver?: boolean }) {
   const pathname = usePathname();
+  const [isAuthed, setIsAuthed] = useState(false);
 
-  const items = NAV_ITEMS.filter(
-    (item) => !item.driverOnly || isDriver
-  );
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setIsAuthed(!!data.user));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setIsAuthed(!!session);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const authItem: NavItem = isAuthed
+    ? { href: "/profile", label: "Profile", icon: User  }
+    : { href: "/login",   label: "Login",   icon: LogIn };
+
+  const items = [
+    ...BASE_NAV_ITEMS.filter((item) => !item.driverOnly || isDriver),
+    authItem,
+  ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 green-container mx-auto">

@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowRight, Star, Clock, Users, Loader2, AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Star, Clock, Loader2, AlertCircle, Phone } from "lucide-react";
 import { BottomNav } from "@/components/shared/BottomNav";
 import { useBookingStore } from "@/store/booking";
 import { todayISO } from "@/lib/utils";
 import type { RideWithDriver } from "@/types";
 
 export default function RidesPage() {
+  const router = useRouter();
   const { origin, destination } = useBookingStore();
   const [rides, setRides]       = useState<RideWithDriver[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -27,7 +29,7 @@ export default function RidesPage() {
     <div className="green-container min-h-screen bg-cream pb-24">
       <header className="bg-forest px-4 pt-safe-top pb-5">
         <div className="pt-4">
-          <h1 className="font-display text-2xl text-white">Available Rides</h1>
+          <h1 className="font-display text-2xl text-white">Available Cabs</h1>
           {origin && (
             <div className="flex items-center gap-2 text-lime/70 text-sm mt-1">
               <span>{origin}</span>
@@ -52,12 +54,21 @@ export default function RidesPage() {
         {!loading && !rides.length && (
           <div className="flex flex-col items-center py-16 text-center">
             <AlertCircle className="w-10 h-10 text-sub mb-3" />
-            <p className="font-semibold text-text">No rides today</p>
+            <p className="font-semibold text-text">No cabs today</p>
             <p className="text-sm text-sub mt-1">
               {origin
-                ? `No drivers have posted rides from ${origin} today.`
+                ? `No drivers have posted cabs from ${origin} today.`
                 : "Select your origin on the home screen first."}
             </p>
+            <a
+              href="tel:+919999999999"
+              className="mt-5 flex items-center gap-2 bg-leaf text-white
+                         text-sm font-semibold px-5 py-3 rounded-xl touch-target
+                         transition-colors hover:bg-leaf/90"
+            >
+              <Phone className="w-4 h-4" />
+              No cabs — call to book · +91 99999 99999
+            </a>
           </div>
         )}
 
@@ -101,18 +112,18 @@ export default function RidesPage() {
                   hour: "2-digit", minute: "2-digit",
                 })}
               </span>
-              <span className="flex items-center gap-1">
-                <Users className="w-3 h-3" />
-                {ride.available_seats} seats left
-              </span>
             </div>
 
             {/* Fare + book */}
             <div className="flex items-center justify-between">
-              <span className="font-display text-2xl text-forest">
-                ₹{Math.round(ride.fare_paise / 100)}
-              </span>
+              <div>
+                <span className="font-display text-2xl text-forest">
+                  ₹{Math.round(ride.fare_paise / 100)}
+                </span>
+                <p className="text-xs text-sub mt-0.5">Full Cab</p>
+              </div>
               <button
+                onClick={() => router.push("/login")}
                 className="bg-leaf text-white text-sm font-semibold
                            px-5 py-2.5 rounded-xl touch-target transition-colors
                            hover:bg-leaf/90"

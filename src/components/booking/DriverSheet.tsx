@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Drawer } from "vaul";
 import { Star, Phone, ChevronLeft, Loader2, AlertCircle } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import { useBookingStore } from "@/store/booking";
 import { track } from "@/lib/analytics";
 import { formatDuration, getInitials, todayISO } from "@/lib/utils";
@@ -17,13 +19,26 @@ interface Props {
 }
 
 export function DriverSheet({ open, onClose, from, to, fareRupees }: Props) {
+  const router = useRouter();
   const [rides, setRides] = useState<RideWithDriver[]>([]);
   const [loading, setLoading] = useState(false);
   const [booking, setBooking] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
   const { setSelectedRide, setBooking: setBookingState } = useBookingStore();
 
   useEffect(() => {
     if (!open) return;
+
+    // Check auth first — redirect to login if not signed in
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        onClose();
+        router.push(`/login?next=/`);
+        return;
+      }
+      setAuthToken(session.access_token);
+    });
+
     setLoading(true);
     track.driverSheetOpened();
 
@@ -34,19 +49,29 @@ export function DriverSheet({ open, onClose, from, to, fareRupees }: Props) {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [open, from, to]);
+  }, [open, from, to, onClose, router]);
 
   async function handleBook(ride: RideWithDriver) {
     setBooking(true);
     track.paymentInitiated(fareRupees);
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        onClose();
+        router.push(`/login?next=/`);
+        return;
+      }
+
       const res = await fetch("/api/bookings", {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
         body: JSON.stringify({
           ride_id:      ride.id,
-          rider_id:     "demo-rider-id", // Replace with auth user id
+          rider_id:     user.id,
           seats:        1,
           pickup_point: ride.pickup_points[0] ?? from,
         }),
@@ -176,9 +201,7 @@ export function DriverSheet({ open, onClose, from, to, fareRupees }: Props) {
                   <span className="font-semibold text-text">{to}</span>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-sub font-mono-green">
-                  <span>{ride.fare_paise / 100}km equivalent</span>
-                  <span>·</span>
-                  <span>{ride.available_seats} seats left</span>
+                  <span>Full cab · Private hire</span>
                 </div>
                 <p className="font-display text-4xl text-forest mt-3">
                   ₹{fareRupees}

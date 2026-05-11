@@ -7,7 +7,7 @@ import { track } from "@/lib/analytics";
 import type { FareEstimateResult } from "@/types";
 
 export function CustomRouteBox() {
-  const { origin, setDestination, setRouteData } = useBookingStore();
+  const { origin, setDestination, setRouteData, setDiscount } = useBookingStore();
   const [to, setTo] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<FareEstimateResult | null>(null);
@@ -40,6 +40,7 @@ export function CustomRouteBox() {
         text: data.duration_text,
         fare: data.fare,
       });
+      setDiscount(0, ""); // clear any stale discount from a previous selection
     } catch (err) {
       setError("Could not estimate fare. Please try a different route.");
     } finally {

@@ -107,21 +107,12 @@ export function RideForm() {
           className={inputClass} />
       </div>
 
-      {/* Seats + Fare */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs text-sub font-semibold mb-1.5 block">Seats *</label>
-          <select value={form.total_seats} onChange={(e) => set("total_seats", e.target.value)}
-            className={selectClass}>
-            {[1, 2, 3, 4, 5, 6].map((n) => <option key={n}>{n}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-sub font-semibold mb-1.5 block">Fare (₹) *</label>
-          <input type="number" min="0" value={form.fare_paise}
-            onChange={(e) => set("fare_paise", e.target.value)}
-            placeholder="120" className={inputClass} />
-        </div>
+      {/* Fare — full-cab only; total_seats kept in state as fixed 4 for DB */}
+      <div>
+        <label className="text-xs text-sub font-semibold mb-1.5 block">Full Cab Fare (₹) *</label>
+        <input type="number" min="0" value={form.fare_paise}
+          onChange={(e) => set("fare_paise", e.target.value)}
+          placeholder="120" className={inputClass} />
       </div>
 
       {/* Pickup points */}

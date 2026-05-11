@@ -39,7 +39,7 @@ const putSchema = z.object({
 export async function PUT(req: NextRequest) {
   // Admin only — check via header or session (simplified for MVP)
   const adminToken = req.headers.get("x-admin-token");
-  if (adminToken !== process.env.CRON_SECRET) {
+  if (adminToken !== process.env.ADMIN_SECRET) {
     return Response.json(
       { data: null, error: "Unauthorized" },
       { status: 401 }

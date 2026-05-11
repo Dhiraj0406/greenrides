@@ -94,9 +94,10 @@ export interface CityDetectResult {
 // ── Tourist places ───────────────────────────────────────────────────────────
 
 export interface TouristPlace {
-  name:        string;
-  description: string;
-  city:        string;
-  image_hint:  string;
-  tag:         string;
+  name:             string;
+  description:      string;
+  city:             string;
+  image_hint:       string;
+  tag:              string;
+  routeDestination?: string;
 }

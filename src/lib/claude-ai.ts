@@ -29,11 +29,10 @@ Distance: ${distanceKm} km
 Duration: ${durationMin} minutes
 Region: Koraput/Jeypore hill district, Odisha
 
-Rate card:
-- Base: ₹50 flat
-- Per km: ₹1.85 (add 15% for hill routes over 30km)
-- Minimum: ₹60
-- Round to nearest ₹5
+Rate card (calibrated to local market):
+- Formula: max(₹500, round(km × ₹20 / 25) × 25)
+- Examples: 22km=₹500, 42km=₹850, 100km=₹2000, 195km=₹3900
+- Round to nearest ₹25
 
 Return ONLY this JSON:
 {"fare":<rupees>,"confidence":"high"|"medium"|"low","notes":"<1 sentence>"}`,
@@ -53,10 +52,7 @@ Return ONLY this JSON:
 
     return parsed;
   } catch {
-    const isHill = distanceKm > 30;
-    const perKm = isHill ? 2.1 : 1.85;
-    const raw = 50 + distanceKm * perKm * (isHill ? 1.15 : 1);
-    const fare = Math.max(Math.round(raw / 5) * 5, 60);
+    const fare = Math.max(500, Math.round((distanceKm * 20) / 25) * 25);
     return {
       fare,
       confidence: "medium",

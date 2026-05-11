@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, ArrowRight, Users, Loader2, Leaf } from "lucide-react";
+import { Plus, ArrowRight, Loader2, Leaf } from "lucide-react";
 import { BottomNav } from "@/components/shared/BottomNav";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { todayISO } from "@/lib/utils";
@@ -81,10 +81,6 @@ export default function DriverDashboard() {
                 {new Date(ride.departure_time).toLocaleTimeString("en-IN", {
                   hour: "2-digit", minute: "2-digit",
                 })}
-              </span>
-              <span className="flex items-center gap-1">
-                <Users className="w-3 h-3" />
-                {ride.available_seats}/{ride.total_seats} seats
               </span>
               <span>₹{Math.round(ride.fare_paise / 100)}</span>
             </div>

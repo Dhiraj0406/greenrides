@@ -1,0 +1,58 @@
+import { NextRequest } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+
+function isAdmin(req: NextRequest) {
+  return req.headers.get("x-admin-token") === process.env.ADMIN_SECRET;
+}
+
+const patchSchema = z.object({
+  status:       z.enum(["CONFIRMED", "COMPLETED", "CANCELLED"]),
+  driver_name:  z.string().max(100).optional(),
+  driver_phone: z.string().max(20).optional(),
+  eta_min:      z.number().int().min(1).max(600).optional(),
+});
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!isAdmin(req)) {
+    return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  let body: unknown;
+  try { body = await req.json(); } catch {
+    return Response.json({ data: null, error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const parsed = patchSchema.safeParse(body);
+  if (!parsed.success) {
+    return Response.json(
+      { data: null, error: parsed.error.issues[0].message },
+      { status: 400 }
+    );
+  }
+
+  const { status, driver_name, driver_phone, eta_min } = parsed.data;
+
+  const data: Record<string, unknown> = { status };
+  if (status === "CONFIRMED") {
+    if (driver_name  !== undefined) data.driver_name  = driver_name;
+    if (driver_phone !== undefined) data.driver_phone = driver_phone;
+    if (eta_min      !== undefined) data.eta_min      = eta_min;
+  }
+
+  try {
+    const updated = await (prisma as any).rideRequest.update({
+      where: { id },
+      data,
+    });
+    return Response.json({ data: updated, error: null });
+  } catch (err) {
+    console.error("[admin/requests PATCH]", err);
+    return Response.json({ data: null, error: "Not found or update failed" }, { status: 404 });
+  }
+}

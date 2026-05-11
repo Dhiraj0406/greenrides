@@ -8,7 +8,7 @@ const STATUS_CONFIG: Record<
   PENDING:     { label: "Pending",     className: "bg-gold/20 text-gold border-gold/30" },
   CONFIRMED:   { label: "Confirmed",   className: "bg-leaf/20 text-leaf border-leaf/30" },
   CANCELLED:   { label: "Cancelled",   className: "bg-red-100 text-red-600 border-red-200" },
-  COMPLETED:   { label: "Completed",   className: "bg-pale text-forest-b border-leaf/30" },
+  COMPLETED:   { label: "Completed",   className: "bg-gray-100 text-gray-500" },
   REFUNDED:    { label: "Refunded",    className: "bg-warm text-sub border-border" },
   SCHEDULED:   { label: "Scheduled",   className: "bg-leaf/20 text-leaf border-leaf/30" },
   IN_PROGRESS: { label: "In Progress", className: "bg-gold/20 text-gold border-gold/30" },

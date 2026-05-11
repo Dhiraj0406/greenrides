@@ -1,135 +1,126 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronLeft, Loader2, Star, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { Loader2, Star, ChevronLeft, Phone, CheckCircle, XCircle } from "lucide-react";
+import { AdminGate } from "@/components/admin/AdminGate";
+import { cn } from "@/lib/utils";
 
 interface Driver {
   id:             string;
-  user_id:        string;
-  vehicle_model:  string;
-  vehicle_number: string;
-  license_number: string;
   is_approved:    boolean;
+  vehicle_type:   string;
+  vehicle_number: string;
+  vehicle_model:  string;
+  license_number: string;
   avg_rating:     number;
   total_trips:    number;
-  user:           { name: string | null; phone: string };
+  user: { name: string | null; phone: string };
 }
 
-export default function AdminDriversPage() {
+function DriversContent({ token }: { token: string }) {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
-  const [toggling, setToggling] = useState<string | null>(null);
+  const [tab, setTab]         = useState<"pending" | "all">("pending");
 
   useEffect(() => {
-    fetch("/api/admin/drivers", {
-      headers: { "x-admin-token": process.env.NEXT_PUBLIC_ADMIN_TOKEN ?? "" },
-    })
+    fetch("/api/admin/drivers", { headers: { "x-admin-token": token } })
       .then((r) => r.json())
       .then((j) => setDrivers(j.data ?? []))
       .finally(() => setLoading(false));
-  }, []);
+  }, [token]);
 
-  async function toggleApproval(driver: Driver) {
-    setToggling(driver.id);
-    try {
-      const res = await fetch(`/api/admin/drivers/${driver.id}`, {
-        method:  "PATCH",
-        headers: {
-          "Content-Type":  "application/json",
-          "x-admin-token": process.env.NEXT_PUBLIC_ADMIN_TOKEN ?? "",
-        },
-        body: JSON.stringify({ is_approved: !driver.is_approved }),
-      });
-      const json = await res.json();
-      if (!json.error) {
-        setDrivers((prev) =>
-          prev.map((d) =>
-            d.id === driver.id ? { ...d, is_approved: !d.is_approved } : d
-          )
-        );
-      }
-    } finally {
-      setToggling(null);
-    }
+  async function toggleApproval(id: string, approve: boolean) {
+    await fetch(`/api/admin/drivers/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ is_approved: approve }),
+    });
+    setDrivers((prev) => prev.map((d) => (d.id === id ? { ...d, is_approved: approve } : d)));
   }
 
+  const filtered = tab === "pending" ? drivers.filter((d) => !d.is_approved) : drivers;
+
   return (
-    <div className="green-container min-h-screen bg-cream pb-10">
-      <header className="bg-forest px-4 pt-safe-top pb-6">
-        <div className="pt-4 flex items-center gap-3">
-          <Link
-            href="/admin"
-            className="w-8 h-8 rounded-full bg-forest-mid flex items-center justify-center"
-          >
-            <ChevronLeft className="w-4 h-4 text-lime" />
+    <div className="green-container min-h-screen bg-cream pb-16">
+      <header className="bg-forest px-4 pt-safe-top pb-4 sticky top-0 z-10">
+        <div className="pt-3 flex items-center gap-3">
+          <Link href="/admin" className="text-lime/70 hover:text-lime">
+            <ChevronLeft className="w-5 h-5" />
           </Link>
-          <span className="font-display text-xl text-lime">Drivers</span>
+          <h1 className="font-display text-xl text-white">Drivers</h1>
+        </div>
+        <div className="flex gap-2 mt-3">
+          {(["pending", "all"] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-xs font-semibold transition-all",
+                tab === t ? "bg-leaf text-white" : "bg-forest-mid text-lime/60 hover:text-lime"
+              )}>
+              {t === "pending" ? "Pending Approval" : "All Drivers"}
+            </button>
+          ))}
         </div>
       </header>
 
-      <div className="px-4 mt-4">
-        {loading && (
-          <div className="flex items-center justify-center py-12">
+      <div className="px-4 mt-4 space-y-3">
+        {loading ? (
+          <div className="flex justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-leaf" />
           </div>
-        )}
-
-        {!loading && !drivers.length && (
-          <div className="flex flex-col items-center py-12 text-center">
-            <AlertCircle className="w-8 h-8 text-sub mb-2" />
-            <p className="text-sub text-sm">No drivers registered yet.</p>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16 text-sub text-sm">
+            {tab === "pending" ? "No drivers pending approval" : "No drivers registered yet"}
           </div>
-        )}
-
-        {!loading && drivers.map((driver) => (
-          <div
-            key={driver.id}
-            className="bg-white border border-border rounded-2xl p-4 mb-3"
-          >
-            <div className="flex items-start justify-between mb-2">
-              <div>
-                <p className="font-semibold text-text text-sm">
-                  {driver.user.name ?? "Unnamed"}
-                </p>
-                <p className="text-xs text-sub font-mono-green">{driver.user.phone}</p>
+        ) : (
+          filtered.map((driver) => (
+            <div key={driver.id} className="bg-white border border-border rounded-2xl p-4">
+              <div className="flex items-start justify-between mb-2">
+                <div>
+                  <p className="font-semibold text-text">{driver.user.name ?? "—"}</p>
+                  <p className="text-xs text-sub">{driver.user.phone}</p>
+                </div>
+                <span className={cn("text-[10px] font-bold px-2 py-1 rounded-full",
+                  driver.is_approved ? "bg-leaf/10 text-leaf" : "bg-gold/10 text-gold")}>
+                  {driver.is_approved ? "Approved" : "Pending"}
+                </span>
               </div>
-              <button
-                onClick={() => toggleApproval(driver)}
-                disabled={toggling === driver.id}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors ${
-                  driver.is_approved
-                    ? "bg-leaf/10 text-leaf hover:bg-red-50 hover:text-red-500"
-                    : "bg-gold/10 text-gold hover:bg-leaf/10 hover:text-leaf"
-                }`}
-              >
-                {toggling === driver.id ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : driver.is_approved ? (
-                  "Approved"
+              <p className="text-sm text-text mb-0.5">
+                {driver.vehicle_model} · <span className="font-mono-green">{driver.vehicle_number}</span>
+              </p>
+              <p className="text-xs text-sub mb-3">{driver.vehicle_type} · License: {driver.license_number}</p>
+              <div className="flex items-center gap-4 text-xs text-sub font-mono-green mb-3">
+                <span className="flex items-center gap-1">
+                  <Star className="w-3 h-3 fill-gold text-gold" />
+                  {driver.avg_rating.toFixed(1)}
+                </span>
+                <span>{driver.total_trips} trips</span>
+              </div>
+              <div className="flex gap-2">
+                <a href={`tel:${driver.user.phone}`}
+                  className="flex items-center justify-center gap-1.5 flex-1 bg-pale text-leaf text-sm font-semibold py-2.5 rounded-xl">
+                  <Phone className="w-3.5 h-3.5" /> Call
+                </a>
+                {!driver.is_approved ? (
+                  <button onClick={() => toggleApproval(driver.id, true)}
+                    className="flex items-center justify-center gap-1.5 flex-1 bg-leaf text-white text-sm font-semibold py-2.5 rounded-xl">
+                    <CheckCircle className="w-3.5 h-3.5" /> Approve
+                  </button>
                 ) : (
-                  "Pending"
+                  <button onClick={() => toggleApproval(driver.id, false)}
+                    className="flex items-center justify-center gap-1.5 flex-1 bg-red-50 text-red-500 text-sm font-semibold py-2.5 rounded-xl">
+                    <XCircle className="w-3.5 h-3.5" /> Revoke
+                  </button>
                 )}
-              </button>
+              </div>
             </div>
-
-            <p className="text-xs text-sub mb-1">
-              {driver.vehicle_model} · {driver.vehicle_number}
-            </p>
-            <p className="text-xs text-sub mb-2">
-              License: {driver.license_number}
-            </p>
-
-            <div className="flex items-center gap-3 text-xs text-sub font-mono-green">
-              <span className="flex items-center gap-1">
-                <Star className="w-3 h-3 fill-gold text-gold" />
-                {driver.avg_rating.toFixed(1)}
-              </span>
-              <span>{driver.total_trips} trips</span>
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
+}
+
+export default function AdminDriversPage() {
+  return <AdminGate>{(token) => <DriversContent token={token} />}</AdminGate>;
 }
