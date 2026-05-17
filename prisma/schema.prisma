@@ -49,6 +49,7 @@ enum DispatchStatus {
   ACCEPTED
   REJECTED
   EXPIRED
+  SKIPPED
 }
 
 // ─── USERS ───────────────────────────────────────────
@@ -229,6 +230,8 @@ model DriverDispatch {
   driver  User        @relation("DriverDispatches", fields: [driver_id], references: [id])
 
   @@unique([request_id, order_index])
+  @@index([driver_id])
+  @@index([status, expires_at])
 }
 
 // ─── TELEGRAM CODE ────────────────────────────────────
