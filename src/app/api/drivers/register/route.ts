@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
   // Ensure user row exists in User table
   await db.from("User").upsert(
     { id: user.id, phone: user.phone ?? `unknown-${user.id.slice(0, 8)}`, role: "DRIVER", updated_at: now },
-    { onConflict: "id", ignoreDuplicates: true }
+    { onConflict: "id" }
   );
 
   // Create DriverProfile
