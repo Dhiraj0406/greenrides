@@ -43,6 +43,14 @@ enum RideRequestStatus {
   CANCELLED
 }
 
+enum DispatchStatus {
+  WAITING
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
 // ─── USERS ───────────────────────────────────────────
 model User {
   id          String   @id @default(uuid())
@@ -56,12 +64,13 @@ model User {
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
-  driver_profile   DriverProfile?
-  rides_driven     Ride[]         @relation("DriverRides")
-  bookings         Booking[]
-  ride_requests    RideRequest[]
-  ratings_given    Rating[]       @relation("RaterRatings")
-  ratings_received Rating[]       @relation("RatedUser")
+  driver_profile    DriverProfile?
+  rides_driven      Ride[]           @relation("DriverRides")
+  bookings          Booking[]
+  ride_requests     RideRequest[]
+  ratings_given     Rating[]         @relation("RaterRatings")
+  ratings_received  Rating[]         @relation("RatedUser")
+  driver_dispatches DriverDispatch[] @relation("DriverDispatches")
 }
 
 // ─── DRIVER PROFILE ──────────────────────────────────
@@ -76,7 +85,11 @@ model DriverProfile {
   is_approved    Boolean @default(false)
   avg_rating     Float   @default(0.0)
   total_trips    Int     @default(0)
-  created_at     DateTime @default(now())
+  created_at     DateTime  @default(now())
+  is_online        Boolean   @default(false)
+  telegram_chat_id String?
+  availability     Json?
+  approved_at      DateTime?
 
   user User @relation(fields: [user_id], references: [id])
 }
@@ -179,8 +192,10 @@ model RideRequest {
   eta_min      Int?
   created_at   DateTime          @default(now())
   updated_at   DateTime          @updatedAt
+  dispatched   Boolean           @default(false)
 
-  rider User @relation(fields: [rider_id], references: [id])
+  rider      User             @relation(fields: [rider_id], references: [id])
+  dispatches DriverDispatch[]
 }
 
 // ─── RATINGS ─────────────────────────────────────────
@@ -196,4 +211,31 @@ model Rating {
   booking Booking @relation(fields: [booking_id], references: [id])
   rater   User    @relation("RaterRatings", fields: [rater_id], references: [id])
   rated   User    @relation("RatedUser", fields: [rated_id], references: [id])
+}
+
+// ─── DRIVER DISPATCH ─────────────────────────────────
+model DriverDispatch {
+  id            String         @id @default(uuid())
+  request_id    String
+  driver_id     String
+  order_index   Int
+  status        DispatchStatus @default(WAITING)
+  dispatched_at DateTime?
+  expires_at    DateTime?
+  responded_at  DateTime?
+  created_at    DateTime       @default(now())
+
+  request RideRequest @relation(fields: [request_id], references: [id])
+  driver  User        @relation("DriverDispatches", fields: [driver_id], references: [id])
+
+  @@unique([request_id, order_index])
+}
+
+// ─── TELEGRAM CODE ────────────────────────────────────
+model TelegramCode {
+  id         String   @id @default(uuid())
+  code       String   @unique
+  chat_id    String
+  expires_at DateTime
+  created_at DateTime @default(now())
 }
