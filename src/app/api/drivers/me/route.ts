@@ -81,9 +81,13 @@ export async function PATCH(req: NextRequest) {
       .from("DriverProfile")
       .select("availability, is_approved")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (!profile?.is_approved) {
+    if (!profile) {
+      return Response.json({ error: "Driver profile not found" }, { status: 404 });
+    }
+
+    if (!profile.is_approved) {
       return Response.json({ error: "Account not approved yet" }, { status: 403 });
     }
 
