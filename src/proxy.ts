@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const PROTECTED = ["/bookings", "/profile", "/driver/dashboard", "/driver/post-ride"];
+const PROTECTED = [
+  "/bookings",
+  "/profile",
+  "/driver/dashboard",
+  "/driver/post-ride",
+  "/drivers/dashboard",
+  "/drivers/register",
+  "/drivers/pending",
+];
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -22,5 +30,12 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/bookings/:path*", "/profile/:path*", "/driver/:path*"],
+  matcher: [
+    "/bookings/:path*",
+    "/profile/:path*",
+    "/driver/:path*",
+    "/drivers/dashboard/:path*",
+    "/drivers/register/:path*",
+    "/drivers/pending/:path*",
+  ],
 };
