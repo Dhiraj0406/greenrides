@@ -32,16 +32,20 @@ export async function POST(req: NextRequest) {
   const { vehicle_type, vehicle_model, vehicle_number, license_number, telegram_code } = parsed.data;
   const now = new Date().toISOString();
 
-  // Validate Telegram code
-  const { data: codeRow } = await db
+  // Atomically consume the Telegram code: delete returns the row only if it exists and is unexpired.
+  // Two concurrent requests racing to delete the same code → only one wins; loser gets empty array.
+  const { data: consumed } = await db
     .from("TelegramCode")
-    .select("chat_id, expires_at")
+    .delete()
     .eq("code", telegram_code)
-    .single();
+    .gte("expires_at", now)
+    .select("chat_id");
 
-  if (!codeRow || new Date(codeRow.expires_at) < new Date()) {
+  if (!consumed || consumed.length === 0) {
     return Response.json({ error: "Invalid or expired Telegram code" }, { status: 400 });
   }
+
+  const chatId = consumed[0].chat_id;
 
   // Check no existing profile
   const { data: existing } = await db
@@ -60,17 +64,16 @@ export async function POST(req: NextRequest) {
     { onConflict: "id" }
   );
 
-  // Create DriverProfile
+  // Create DriverProfile — user_id has a unique constraint so a concurrent insert returns an error code
   const { data: profile, error: createErr } = await db
     .from("DriverProfile")
     .insert({
-      id:               crypto.randomUUID(),
       user_id:          user.id,
       vehicle_type,
       vehicle_model,
       vehicle_number,
       license_number,
-      telegram_chat_id: codeRow.chat_id,
+      telegram_chat_id: chatId,
       is_approved:      false,
       is_online:        false,
       avg_rating:       0,
@@ -80,13 +83,13 @@ export async function POST(req: NextRequest) {
     .select("id")
     .single();
 
-  if (createErr || !profile) {
+  if (createErr) {
+    if (createErr.code === "23505") {
+      return Response.json({ error: "Driver profile already exists" }, { status: 409 });
+    }
     console.error("[drivers/register POST]", createErr);
     return Response.json({ error: "Failed to create profile" }, { status: 500 });
   }
 
-  // Delete the used code
-  await db.from("TelegramCode").delete().eq("code", telegram_code);
-
-  return Response.json({ data: { id: profile.id }, error: null });
+  return Response.json({ data: { id: profile!.id }, error: null });
 }
