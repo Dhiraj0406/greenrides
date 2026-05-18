@@ -29,6 +29,8 @@ export function DispatchCard({ driverId, initial }: Props) {
   const [dispatch, setDispatch] = useState<DispatchRequest | null>(initial);
   const [secondsLeft, setSeconds] = useState(0);
   const [responding, setResponding] = useState(false);
+  const [showEta, setShowEta]     = useState(false);
+  const [etaInput, setEtaInput]   = useState("15");
 
   // Recalculate seconds remaining
   useEffect(() => {
@@ -74,16 +76,12 @@ export function DispatchCard({ driverId, initial }: Props) {
     return () => { supabase.removeChannel(channel); };
   }, [driverId]);
 
-  const respond = useCallback(async (action: "accept" | "reject") => {
+  const respond = useCallback(async (action: "accept" | "reject", eta_min?: number) => {
     if (!dispatch) return;
     setResponding(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-
-      const eta_min = action === "accept"
-        ? parseInt(prompt("Enter your ETA in minutes (e.g. 15):") || "30", 10)
-        : undefined;
 
       const res = await fetch(`/api/requests/${dispatch.request_id}/respond`, {
         method: "PATCH",
@@ -99,6 +97,7 @@ export function DispatchCard({ driverId, initial }: Props) {
 
       toast.success(action === "accept" ? "Ride accepted! Rider has been notified." : "Ride rejected.");
       setDispatch(null);
+      setShowEta(false);
     } catch {
       toast.error("Something went wrong");
     } finally {
@@ -155,22 +154,58 @@ export function DispatchCard({ driverId, initial }: Props) {
         )}
       </div>
 
-      <div className="flex gap-3">
-        <button
-          onClick={() => respond("reject")}
-          disabled={responding}
-          className="flex-1 flex items-center justify-center gap-1.5 bg-red-50 text-red-500 border border-red-200 font-bold py-3 rounded-xl text-sm"
-        >
-          {responding ? <Loader2 className="w-4 h-4 animate-spin" /> : "✕ Reject"}
-        </button>
-        <button
-          onClick={() => respond("accept")}
-          disabled={responding}
-          className="flex-1 flex items-center justify-center gap-1.5 bg-leaf text-white font-bold py-3 rounded-xl text-sm"
-        >
-          {responding ? <Loader2 className="w-4 h-4 animate-spin" /> : "✓ Accept"}
-        </button>
-      </div>
+      {showEta ? (
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-sub font-semibold mb-1 block">Your ETA (minutes)</label>
+            <input
+              type="number"
+              min={1}
+              max={300}
+              value={etaInput}
+              onChange={(e) => setEtaInput(e.target.value)}
+              className="w-full bg-gray-50 border border-border rounded-xl px-4 py-3 text-sm font-bold text-text outline-none focus:ring-2 ring-leaf/30"
+            />
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowEta(false)}
+              disabled={responding}
+              className="flex-1 py-3 rounded-xl text-sm font-bold bg-gray-50 border border-border text-sub"
+            >
+              Back
+            </button>
+            <button
+              onClick={() => {
+                const eta = parseInt(etaInput, 10);
+                if (!Number.isFinite(eta) || eta < 1) { toast.error("Enter a valid ETA"); return; }
+                respond("accept", eta);
+              }}
+              disabled={responding}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-leaf text-white font-bold py-3 rounded-xl text-sm"
+            >
+              {responding ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm Accept"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-3">
+          <button
+            onClick={() => respond("reject")}
+            disabled={responding}
+            className="flex-1 flex items-center justify-center gap-1.5 bg-red-50 text-red-500 border border-red-200 font-bold py-3 rounded-xl text-sm"
+          >
+            {responding ? <Loader2 className="w-4 h-4 animate-spin" /> : "✕ Reject"}
+          </button>
+          <button
+            onClick={() => setShowEta(true)}
+            disabled={responding}
+            className="flex-1 flex items-center justify-center gap-1.5 bg-leaf text-white font-bold py-3 rounded-xl text-sm"
+          >
+            ✓ Accept
+          </button>
+        </div>
+      )}
     </div>
   );
 }
