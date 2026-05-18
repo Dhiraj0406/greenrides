@@ -18,8 +18,15 @@ export async function PATCH(
   if (!isAdmin(req)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const body   = await req.json();
-  const input  = patchSchema.parse(body);
+
+  let body: unknown;
+  try { body = await req.json(); } catch {
+    return Response.json({ data: null, error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const result = patchSchema.safeParse(body);
+  if (!result.success) return Response.json({ data: null, error: result.error.issues[0].message }, { status: 400 });
+  const input = result.data;
 
   const updated = await (prisma as any).driverProfile.update({
     where: { id },

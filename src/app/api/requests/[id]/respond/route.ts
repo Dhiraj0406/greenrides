@@ -51,12 +51,13 @@ export async function PATCH(
     // Mark this dispatch ACCEPTED
     await db.from("DriverDispatch").update({ status: "ACCEPTED", responded_at: now }).eq("id", dispatch_id);
 
-    // Mark all other dispatches for this request as SKIPPED
+    // Mark other in-flight dispatches as SKIPPED (preserve REJECTED/EXPIRED history)
     await db
       .from("DriverDispatch")
       .update({ status: "SKIPPED" })
       .eq("request_id", requestId)
-      .neq("id", dispatch_id);
+      .neq("id", dispatch_id)
+      .in("status", ["PENDING", "WAITING"]);
 
     // Get driver profile for telegram
     const { data: driverProfile } = await db
@@ -108,8 +109,8 @@ export async function PATCH(
     return Response.json({ data: { ok: true, action: "accepted" }, error: null });
   }
 
-  // Reject: mark REJECTED, immediately activate next WAITING dispatch
-  await db.from("DriverDispatch").update({ status: "REJECTED", responded_at: now }).eq("id", dispatch_id);
+  // Reject: mark REJECTED (guard: only if still PENDING — prevents cron double-fire race)
+  await db.from("DriverDispatch").update({ status: "REJECTED", responded_at: now }).eq("id", dispatch_id).eq("status", "PENDING");
 
   const { data: nextDispatch } = await db
     .from("DriverDispatch")
@@ -125,7 +126,8 @@ export async function PATCH(
     await db
       .from("DriverDispatch")
       .update({ status: "PENDING", dispatched_at: now, expires_at: nextExpiry })
-      .eq("id", nextDispatch.id);
+      .eq("id", nextDispatch.id)
+      .eq("status", "WAITING");
 
     // Notify next driver
     const { data: nextProfile } = await db

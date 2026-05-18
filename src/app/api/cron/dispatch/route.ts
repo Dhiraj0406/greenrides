@@ -31,8 +31,8 @@ export async function GET(req: NextRequest) {
   let cascaded = 0;
 
   for (const dispatch of expired) {
-    // Mark as EXPIRED
-    await db.from("DriverDispatch").update({ status: "EXPIRED" }).eq("id", dispatch.id);
+    // Mark as EXPIRED (guard: only if still PENDING — prevents double-cron race)
+    await db.from("DriverDispatch").update({ status: "EXPIRED" }).eq("id", dispatch.id).eq("status", "PENDING");
 
     // Find the next WAITING driver for this request
     const { data: next } = await db
@@ -49,7 +49,8 @@ export async function GET(req: NextRequest) {
       await db
         .from("DriverDispatch")
         .update({ status: "PENDING", dispatched_at: now, expires_at: expiry })
-        .eq("id", next.id);
+        .eq("id", next.id)
+        .eq("status", "WAITING");
 
       // Get the driver's Telegram chat ID and notify
       const { data: profile } = await db

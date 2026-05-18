@@ -20,7 +20,10 @@ export async function PATCH(
   if (!isAdmin(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const body    = await req.json();
+  let body: unknown;
+  try { body = await req.json(); } catch {
+    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+  }
   const parsed  = schema.safeParse(body);
   if (!parsed.success) return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
 
@@ -34,7 +37,7 @@ export async function PATCH(
     });
     if (!dispatch) return Response.json({ error: "Not found" }, { status: 404 });
 
-    await db.from("DriverDispatch").update({ status: "EXPIRED" }).eq("id", id);
+    await db.from("DriverDispatch").update({ status: "SKIPPED" }).eq("id", id).eq("status", "PENDING");
 
     const { data: next } = await db
       .from("DriverDispatch")
@@ -47,7 +50,7 @@ export async function PATCH(
 
     if (next) {
       const expiry = new Date(Date.now() + 60_000).toISOString();
-      await db.from("DriverDispatch").update({ status: "PENDING", dispatched_at: now, expires_at: expiry }).eq("id", next.id);
+      await db.from("DriverDispatch").update({ status: "PENDING", dispatched_at: now, expires_at: expiry }).eq("id", next.id).eq("status", "WAITING");
 
       const { data: profile } = await db.from("DriverProfile").select("telegram_chat_id").eq("user_id", next.driver_id).single();
       const { data: request } = await db.from("RideRequest").select("from_city, to_city, fare_paise").eq("id", dispatch.request_id).single();
@@ -62,7 +65,7 @@ export async function PATCH(
   const dispatch = await (prisma as any).driverDispatch.findUnique({ where: { id }, select: { request_id: true } });
   if (!dispatch) return Response.json({ error: "Not found" }, { status: 404 });
 
-  await db.from("DriverDispatch").update({ status: "EXPIRED" }).eq("request_id", dispatch.request_id).in("status", ["PENDING", "WAITING"]);
+  await db.from("DriverDispatch").update({ status: "SKIPPED" }).eq("request_id", dispatch.request_id).in("status", ["PENDING", "WAITING"]);
 
   const expiry = new Date(Date.now() + 60_000).toISOString();
   await db.from("DriverDispatch").insert({
