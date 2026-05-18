@@ -1,14 +1,10 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { createClient } from "@supabase/supabase-js";
+import { getAdminClient } from "@/lib/supabase";
+import { sendTelegramMessage } from "@/lib/telegram";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function GET(req: NextRequest) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
@@ -16,30 +12,25 @@ export async function GET(req: NextRequest) {
     return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
   }
 
+  const supabaseAdmin = getAdminClient();
   const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
   if (authErr || !user) {
     return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
   }
 
-  const requests = await (prisma as any).rideRequest.findMany({
-    where: { rider_id: user.id },
-    orderBy: { created_at: "desc" },
-    select: {
-      id:           true,
-      from_city:    true,
-      to_city:      true,
-      fare_paise:   true,
-      travel_date:  true,
-      status:       true,
-      notes:        true,
-      driver_name:  true,
-      driver_phone: true,
-      eta_min:      true,
-      created_at:   true,
-    },
-  });
+  const db = getAdminClient();
+  const { data: requests, error: fetchErr } = await db
+    .from("RideRequest")
+    .select("id, from_city, to_city, fare_paise, travel_date, status, notes, driver_name, driver_phone, eta_min, created_at")
+    .eq("rider_id", user.id)
+    .order("created_at", { ascending: false });
 
-  return Response.json({ data: requests, error: null });
+  if (fetchErr) {
+    console.error("[requests GET]", fetchErr);
+    return Response.json({ data: [], error: null });
+  }
+
+  return Response.json({ data: requests ?? [], error: null });
 }
 
 const createSchema = z.object({
@@ -56,6 +47,7 @@ export async function POST(req: NextRequest) {
     return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
   }
 
+  const supabaseAdmin = getAdminClient();
   const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
   if (authErr || !user) {
     return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
@@ -75,30 +67,122 @@ export async function POST(req: NextRequest) {
   }
 
   const { from_city, to_city, fare_paise, travel_date, notes } = parsed.data;
-
-  // Ensure the rider exists in our User table (upsert by phone)
   const phone = user.phone ?? "";
-  const rider = await (prisma as any).user.upsert({
-    where:  { id: user.id },
-    update: {},
-    create: {
-      id:    user.id,
-      phone: phone || `unknown-${user.id.slice(0, 8)}`,
-      role:  "RIDER",
-    },
+  const now = new Date().toISOString();
+  const db = getAdminClient();
+
+  try {
+    // Ensure rider exists in User table
+    await db.from("User").upsert(
+      {
+        id:         user.id,
+        phone:      phone || `unknown-${user.id.slice(0, 8)}`,
+        role:       "RIDER",
+        updated_at: now,
+      },
+      { onConflict: "id", ignoreDuplicates: true }
+    );
+
+    // Create the ride request
+    const { data: request, error: createErr } = await db
+      .from("RideRequest")
+      .insert({
+        id:          crypto.randomUUID(),
+        rider_id:    user.id,
+        rider_phone: phone,
+        from_city,
+        to_city,
+        fare_paise,
+        travel_date: new Date(travel_date).toISOString(),
+        notes:       notes ?? null,
+        updated_at:  now,
+      })
+      .select("id, status")
+      .single();
+
+    if (createErr || !request) {
+      console.error("[requests POST]", createErr);
+      return Response.json(
+        { data: null, error: "Failed to create request. Please try again." },
+        { status: 500 }
+      );
+    }
+
+    // Fire dispatch queue in background — don't block the response
+    buildDispatchQueue(request.id, parsed.data.travel_date, db).catch((e) =>
+      console.error("[requests POST] dispatch queue failed", e)
+    );
+
+    return Response.json({ data: { id: request.id, status: request.status }, error: null });
+  } catch (err) {
+    console.error("[requests POST]", err);
+    return Response.json(
+      { data: null, error: "Failed to create request. Please try again." },
+      { status: 500 }
+    );
+  }
+}
+
+async function buildDispatchQueue(
+  requestId: string,
+  travelDate: string,
+  db: SupabaseClient,
+): Promise<void> {
+  const { data: rideRequest } = await db
+    .from("RideRequest")
+    .select("from_city, to_city, fare_paise")
+    .eq("id", requestId)
+    .single();
+
+  if (!rideRequest) return;
+
+  // Get all approved, online drivers
+  const { data: profiles } = await db
+    .from("DriverProfile")
+    .select("id, user_id, total_trips, approved_at, availability, telegram_chat_id")
+    .eq("is_approved", true)
+    .eq("is_online", true);
+
+  if (!profiles || profiles.length === 0) return;
+
+  // Filter: driver must have availability for the travel date and it must not be "rest"
+  const eligible = profiles.filter((p) => {
+    const avail = (p.availability as Record<string, unknown> | null) ?? {};
+    const day   = avail[travelDate];
+    return day && day !== "rest";
   });
 
-  const request = await (prisma as any).rideRequest.create({
-    data: {
-      rider_id:    rider.id,
-      rider_phone: phone,
-      from_city,
-      to_city,
-      fare_paise,
-      travel_date: new Date(travel_date),
-      notes:       notes ?? null,
-    },
+  if (eligible.length === 0) return;
+
+  // Sort: fewest total_trips first, then earliest approved_at
+  eligible.sort((a, b) => {
+    if (a.total_trips !== b.total_trips) return a.total_trips - b.total_trips;
+    return new Date(a.approved_at ?? 0).getTime() - new Date(b.approved_at ?? 0).getTime();
   });
 
-  return Response.json({ data: { id: request.id, status: request.status }, error: null });
+  const now    = new Date();
+  const expiry = new Date(now.getTime() + 60_000).toISOString();
+
+  const dispatches = eligible.map((p, i) => ({
+    id:            crypto.randomUUID(),
+    request_id:    requestId,
+    driver_id:     p.user_id,
+    order_index:   i + 1,
+    status:        i === 0 ? "PENDING" : "WAITING",
+    dispatched_at: i === 0 ? now.toISOString() : null,
+    expires_at:    i === 0 ? expiry : null,
+    created_at:    now.toISOString(),
+  }));
+
+  await db.from("DriverDispatch").insert(dispatches);
+  await db.from("RideRequest").update({ dispatched: true }).eq("id", requestId);
+
+  // Notify first driver via Telegram
+  const firstDriver = eligible[0];
+  if (firstDriver.telegram_chat_id) {
+    await sendTelegramMessage(
+      firstDriver.telegram_chat_id,
+      `🚗 <b>New ride request</b>\n\n${rideRequest.from_city} → ${rideRequest.to_city} · ₹${Math.round(rideRequest.fare_paise / 100)}\n\nYou have 60 seconds to respond. Open the app now.`
+    );
+  }
 }
