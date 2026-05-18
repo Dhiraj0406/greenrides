@@ -57,7 +57,7 @@ function DispatchContent({ token }: { token: string }) {
                   <p className="font-semibold text-text">{d.request.from_city} → {d.request.to_city}</p>
                   <p className="text-xs text-sub">₹{Math.round(d.request.fare_paise / 100)} · {new Date(d.request.travel_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
                 </div>
-                <span className={cn("text-sm font-bold", secsLeft <= 15 ? "text-red-500" : "text-amber-600")}>
+                <span className={cn("text-sm font-bold font-mono-green", secsLeft <= 15 ? "text-red-500" : "text-amber-600")}>
                   {secsLeft}s
                 </span>
               </div>

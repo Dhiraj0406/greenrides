@@ -83,9 +83,9 @@ function DriversContent({ token }: { token: string }) {
                     <span
                       className={cn(
                         "w-2 h-2 rounded-full flex-shrink-0",
-                        (driver as any).is_online ? "bg-leaf animate-pulse" : "bg-gray-300"
+                        driver.is_online ? "bg-leaf animate-pulse" : "bg-gray-300"
                       )}
-                      title={(driver as any).is_online ? "Online" : "Offline"}
+                      title={driver.is_online ? "Online" : "Offline"}
                     />
                   </div>
                   <p className="text-xs text-sub">{driver.user.phone}</p>
