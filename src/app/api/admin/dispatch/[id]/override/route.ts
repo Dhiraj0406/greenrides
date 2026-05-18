@@ -1,0 +1,86 @@
+import { NextRequest } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+import { getAdminClient } from "@/lib/supabase";
+import { sendTelegramMessage } from "@/lib/telegram";
+
+function isAdmin(req: NextRequest) {
+  return req.headers.get("x-admin-token") === process.env.ADMIN_SECRET;
+}
+
+const schema = z.union([
+  z.object({ action: z.literal("skip") }),
+  z.object({ action: z.literal("assign"), driver_id: z.string().uuid() }),
+]);
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!isAdmin(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  const body    = await req.json();
+  const parsed  = schema.safeParse(body);
+  if (!parsed.success) return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
+
+  const db  = getAdminClient();
+  const now = new Date().toISOString();
+
+  if (parsed.data.action === "skip") {
+    const dispatch = await (prisma as any).driverDispatch.findUnique({
+      where: { id },
+      select: { request_id: true, order_index: true },
+    });
+    if (!dispatch) return Response.json({ error: "Not found" }, { status: 404 });
+
+    await db.from("DriverDispatch").update({ status: "EXPIRED" }).eq("id", id);
+
+    const { data: next } = await db
+      .from("DriverDispatch")
+      .select("id, driver_id")
+      .eq("request_id", dispatch.request_id)
+      .eq("status", "WAITING")
+      .order("order_index", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (next) {
+      const expiry = new Date(Date.now() + 60_000).toISOString();
+      await db.from("DriverDispatch").update({ status: "PENDING", dispatched_at: now, expires_at: expiry }).eq("id", next.id);
+
+      const { data: profile } = await db.from("DriverProfile").select("telegram_chat_id").eq("user_id", next.driver_id).single();
+      const { data: request } = await db.from("RideRequest").select("from_city, to_city, fare_paise").eq("id", dispatch.request_id).single();
+      if (profile?.telegram_chat_id && request) {
+        await sendTelegramMessage(profile.telegram_chat_id, `🚗 <b>New ride request</b>\n\n${request.from_city} → ${request.to_city} · ₹${Math.round(request.fare_paise / 100)}\n\nYou have 60 seconds to respond. Open the app now.`);
+      }
+    }
+    return Response.json({ data: { ok: true }, error: null });
+  }
+
+  // Manual assign
+  const dispatch = await (prisma as any).driverDispatch.findUnique({ where: { id }, select: { request_id: true } });
+  if (!dispatch) return Response.json({ error: "Not found" }, { status: 404 });
+
+  await db.from("DriverDispatch").update({ status: "EXPIRED" }).eq("request_id", dispatch.request_id).in("status", ["PENDING", "WAITING"]);
+
+  const expiry = new Date(Date.now() + 60_000).toISOString();
+  await db.from("DriverDispatch").insert({
+    id:            crypto.randomUUID(),
+    request_id:    dispatch.request_id,
+    driver_id:     parsed.data.driver_id,
+    order_index:   999,
+    status:        "PENDING",
+    dispatched_at: now,
+    expires_at:    expiry,
+    created_at:    now,
+  });
+
+  const { data: profile } = await db.from("DriverProfile").select("telegram_chat_id").eq("user_id", parsed.data.driver_id).single();
+  const { data: request } = await db.from("RideRequest").select("from_city, to_city, fare_paise").eq("id", dispatch.request_id).single();
+  if (profile?.telegram_chat_id && request) {
+    await sendTelegramMessage(profile.telegram_chat_id, `🚗 <b>Admin assigned ride</b>\n\n${request.from_city} → ${request.to_city} · ₹${Math.round(request.fare_paise / 100)}\n\nYou have 60 seconds to respond.`);
+  }
+
+  return Response.json({ data: { ok: true }, error: null });
+}
