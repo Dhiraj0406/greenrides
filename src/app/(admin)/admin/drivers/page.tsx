@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 interface Driver {
   id:             string;
   is_approved:    boolean;
+  is_online:      boolean;
   vehicle_type:   string;
   vehicle_number: string;
   vehicle_model:  string;
@@ -77,7 +78,16 @@ function DriversContent({ token }: { token: string }) {
             <div key={driver.id} className="bg-white border border-border rounded-2xl p-4">
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <p className="font-semibold text-text">{driver.user.name ?? "—"}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-text">{driver.user.name ?? "—"}</p>
+                    <span
+                      className={cn(
+                        "w-2 h-2 rounded-full flex-shrink-0",
+                        (driver as any).is_online ? "bg-leaf animate-pulse" : "bg-gray-300"
+                      )}
+                      title={(driver as any).is_online ? "Online" : "Offline"}
+                    />
+                  </div>
                   <p className="text-xs text-sub">{driver.user.phone}</p>
                 </div>
                 <span className={cn("text-[10px] font-bold px-2 py-1 rounded-full",
@@ -113,6 +123,12 @@ function DriversContent({ token }: { token: string }) {
                   </button>
                 )}
               </div>
+              <Link
+                href="/admin/drivers/dispatch"
+                className="text-xs text-leaf font-semibold mt-2 inline-block"
+              >
+                View live dispatch →
+              </Link>
             </div>
           ))
         )}
