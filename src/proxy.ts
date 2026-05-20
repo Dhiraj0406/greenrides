@@ -1,33 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/auth-helpers-nextjs";
 
-const PROTECTED = [
-  "/bookings",
-  "/profile",
-  "/driver/dashboard",
-  "/driver/post-ride",
-  "/drivers/dashboard",
-  "/drivers/register",
-  "/drivers/pending",
-  "/admin",
-];
+const RIDER_PROTECTED = ["/bookings", "/profile"];
 
-export async function proxy(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-  const isProtected = PROTECTED.some((p) => pathname.startsWith(p));
-  if (!isProtected) return NextResponse.next();
-
-  const res = NextResponse.next();
-
-  // Admin cookie bypass — set by login page after PIN auth
-  const adminCookie = req.cookies.get("green_admin_token")?.value;
-  if (adminCookie && adminCookie === process.env.ADMIN_SECRET) {
-    return res;
-  }
-
+async function getSupabaseUser(req: NextRequest, res: NextResponse) {
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL    || "",
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
     {
       cookies: {
         getAll() { return req.cookies.getAll(); },
@@ -40,9 +19,64 @@ export async function proxy(req: NextRequest) {
       },
     }
   );
+  return supabase.auth.getUser();
+}
 
-  const { data: { user } } = await supabase.auth.getUser();
+export async function proxy(req: NextRequest) {
+  const host     = req.headers.get("host") ?? "";
+  const { pathname } = req.nextUrl;
+  const res      = NextResponse.next();
 
+  // ── Admin subdomain ──────────────────────────────────
+  if (host.startsWith("admin.")) {
+    const url = req.nextUrl.clone();
+    url.pathname = `/admin${pathname === "/" ? "" : pathname}`;
+
+    const adminCookie = req.cookies.get("green_admin_token")?.value;
+    if (adminCookie && adminCookie === process.env.ADMIN_SECRET) {
+      return NextResponse.rewrite(url);
+    }
+
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // ── Fleet subdomain ──────────────────────────────────
+  if (host.startsWith("fleet.")) {
+    const url = req.nextUrl.clone();
+    url.pathname = `/fleet${pathname === "/" ? "" : pathname}`;
+
+    // Register and pending pages are public on fleet subdomain
+    if (pathname === "/register" || pathname === "/pending" || pathname === "/login") {
+      return NextResponse.rewrite(url);
+    }
+
+    const { data: { user } } = await getSupabaseUser(req, res);
+
+    if (!user) {
+      return NextResponse.redirect(`${req.nextUrl.protocol}//${host}/register`);
+    }
+
+    const roles: string[] = (user.app_metadata?.roles as string[]) ?? [];
+    const hasFleet = roles.includes("driver") || roles.includes("owner");
+
+    if (!hasFleet) {
+      const fleetStatus = user.app_metadata?.fleet_status as string | undefined;
+      if (fleetStatus === "pending") {
+        return NextResponse.redirect(`${req.nextUrl.protocol}//${host}/pending`);
+      }
+      return NextResponse.redirect(`${req.nextUrl.protocol}//${host}/register`);
+    }
+
+    return NextResponse.rewrite(url);
+  }
+
+  // ── Rider portal (main domain) — path-based protection ──
+  const isProtected = RIDER_PROTECTED.some((p) => pathname.startsWith(p));
+  if (!isProtected) return NextResponse.next();
+
+  const { data: { user } } = await getSupabaseUser(req, res);
   if (!user) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("next", pathname);
@@ -54,12 +88,6 @@ export async function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/bookings/:path*",
-    "/profile/:path*",
-    "/driver/:path*",
-    "/drivers/dashboard/:path*",
-    "/drivers/register/:path*",
-    "/drivers/pending/:path*",
-    "/admin/:path*",
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
   ],
 };
