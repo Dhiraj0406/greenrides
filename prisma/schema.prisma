@@ -53,6 +53,17 @@ enum DispatchStatus {
   SKIPPED
 }
 
+enum OwnerStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+}
+
 // ─── USERS ───────────────────────────────────────────
 model User {
   id                String   @id @default(uuid())
@@ -97,6 +108,7 @@ model DriverProfile {
   owner_id         String?
 
   user     User      @relation(fields: [user_id], references: [id])
+  owner    Owner?    @relation(fields: [owner_id], references: [id])
   vehicles Vehicle[]
 }
 
@@ -273,12 +285,6 @@ model TelegramCode {
 }
 
 // ─── OWNER (fleet account) ───────────────────────────
-enum OwnerStatus {
-  PENDING
-  ACTIVE
-  SUSPENDED
-}
-
 model Owner {
   id         String      @id @default(uuid())
   user_id    String      @unique
@@ -288,9 +294,10 @@ model Owner {
   status     OwnerStatus @default(PENDING)
   created_at DateTime    @default(now())
 
-  user     User      @relation(fields: [user_id], references: [id])
+  user     User            @relation(fields: [user_id], references: [id])
   vehicles Vehicle[]
   payouts  OwnerPayout[]
+  drivers  DriverProfile[]
 
   @@index([status])
 }
@@ -327,11 +334,6 @@ model Notification {
 }
 
 // ─── OWNER PAYOUT ─────────────────────────────────────
-enum PayoutStatus {
-  PENDING
-  PAID
-}
-
 model OwnerPayout {
   id           String       @id @default(uuid())
   owner_id     String
@@ -341,6 +343,7 @@ model OwnerPayout {
   status       PayoutStatus @default(PENDING)
   paid_at      DateTime?
   created_at   DateTime     @default(now())
+  updated_at   DateTime     @updatedAt
 
   owner Owner @relation(fields: [owner_id], references: [id])
 
