@@ -11,6 +11,7 @@ datasource db {
 enum UserRole {
   RIDER
   DRIVER
+  OWNER
   ADMIN
 }
 
@@ -54,18 +55,20 @@ enum DispatchStatus {
 
 // ─── USERS ───────────────────────────────────────────
 model User {
-  id          String   @id @default(uuid())
-  phone       String   @unique
-  name        String?
-  email       String?
-  role        UserRole @default(RIDER)
-  avatar_url  String?
-  is_verified Boolean  @default(false)
-  fcm_token   String?
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id                String   @id @default(uuid())
+  phone             String   @unique
+  name              String?
+  email             String?
+  role              UserRole @default(RIDER)
+  avatar_url        String?
+  is_verified       Boolean  @default(false)
+  fcm_token         String?
+  whatsapp_consent  Boolean  @default(false)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
 
   driver_profile    DriverProfile?
+  owner_profile     Owner?
   rides_driven      Ride[]           @relation("DriverRides")
   bookings          Booking[]
   ride_requests     RideRequest[]
@@ -91,8 +94,10 @@ model DriverProfile {
   telegram_chat_id String?
   availability     Json?
   approved_at      DateTime?
+  owner_id         String?
 
-  user User @relation(fields: [user_id], references: [id])
+  user     User      @relation(fields: [user_id], references: [id])
+  vehicles Vehicle[]
 }
 
 // ─── KNOWN ROUTES (admin-managed) ────────────────────
@@ -156,6 +161,9 @@ model Booking {
   created_at   DateTime      @default(now())
   updated_at   DateTime      @updatedAt
 
+  traveler_name  String?
+  traveler_phone String?
+
   ride    Ride     @relation(fields: [ride_id], references: [id])
   rider   User     @relation(fields: [rider_id], references: [id])
   payment Payment?
@@ -180,38 +188,59 @@ model Payment {
 // ─── RIDE REQUESTS (request-model booking) ───────────
 model RideRequest {
   id           String            @id @default(uuid())
-  rider_id     String
-  rider_phone  String
-  from_city    String
-  to_city      String
-  fare_paise   Int
-  travel_date  DateTime
-  status       RideRequestStatus @default(PENDING)
-  notes        String?
-  driver_name  String?
-  driver_phone String?
-  eta_min      Int?
-  created_at   DateTime          @default(now())
-  updated_at   DateTime          @updatedAt
-  dispatched   Boolean           @default(false)
+  rider_id       String
+  rider_phone    String
+  from_city      String
+  to_city        String
+  fare_paise     Int
+  travel_date    DateTime
+  preferred_time      String?
+  status              RideRequestStatus @default(PENDING)
+  notes               String?
+  driver_name         String?
+  driver_phone        String?
+  eta_min             Int?
+  razorpay_order_id   String?
+  razorpay_payment_id String?
+  payment_status      String            @default("UNPAID")
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
+  dispatched          Boolean           @default(false)
 
   rider      User             @relation(fields: [rider_id], references: [id])
   dispatches DriverDispatch[]
+  ratings    Rating[]
+}
+
+// ─── ADMIN LOG ────────────────────────────────────────
+model AdminLog {
+  id         String   @id @default(uuid())
+  admin_id   String
+  action     String
+  entity     String
+  entity_id  String
+  details    Json?
+  created_at DateTime @default(now())
+
+  @@index([entity_id])
+  @@index([admin_id])
 }
 
 // ─── RATINGS ─────────────────────────────────────────
 model Rating {
   id         String   @id @default(uuid())
-  booking_id String   @unique
+  booking_id String?  @unique
+  request_id String?
   rater_id   String
   rated_id   String
   score      Int
   comment    String?
   created_at DateTime @default(now())
 
-  booking Booking @relation(fields: [booking_id], references: [id])
-  rater   User    @relation("RaterRatings", fields: [rater_id], references: [id])
-  rated   User    @relation("RatedUser", fields: [rated_id], references: [id])
+  booking    Booking?     @relation(fields: [booking_id], references: [id])
+  request    RideRequest? @relation(fields: [request_id], references: [id])
+  rater      User         @relation("RaterRatings", fields: [rater_id], references: [id])
+  rated      User         @relation("RatedUser", fields: [rated_id], references: [id])
 }
 
 // ─── DRIVER DISPATCH ─────────────────────────────────
@@ -241,4 +270,79 @@ model TelegramCode {
   chat_id    String
   expires_at DateTime
   created_at DateTime @default(now())
+}
+
+// ─── OWNER (fleet account) ───────────────────────────
+enum OwnerStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+model Owner {
+  id         String      @id @default(uuid())
+  user_id    String      @unique
+  name       String
+  phone      String
+  email      String?
+  status     OwnerStatus @default(PENDING)
+  created_at DateTime    @default(now())
+
+  user     User      @relation(fields: [user_id], references: [id])
+  vehicles Vehicle[]
+  payouts  OwnerPayout[]
+
+  @@index([status])
+}
+
+// ─── VEHICLE ─────────────────────────────────────────
+model Vehicle {
+  id         String   @id @default(uuid())
+  owner_id   String
+  make       String
+  model_name String
+  number     String   @unique
+  seats      Int      @default(4)
+  active     Boolean  @default(true)
+  driver_id  String?
+  created_at DateTime @default(now())
+
+  owner  Owner         @relation(fields: [owner_id], references: [id])
+  driver DriverProfile? @relation(fields: [driver_id], references: [id])
+
+  @@index([owner_id])
+}
+
+// ─── NOTIFICATION ─────────────────────────────────────
+model Notification {
+  id         String   @id @default(uuid())
+  user_id    String
+  type       String
+  title      String
+  body       String
+  read       Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  @@index([user_id, read])
+}
+
+// ─── OWNER PAYOUT ─────────────────────────────────────
+enum PayoutStatus {
+  PENDING
+  PAID
+}
+
+model OwnerPayout {
+  id           String       @id @default(uuid())
+  owner_id     String
+  amount_paise Int
+  period_from  DateTime
+  period_to    DateTime
+  status       PayoutStatus @default(PENDING)
+  paid_at      DateTime?
+  created_at   DateTime     @default(now())
+
+  owner Owner @relation(fields: [owner_id], references: [id])
+
+  @@index([owner_id])
 }
