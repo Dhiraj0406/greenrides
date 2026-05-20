@@ -1,16 +1,22 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { RideRequestStatus } from "@/generated/prisma";
 
 function isAdmin(req: NextRequest) {
   return req.headers.get("x-admin-token") === process.env.ADMIN_SECRET;
 }
+
+const VALID_STATUSES = new Set(Object.values(RideRequestStatus));
 
 export async function GET(req: NextRequest) {
   if (!isAdmin(req)) {
     return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
   }
 
-  const status = req.nextUrl.searchParams.get("status");
+  const rawStatus = req.nextUrl.searchParams.get("status");
+  const status = rawStatus && VALID_STATUSES.has(rawStatus as RideRequestStatus)
+    ? (rawStatus as RideRequestStatus)
+    : null;
 
   try {
     const requests = await prisma.rideRequest.findMany({
