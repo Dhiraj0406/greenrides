@@ -101,3 +101,74 @@ export interface TouristPlace {
   tag:              string;
   routeDestination?: string;
 }
+
+// ── Fleet types ──────────────────────────────────────────────────────────────
+
+export type OwnerStatus  = "PENDING" | "ACTIVE" | "SUSPENDED";
+export type PayoutStatus = "PENDING" | "PAID";
+export type FleetStatus  = "pending" | "active" | "suspended";
+
+export interface OwnerProfile {
+  id:         string;
+  user_id:    string;
+  name:       string;
+  phone:      string;
+  email:      string | null;
+  status:     OwnerStatus;
+  created_at: string;
+}
+
+export interface Vehicle {
+  id:         string;
+  owner_id:   string;
+  make:       string;
+  model_name: string;
+  number:     string;
+  seats:      number;
+  active:     boolean;
+  driver_id:  string | null;
+  created_at: string;
+  driver?:    { id: string; user: { name: string | null; phone: string } };
+}
+
+export interface FleetNotification {
+  id:         string;
+  user_id:    string;
+  type:       string;
+  title:      string;
+  body:       string;
+  read:       boolean;
+  created_at: string;
+}
+
+export interface OwnerPayout {
+  id:           string;
+  owner_id:     string;
+  amount_paise: number;
+  period_from:  string;
+  period_to:    string;
+  status:       PayoutStatus;
+  paid_at:      string | null;
+  created_at:   string;
+  owner?:       { name: string; phone: string };
+}
+
+export interface FleetApplicant {
+  user_id:        string;
+  name:           string | null;
+  phone:          string;
+  role:           "driver" | "owner" | "both";
+  driver_profile?: {
+    license_number: string;
+    vehicle_type:   string;
+    vehicle_number: string;
+    vehicle_model:  string;
+    is_approved:    boolean;
+    created_at:     string;
+  };
+  owner_profile?: {
+    id:         string;
+    status:     OwnerStatus;
+    created_at: string;
+  };
+}
