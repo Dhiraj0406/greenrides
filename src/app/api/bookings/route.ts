@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   // ── Admin path ────────────────────────────────────────────────────────────
   if (isAdmin) {
     const token = req.headers.get("x-admin-token") ?? "";
-    if (token !== process.env.NEXT_PUBLIC_ADMIN_TOKEN) {
+    if (token !== process.env.ADMIN_SECRET) {
       return Response.json({ data: null, error: "Forbidden" }, { status: 403 });
     }
 
@@ -97,13 +97,28 @@ export async function GET(req: NextRequest) {
 // ─── POST /api/bookings ──────────────────────────────────────────────────────
 
 const schema = z.object({
-  ride_id:     z.string().uuid(),
-  rider_id:    z.string().uuid(),
-  seats:       z.number().int().min(1).max(6),
-  pickup_point: z.string().min(2),
+  ride_id:        z.string().uuid(),
+  rider_id:       z.string().uuid(),
+  seats:          z.number().int().min(1).max(6),
+  pickup_point:   z.string().min(2),
+  traveler_name:  z.string().min(1).max(100).optional(),
+  traveler_phone: z.string().min(5).max(20).optional(),
 });
 
 export async function POST(req: NextRequest) {
+  // Auth guard — verify Bearer token and enforce rider_id matches the authenticated user
+  const authHeader = req.headers.get("authorization") ?? "";
+  const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  if (!bearerToken) {
+    return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
+  }
+  const adminClient = getAdminClient();
+  const { data: authData, error: authError } = await adminClient.auth.getUser(bearerToken);
+  if (authError || !authData.user) {
+    return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
+  }
+  const authenticatedUserId = authData.user.id;
+
   let body: unknown;
   try {
     body = await req.json();
@@ -122,7 +137,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { ride_id, rider_id, seats, pickup_point } = parsed.data;
+  // Enforce rider_id from token — ignore any rider_id supplied in body
+  const { ride_id, seats, pickup_point, traveler_name, traveler_phone } = parsed.data;
+  const rider_id = authenticatedUserId;
 
   try {
     // Atomic seat booking via Supabase RPC
@@ -154,6 +171,14 @@ export async function POST(req: NextRequest) {
 
     // Create Razorpay order
     const order = await createOrder(amount_paise, booking_id);
+
+    // Save traveler details if booking for someone else
+    if (traveler_name) {
+      await prisma.booking.update({
+        where: { id: booking_id },
+        data: { traveler_name, traveler_phone: traveler_phone ?? null },
+      });
+    }
 
     // Store order ID in Payment table
     await prisma.payment.create({

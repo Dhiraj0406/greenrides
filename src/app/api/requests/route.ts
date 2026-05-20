@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { getAdminClient } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { prisma } from "@/lib/prisma";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
   const db = getAdminClient();
   const { data: requests, error: fetchErr } = await db
     .from("RideRequest")
-    .select("id, from_city, to_city, fare_paise, travel_date, status, notes, driver_name, driver_phone, eta_min, created_at")
+    .select("id, from_city, to_city, fare_paise, travel_date, status, notes, driver_name, driver_phone, eta_min, razorpay_order_id, payment_status, created_at")
     .eq("rider_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -30,15 +31,29 @@ export async function GET(req: NextRequest) {
     return Response.json({ data: [], error: null });
   }
 
-  return Response.json({ data: requests ?? [], error: null });
+  const rows = requests ?? [];
+  const ids = rows.map((r: { id: string }) => r.id);
+  const ratedIds = ids.length
+    ? await prisma.rating.findMany({ where: { request_id: { in: ids }, rater_id: user.id }, select: { request_id: true } })
+    : [];
+  const ratedSet = new Set(ratedIds.map((r: { request_id: string | null }) => r.request_id));
+
+  const data = rows.map((r: { id: string; [key: string]: unknown }) => ({ ...r, has_rating: ratedSet.has(r.id) }));
+  return Response.json({ data, error: null });
 }
 
 const createSchema = z.object({
-  from_city:   z.string().min(1).max(100),
-  to_city:     z.string().min(1).max(100),
-  fare_paise:  z.number().int().min(100),
-  travel_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  notes:       z.string().max(300).optional(),
+  from_city:      z.string().min(1).max(100),
+  to_city:        z.string().min(1).max(100),
+  fare_paise:     z.number().int().min(50000),
+  travel_date:    z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .refine(
+      (d) => d >= new Date().toISOString().split("T")[0],
+      "Travel date must be today or in the future"
+    ),
+  notes:          z.string().max(300).optional(),
+  preferred_time: z.enum(["EARLY_MORNING", "MORNING", "AFTERNOON", "EVENING", "NIGHT"]).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -66,7 +81,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { from_city, to_city, fare_paise, travel_date, notes } = parsed.data;
+  const { from_city, to_city, fare_paise, travel_date, notes, preferred_time } = parsed.data;
   const phone = user.phone ?? "";
   const now = new Date().toISOString();
   const db = getAdminClient();
@@ -93,9 +108,10 @@ export async function POST(req: NextRequest) {
         from_city,
         to_city,
         fare_paise,
-        travel_date: new Date(travel_date).toISOString(),
-        notes:       notes ?? null,
-        updated_at:  now,
+        travel_date:     new Date(travel_date).toISOString(),
+        notes:           notes ?? null,
+        preferred_time:  preferred_time ?? null,
+        updated_at:      now,
       })
       .select("id, status")
       .single();
@@ -139,23 +155,24 @@ async function buildDispatchQueue(
   // Get all approved, online drivers
   const { data: profiles } = await db
     .from("DriverProfile")
-    .select("id, user_id, total_trips, approved_at, availability, telegram_chat_id")
+    .select("id, user_id, avg_rating, total_trips, approved_at, availability, telegram_chat_id")
     .eq("is_approved", true)
     .eq("is_online", true);
 
   if (!profiles || profiles.length === 0) return;
 
-  // Filter: driver must have availability for the travel date and it must not be "rest"
+  // Filter: null/empty availability = available all days; explicit "rest" = unavailable
   const eligible = profiles.filter((p) => {
     const avail = (p.availability as Record<string, unknown> | null) ?? {};
-    const day   = avail[travelDate];
-    return day && day !== "rest";
+    if (Object.keys(avail).length === 0) return true;
+    const day = avail[travelDate];
+    return day !== "rest";
   });
 
   if (eligible.length === 0) return;
 
-  // Sort: fewest total_trips first, then earliest approved_at
   eligible.sort((a, b) => {
+    if (b.avg_rating !== a.avg_rating) return (b.avg_rating ?? 0) - (a.avg_rating ?? 0);
     if (a.total_trips !== b.total_trips) return a.total_trips - b.total_trips;
     return new Date(a.approved_at ?? 0).getTime() - new Date(b.approved_at ?? 0).getTime();
   });

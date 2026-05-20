@@ -28,7 +28,7 @@ export async function PATCH(
   if (!result.success) return Response.json({ data: null, error: result.error.issues[0].message }, { status: 400 });
   const input = result.data;
 
-  const updated = await (prisma as any).driverProfile.update({
+  const updated = await prisma.driverProfile.update({
     where: { id },
     data:  {
       is_approved: input.is_approved,
@@ -44,6 +44,17 @@ export async function PATCH(
       `✅ <b>You're approved on Green Rides!</b>\n\nWelcome, ${updated.user?.name ?? "Driver"}! Open the app to set your schedule and go online.\n\nhttps://green-rides.vercel.app/drivers/dashboard`
     );
   }
+
+  try {
+    const db = getAdminClient();
+    await db.from("AdminLog").insert({
+      admin_id:  "admin",
+      action:    `driver_${input.is_approved === true ? "approved" : input.is_approved === false ? "rejected" : "updated"}`,
+      entity:    "driver",
+      entity_id: id,
+      details:   input,
+    });
+  } catch {}
 
   return Response.json({ data: updated, error: null });
 }

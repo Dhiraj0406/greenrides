@@ -35,7 +35,7 @@ export function FareTable() {
         method:  "PUT",
         headers: {
           "Content-Type":  "application/json",
-          "x-admin-token": process.env.NEXT_PUBLIC_ADMIN_TOKEN ?? "",
+          "x-admin-token": sessionStorage.getItem("green_admin_token") ?? "",
         },
         body: JSON.stringify({
           route_id:     row.id,

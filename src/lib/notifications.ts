@@ -1,4 +1,26 @@
+import { Resend } from "resend";
+
 const INTERAKT_URL = "https://api.interakt.ai/v1/public/message/";
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+async function sendEmail(opts: {
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<void> {
+  if (!resend || !opts.to.includes("@")) return;
+  try {
+    await resend.emails.send({
+      from: "Green Rides <noreply@green-rides.app>",
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+    });
+  } catch (err) {
+    console.error("[resend] email failed", err);
+  }
+}
 
 function makeHeaders() {
   return {
@@ -38,6 +60,7 @@ async function sendWhatsApp(
 
 export async function notifyRiderBookingConfirmed(data: {
   phone: string;
+  email?: string;
   name: string;
   from: string;
   to: string;
@@ -48,16 +71,37 @@ export async function notifyRiderBookingConfirmed(data: {
   seats: number;
   amount: number;
 }): Promise<void> {
-  await sendWhatsApp(data.phone, "green_booking_confirmed", {
-    name:        data.name,
-    from:        data.from,
-    to:          data.to,
-    datetime:    `${data.date} at ${data.time}`,
-    driver_name: data.driverName,
-    driver_ph:   data.driverPhone,
-    seats:       String(data.seats),
-    amount:      `₹${data.amount}`,
-  });
+  await Promise.allSettled([
+    sendWhatsApp(data.phone, "green_booking_confirmed", {
+      name:        data.name,
+      from:        data.from,
+      to:          data.to,
+      datetime:    `${data.date} at ${data.time}`,
+      driver_name: data.driverName,
+      driver_ph:   data.driverPhone,
+      seats:       String(data.seats),
+      amount:      `₹${data.amount}`,
+    }),
+    data.email
+      ? sendEmail({
+          to: data.email,
+          subject: `Your Green Rides booking is confirmed — ${data.from} → ${data.to}`,
+          html: `
+            <p>Hi ${data.name},</p>
+            <p>Your ride is confirmed!</p>
+            <table>
+              <tr><td><strong>Route</strong></td><td>${data.from} → ${data.to}</td></tr>
+              <tr><td><strong>Date</strong></td><td>${data.date} at ${data.time}</td></tr>
+              <tr><td><strong>Driver</strong></td><td>${data.driverName} · ${data.driverPhone}</td></tr>
+              <tr><td><strong>Seats</strong></td><td>${data.seats}</td></tr>
+              <tr><td><strong>Amount</strong></td><td>₹${data.amount}</td></tr>
+            </table>
+            <p>Have a great trip!</p>
+            <p>— Green Rides Team</p>
+          `,
+        })
+      : Promise.resolve(),
+  ]);
 }
 
 export async function notifyDriverNewBooking(data: {

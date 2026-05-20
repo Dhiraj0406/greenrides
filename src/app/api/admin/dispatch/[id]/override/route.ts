@@ -31,7 +31,7 @@ export async function PATCH(
   const now = new Date().toISOString();
 
   if (parsed.data.action === "skip") {
-    const dispatch = await (prisma as any).driverDispatch.findUnique({
+    const dispatch = await prisma.driverDispatch.findUnique({
       where: { id },
       select: { request_id: true, order_index: true },
     });
@@ -58,11 +58,21 @@ export async function PATCH(
         await sendTelegramMessage(profile.telegram_chat_id, `🚗 <b>New ride request</b>\n\n${request.from_city} → ${request.to_city} · ₹${Math.round(request.fare_paise / 100)}\n\nYou have 60 seconds to respond. Open the app now.`);
       }
     }
+    try {
+      await db.from("AdminLog").insert({
+        admin_id:  "admin",
+        action:    "dispatch_skipped",
+        entity:    "dispatch",
+        entity_id: id,
+        details:   { request_id: dispatch.request_id },
+      });
+    } catch {}
+
     return Response.json({ data: { ok: true }, error: null });
   }
 
   // Manual assign
-  const dispatch = await (prisma as any).driverDispatch.findUnique({ where: { id }, select: { request_id: true } });
+  const dispatch = await prisma.driverDispatch.findUnique({ where: { id }, select: { request_id: true } });
   if (!dispatch) return Response.json({ error: "Not found" }, { status: 404 });
 
   await db.from("DriverDispatch").update({ status: "SKIPPED" }).eq("request_id", dispatch.request_id).in("status", ["PENDING", "WAITING"]);
@@ -84,6 +94,16 @@ export async function PATCH(
   if (profile?.telegram_chat_id && request) {
     await sendTelegramMessage(profile.telegram_chat_id, `🚗 <b>Admin assigned ride</b>\n\n${request.from_city} → ${request.to_city} · ₹${Math.round(request.fare_paise / 100)}\n\nYou have 60 seconds to respond.`);
   }
+
+  try {
+    await db.from("AdminLog").insert({
+      admin_id:  "admin",
+      action:    "dispatch_assigned",
+      entity:    "dispatch",
+      entity_id: id,
+      details:   { driver_id: parsed.data.driver_id, request_id: dispatch.request_id },
+    });
+  } catch {}
 
   return Response.json({ data: { ok: true }, error: null });
 }

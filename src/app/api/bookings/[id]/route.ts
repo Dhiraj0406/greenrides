@@ -8,13 +8,12 @@ export async function GET(
   const { id } = await params;
 
   try {
-    const booking = await (prisma as any).booking.findUnique({
+    const booking = await prisma.booking.findUnique({
       where: { id },
       include: {
         ride: {
           include: {
             driver: {
-              include: { driver_profile: true },
               select: {
                 name:           true,
                 phone:          true,

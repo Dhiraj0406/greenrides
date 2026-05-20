@@ -9,6 +9,7 @@ const PROTECTED = [
   "/drivers/dashboard",
   "/drivers/register",
   "/drivers/pending",
+  "/admin",
 ];
 
 export async function proxy(req: NextRequest) {
@@ -17,6 +18,12 @@ export async function proxy(req: NextRequest) {
   if (!isProtected) return NextResponse.next();
 
   const res = NextResponse.next();
+
+  // Admin cookie bypass — set by login page after PIN auth
+  const adminCookie = req.cookies.get("green_admin_token")?.value;
+  if (adminCookie && adminCookie === process.env.ADMIN_SECRET) {
+    return res;
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,9 +41,9 @@ export async function proxy(req: NextRequest) {
     }
   );
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  if (!session) {
+  if (!user) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
@@ -53,5 +60,6 @@ export const config = {
     "/drivers/dashboard/:path*",
     "/drivers/register/:path*",
     "/drivers/pending/:path*",
+    "/admin/:path*",
   ],
 };

@@ -13,34 +13,39 @@ export function initAnalytics() {
   initialized = true;
 }
 
+function capture(event: string, props?: Record<string, unknown>) {
+  if (!initialized) return;
+  posthog.capture(event, props);
+}
+
 export const track = {
   // Location
   locationDetected: (city: string) =>
-    posthog.capture("location_detected", { city }),
+    capture("location_detected", { city }),
   locationManual: (city: string) =>
-    posthog.capture("location_manual_select", { city }),
+    capture("location_manual_select", { city }),
 
   // Booking funnel
   originSelected: (city: string) =>
-    posthog.capture("origin_selected", { city }),
+    capture("origin_selected", { city }),
   destinationSelected: (from: string, to: string, fare: number) =>
-    posthog.capture("destination_selected", { from, to, fare }),
+    capture("destination_selected", { from, to, fare }),
   customRouteStarted: () =>
-    posthog.capture("custom_route_started"),
+    capture("custom_route_started"),
   fareConfirmed: (from: string, to: string, fare: number) =>
-    posthog.capture("fare_confirmed", { from, to, fare }),
+    capture("fare_confirmed", { from, to, fare }),
   driverSheetOpened: () =>
-    posthog.capture("driver_sheet_opened"),
+    capture("driver_sheet_opened"),
   paymentInitiated: (amount: number) =>
-    posthog.capture("payment_initiated", { amount }),
+    capture("payment_initiated", { amount }),
   bookingConfirmed: (bookingId: string, amount: number) =>
-    posthog.capture("booking_confirmed", { booking_id: bookingId, amount }),
+    capture("booking_confirmed", { booking_id: bookingId, amount }),
 
   // Drop-offs
   paymentAbandoned: (bookingId: string) =>
-    posthog.capture("payment_abandoned", { booking_id: bookingId }),
+    capture("payment_abandoned", { booking_id: bookingId }),
   noRidesFound: (from: string, to: string) =>
-    posthog.capture("no_rides_found", { from, to }),
+    capture("no_rides_found", { from, to }),
   touristCardTapped: (place: string) =>
-    posthog.capture("tourist_card_tapped", { place }),
+    capture("tourist_card_tapped", { place }),
 };

@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   if (!isAdmin(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const dispatches = await (prisma as any).driverDispatch.findMany({
+    const dispatches = await prisma.driverDispatch.findMany({
       where: { status: "PENDING" },
       include: {
         request: { select: { from_city: true, to_city: true, fare_paise: true, travel_date: true, status: true } },

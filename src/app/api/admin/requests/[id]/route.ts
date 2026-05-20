@@ -46,7 +46,7 @@ export async function PATCH(
   }
 
   try {
-    const updated = await (prisma as any).rideRequest.update({
+    const updated = await prisma.rideRequest.update({
       where: { id },
       data,
     });

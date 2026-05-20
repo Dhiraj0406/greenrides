@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Serif_Display, DM_Sans, JetBrains_Mono } from "next/font/google";
-import Script from "next/script";
+import { Toaster } from "sonner";
+import { AnalyticsProvider } from "@/components/shared/AnalyticsProvider";
 import "./globals.css";
 
 const dmSerifDisplay = DM_Serif_Display({
@@ -21,11 +22,29 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500"],
 });
 
+const APP_URL = "https://green-rides.vercel.app";
+
 export const metadata: Metadata = {
   title: "Green — Odisha Hill Routes",
   description:
     "Premium ride platform connecting Koraput, Jeypore, and Odisha hill towns. Book intercity rides with verified drivers.",
   keywords: ["koraput", "jeypore", "odisha", "rides", "cab", "intercity"],
+  metadataBase: new URL(APP_URL),
+  openGraph: {
+    title: "Green — Odisha Hill Routes",
+    description: "Book intercity rides with verified drivers on Odisha's hill routes.",
+    url: APP_URL,
+    siteName: "Green Rides",
+    images: [{ url: "/og", width: 1200, height: 630, alt: "Green Rides" }],
+    locale: "en_IN",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Green — Odisha Hill Routes",
+    description: "Book intercity rides with verified drivers on Odisha's hill routes.",
+    images: ["/og"],
+  },
 };
 
 export default function RootLayout({
@@ -39,11 +58,9 @@ export default function RootLayout({
       className={`${dmSerifDisplay.variable} ${dmSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-cream font-sans">
+        <AnalyticsProvider />
         {children}
-        <Script
-          src="https://checkout.razorpay.com/v1/checkout.js"
-          strategy="lazyOnload"
-        />
+        <Toaster position="top-center" richColors />
       </body>
     </html>
   );

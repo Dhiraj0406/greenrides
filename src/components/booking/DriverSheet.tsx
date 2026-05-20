@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Drawer } from "vaul";
 import { Star, Phone, ChevronLeft, Loader2, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useBookingStore } from "@/store/booking";
 import { track } from "@/lib/analytics";
@@ -24,6 +25,9 @@ export function DriverSheet({ open, onClose, from, to, fareRupees }: Props) {
   const [loading, setLoading] = useState(false);
   const [booking, setBooking] = useState(false);
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const [forSomeoneElse, setForSomeoneElse] = useState(false);
+  const [travelerName, setTravelerName]     = useState("");
+  const [travelerPhone, setTravelerPhone]   = useState("");
   const { setSelectedRide, setBooking: setBookingState } = useBookingStore();
 
   useEffect(() => {
@@ -74,6 +78,7 @@ export function DriverSheet({ open, onClose, from, to, fareRupees }: Props) {
           rider_id:     user.id,
           seats:        1,
           pickup_point: ride.pickup_points[0] ?? from,
+          ...(forSomeoneElse && travelerName ? { traveler_name: travelerName, traveler_phone: travelerPhone || null } : {}),
         }),
       });
 
@@ -85,7 +90,7 @@ export function DriverSheet({ open, onClose, from, to, fareRupees }: Props) {
       initiateRazorpay(json.data);
     } catch (err) {
       console.error(err);
-      alert("Booking failed. Please try again.");
+      toast.error("Booking failed. Please try again.");
     } finally {
       setBooking(false);
     }
@@ -118,7 +123,7 @@ export function DriverSheet({ open, onClose, from, to, fareRupees }: Props) {
     const rzp = new window.Razorpay(options);
     rzp.on("payment.failed", () => {
       track.paymentAbandoned(data.booking_id);
-      alert("Payment failed. Please try again.");
+      toast.error("Payment failed. Please try again.");
     });
     rzp.open();
   }
@@ -208,10 +213,40 @@ export function DriverSheet({ open, onClose, from, to, fareRupees }: Props) {
                 </p>
               </div>
 
+              {/* Book for someone else toggle */}
+              <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={forSomeoneElse}
+                  onChange={(e) => setForSomeoneElse(e.target.checked)}
+                  className="w-4 h-4 accent-leaf rounded"
+                />
+                <span className="text-sm text-sub">Booking for someone else?</span>
+              </label>
+
+              {forSomeoneElse && (
+                <div className="mb-4 space-y-2">
+                  <input
+                    type="text"
+                    placeholder="Traveler's name"
+                    value={travelerName}
+                    onChange={(e) => setTravelerName(e.target.value)}
+                    className="w-full bg-gray-50 border border-border rounded-xl px-4 py-2.5 text-sm text-text outline-none focus:ring-2 ring-leaf/30"
+                  />
+                  <input
+                    type="tel"
+                    placeholder="Traveler's phone (optional)"
+                    value={travelerPhone}
+                    onChange={(e) => setTravelerPhone(e.target.value)}
+                    className="w-full bg-gray-50 border border-border rounded-xl px-4 py-2.5 text-sm text-text outline-none focus:ring-2 ring-leaf/30"
+                  />
+                </div>
+              )}
+
               {/* Book button */}
               <button
                 onClick={() => handleBook(ride)}
-                disabled={booking}
+                disabled={booking || (forSomeoneElse && !travelerName.trim())}
                 className="w-full bg-leaf hover:bg-leaf/90 disabled:opacity-60
                            text-white font-semibold py-4 rounded-xl touch-target
                            flex items-center justify-center gap-2 text-base

@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const status = req.nextUrl.searchParams.get("status");
 
   try {
-    const requests = await (prisma as any).rideRequest.findMany({
+    const requests = await prisma.rideRequest.findMany({
       where:   status ? { status } : undefined,
       include: {
         rider: { select: { name: true, phone: true } },

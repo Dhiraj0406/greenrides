@@ -12,5 +12,7 @@ export async function sendTelegramMessage(chatId: string, text: string): Promise
 }
 
 export function generateTelegramCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  return (100000 + (arr[0] % 900000)).toString();
 }
