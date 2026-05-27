@@ -15,13 +15,14 @@ interface MyRequest {
   to_city:            string;
   fare_paise:         number;
   travel_date:        string;
-  status:             "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
+  status:             "PENDING" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   notes:              string | null;
   driver_name:        string | null;
   driver_phone:       string | null;
   eta_min:            number | null;
   razorpay_order_id:  string | null;
   payment_status:     string | null;
+  trip_otp:           string | null;
   has_rating:         boolean;
   created_at:         string;
 }
@@ -33,10 +34,11 @@ function formatTravelDate(iso: string): string {
 }
 
 const STATUS_STYLES: Record<MyRequest["status"], string> = {
-  PENDING:   "bg-gold/15 text-gold",
-  CONFIRMED: "bg-leaf/15 text-leaf",
-  COMPLETED: "bg-gray-100 text-gray-500",
-  CANCELLED: "bg-red-50 text-red-500",
+  PENDING:     "bg-gold/15 text-gold",
+  CONFIRMED:   "bg-leaf/15 text-leaf",
+  IN_PROGRESS: "bg-blue-50 text-blue-600",
+  COMPLETED:   "bg-gray-100 text-gray-500",
+  CANCELLED:   "bg-red-50 text-red-500",
 };
 
 function StatusBadge({ status }: { status: MyRequest["status"] }) {
@@ -128,6 +130,13 @@ function ConfirmedHeroCard({ req }: { req: MyRequest }) {
         <span>·</span>
         <span className="font-semibold text-white">₹{req.fare_paise / 100}</span>
       </div>
+
+      {req.trip_otp && (
+        <div className="bg-white/10 rounded-xl p-3 mb-3 text-center">
+          <p className="text-xs text-lime/60 mb-1">Your trip OTP — share with driver at pickup</p>
+          <p className="font-mono text-3xl font-bold tracking-widest text-white">{req.trip_otp}</p>
+        </div>
+      )}
 
       {req.driver_name || req.driver_phone || req.eta_min ? (
         <div className="bg-white/10 rounded-xl p-3 space-y-2">
@@ -344,7 +353,7 @@ export default function MyBookingsPage() {
   // Poll every 15s when there's a confirmed ride in flight
   useEffect(() => {
     if (!token) return;
-    const hasActive = requests.some((r) => r.status === "CONFIRMED");
+    const hasActive = requests.some((r) => r.status === "CONFIRMED" || r.status === "IN_PROGRESS");
     if (!hasActive) return;
 
     const interval = setInterval(() => fetchRequests(token), 15000);
@@ -376,8 +385,8 @@ export default function MyBookingsPage() {
     }
   }
 
-  const confirmed  = requests.filter((r) => r.status === "CONFIRMED");
-  const otherReqs  = requests.filter((r) => r.status !== "CONFIRMED");
+  const confirmed  = requests.filter((r) => r.status === "CONFIRMED" || r.status === "IN_PROGRESS");
+  const otherReqs  = requests.filter((r) => r.status !== "CONFIRMED" && r.status !== "IN_PROGRESS");
 
   return (
     <div className="green-container min-h-screen bg-cream pb-24">

@@ -30,9 +30,9 @@ export async function POST(
 
   const { error } = await db
     .from("RideRequest")
-    .update({ status: "COMPLETED", updated_at: now })
+    .update({ status: "COMPLETED", completed_at: now, updated_at: now })
     .eq("id", requestId)
-    .eq("status", "CONFIRMED");
+    .eq("status", "IN_PROGRESS");
 
   if (error) {
     console.error("[requests/complete]", error);

@@ -72,7 +72,10 @@ export async function PATCH(
       .eq("id", user.id)
       .single();
 
-    // Update the RideRequest with driver info
+    // Generate a 6-digit trip OTP the rider shows to the driver at pickup
+    const tripOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Update the RideRequest with driver info and trip OTP
     await db
       .from("RideRequest")
       .update({
@@ -80,6 +83,7 @@ export async function PATCH(
         driver_name:  userRow?.name ?? "Driver",
         driver_phone: userRow?.phone ?? "",
         eta_min:      eta_min ?? null,
+        trip_otp:     tripOtp,
         updated_at:   now,
       })
       .eq("id", requestId);

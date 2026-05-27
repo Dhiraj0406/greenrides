@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     const db = getAdminClient();
     const { data: requests, error: fetchErr } = await db
       .from("RideRequest")
-      .select("id, from_city, to_city, fare_paise, travel_date, status, notes, driver_name, driver_phone, eta_min, razorpay_order_id, payment_status, created_at")
+      .select("id, from_city, to_city, fare_paise, travel_date, status, notes, driver_name, driver_phone, eta_min, razorpay_order_id, payment_status, trip_otp, started_at, created_at")
       .eq("rider_id", user.id)
       .order("created_at", { ascending: false });
 

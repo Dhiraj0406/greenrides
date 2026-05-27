@@ -40,6 +40,7 @@ enum PaymentStatus {
 enum RideRequestStatus {
   PENDING
   CONFIRMED
+  IN_PROGRESS
   COMPLETED
   CANCELLED
 }
@@ -225,6 +226,9 @@ model RideRequest {
   razorpay_order_id   String?
   razorpay_payment_id String?
   payment_status      String            @default("UNPAID")
+  trip_otp            String?
+  started_at          DateTime?
+  completed_at        DateTime?
   created_at          DateTime          @default(now())
   updated_at          DateTime          @updatedAt
   dispatched          Boolean           @default(false)
