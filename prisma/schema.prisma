@@ -64,6 +64,16 @@ enum PayoutStatus {
   PAID
 }
 
+enum ModuleScope {
+  RIDESHARING
+  RENTALS
+  USED_CARS
+  FINTECH
+  CARGO
+  EV_CHARGING
+  PLATFORM
+}
+
 // ─── USERS ───────────────────────────────────────────
 model User {
   id                String   @id @default(uuid())
@@ -348,4 +358,15 @@ model OwnerPayout {
   owner Owner @relation(fields: [owner_id], references: [id])
 
   @@index([owner_id])
+}
+
+// ─── REMOTE FEATURE FLAGS ─────────────────────────────
+model AppRemoteConfig {
+  key          String      @id
+  value_json   Json        @default("{}")
+  module_scope ModuleScope
+  enabled      Boolean     @default(true)
+  updated_at   DateTime    @updatedAt
+
+  @@map("app_remote_config")
 }
