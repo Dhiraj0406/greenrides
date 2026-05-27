@@ -84,6 +84,25 @@ export async function PATCH(
       })
       .eq("id", requestId);
 
+    const { data: rideReqData } = await db
+      .from("RideRequest")
+      .select("fare_paise")
+      .eq("id", requestId)
+      .single();
+
+    if (rideReqData) {
+      try {
+        const { createOrder } = await import("@/lib/razorpay");
+        const order = await createOrder(rideReqData.fare_paise, requestId);
+        await db
+          .from("RideRequest")
+          .update({ razorpay_order_id: order.id, payment_status: "PENDING", updated_at: now })
+          .eq("id", requestId);
+      } catch (orderErr) {
+        console.error("[respond/accept] Razorpay order failed", orderErr);
+      }
+    }
+
     // Notify the rider via Telegram
     const { data: rideRequest } = await db
       .from("RideRequest")

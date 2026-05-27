@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, ClipboardList, Users, IndianRupee, TrendingUp, Tag } from "lucide-react";
+import { Loader2, ClipboardList, Users, IndianRupee, TrendingUp, Tag, CheckSquare, Truck, Wallet } from "lucide-react";
 import { AdminGate } from "@/components/admin/AdminGate";
 
 interface Stats {
@@ -107,6 +107,30 @@ function Dashboard({ token }: { token: string }) {
                 <div className="flex items-center gap-3">
                   <Tag className="w-5 h-5 text-leaf" />
                   <span className="text-sm font-semibold text-text">Manage Fares</span>
+                </div>
+                <span className="text-sub text-sm">→</span>
+              </Link>
+              <Link href="/admin/approvals"
+                className="flex items-center justify-between bg-white border border-border rounded-2xl px-4 py-4 hover:border-leaf/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <CheckSquare className="w-5 h-5 text-gold" />
+                  <span className="text-sm font-semibold text-text">Fleet Approvals</span>
+                </div>
+                <span className="text-sub text-sm">→</span>
+              </Link>
+              <Link href="/admin/owners"
+                className="flex items-center justify-between bg-white border border-border rounded-2xl px-4 py-4 hover:border-leaf/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Truck className="w-5 h-5 text-leaf" />
+                  <span className="text-sm font-semibold text-text">Fleet Owners</span>
+                </div>
+                <span className="text-sub text-sm">→</span>
+              </Link>
+              <Link href="/admin/payouts"
+                className="flex items-center justify-between bg-white border border-border rounded-2xl px-4 py-4 hover:border-leaf/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Wallet className="w-5 h-5 text-leaf" />
+                  <span className="text-sm font-semibold text-text">Payouts</span>
                 </div>
                 <span className="text-sub text-sm">→</span>
               </Link>

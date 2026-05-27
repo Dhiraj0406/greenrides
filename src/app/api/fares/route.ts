@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { getAdminClient } from "@/lib/supabase";
 
 export async function GET() {
   try {
@@ -93,6 +94,17 @@ export async function PUT(req: NextRequest) {
         })
       )
     );
+
+    try {
+      const db = getAdminClient();
+      await db.from("AdminLog").insert({
+        admin_id:  "admin",
+        action:    "fares_updated",
+        entity:    "fare",
+        entity_id: "batch",
+        details:   { routes: parsed.data.routes },
+      });
+    } catch {}
 
     return Response.json({ data: { updated: updates.length }, error: null });
   } catch (err) {

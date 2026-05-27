@@ -17,6 +17,10 @@ export async function createOrder(amountPaise: number, bookingId: string) {
   });
 }
 
+export async function refundPayment(paymentId: string, amountPaise: number): Promise<void> {
+  await getRazorpay().payments.refund(paymentId, { amount: amountPaise, speed: "normal" });
+}
+
 export function verifyPaymentSignature(
   orderId: string,
   paymentId: string,

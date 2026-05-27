@@ -9,7 +9,7 @@ import { AvailabilityCalendar } from "@/components/drivers/AvailabilityCalendar"
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-type Tab = "home" | "requests" | "schedule" | "rides";
+type Tab = "home" | "requests" | "earnings" | "schedule" | "rides";
 
 interface DriverData {
   id:              string;
@@ -36,6 +36,9 @@ export default function DriverDashboardPage() {
   const [localAvail, setLocalAvail]   = useState<Record<string, unknown>>({});
   const [dispatches, setDispatches]   = useState<unknown[]>([]);
   const [rides, setRides]             = useState<unknown[]>([]);
+  const [updatingRide, setUpdatingRide] = useState<string | null>(null);
+  const [earnings, setEarnings] = useState<{ rides: unknown[]; requests: unknown[] }>({ rides: [], requests: [] });
+  const [earningsLoaded, setEarningsLoaded] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -86,6 +89,37 @@ export default function DriverDashboardPage() {
     });
   }, [tab, userId]);
 
+  useEffect(() => {
+    if (tab !== "earnings" || !userId || earningsLoaded) return;
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) return;
+
+      const { data: completedRides } = await supabase
+        .from("Ride")
+        .select("id, from_city, to_city, departure_time, fare_paise, total_seats, available_seats")
+        .eq("driver_id", session.user.id)
+        .eq("status", "COMPLETED")
+        .order("departure_time", { ascending: false })
+        .limit(50);
+
+      const { data: acceptedDispatches } = await supabase
+        .from("DriverDispatch")
+        .select("id, request:RideRequest(id, from_city, to_city, fare_paise, travel_date, status)")
+        .eq("driver_id", session.user.id)
+        .eq("status", "ACCEPTED")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      const completedRequests = (acceptedDispatches ?? []).filter((d: unknown) => {
+        const req = (d as Record<string, unknown>).request as Record<string, unknown> | null;
+        return req?.status === "COMPLETED";
+      });
+
+      setEarnings({ rides: completedRides ?? [], requests: completedRequests });
+      setEarningsLoaded(true);
+    });
+  }, [tab, userId, earningsLoaded]);
+
   async function saveAvailability() {
     setSavingAvail(true);
     try {
@@ -105,6 +139,29 @@ export default function DriverDashboardPage() {
     }
   }
 
+  async function updateRideStatus(rideId: string, newStatus: "IN_PROGRESS" | "COMPLETED") {
+    setUpdatingRide(rideId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch(`/api/rides/${rideId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const json = await res.json();
+      if (!res.ok) { toast.error(json.error ?? "Update failed"); return; }
+      toast.success(newStatus === "IN_PROGRESS" ? "Ride started!" : "Ride completed!");
+      setRides(prev => (prev as Array<Record<string, unknown>>).map(r =>
+        r.id === rideId ? { ...r, status: newStatus } : r
+      ));
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setUpdatingRide(null);
+    }
+  }
+
   if (loading) {
     return (
       <div className="green-container min-h-screen bg-cream flex items-center justify-center">
@@ -116,6 +173,7 @@ export default function DriverDashboardPage() {
   const TABS: { key: Tab; label: string }[] = [
     { key: "home",     label: "Home"     },
     { key: "requests", label: "Requests" },
+    { key: "earnings", label: "Earnings" },
     { key: "schedule", label: "Schedule" },
     { key: "rides",    label: "Rides"    },
   ];
@@ -205,13 +263,94 @@ export default function DriverDashboardPage() {
                     {req && (
                       <p className="text-xs text-sub">
                         ₹{Math.round((req.fare_paise as number) / 100)} ·{" "}
-                        {new Date(req.travel_date as string).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                        {new Date(req.travel_date as string).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" })}
                       </p>
                     )}
                   </div>
                 );
               })
             )}
+          </>
+        )}
+
+        {/* EARNINGS TAB */}
+        {tab === "earnings" && (
+          <>
+            {(() => {
+              const rideEarnings = (earnings.rides as Array<Record<string, unknown>>).reduce((sum, r) => {
+                const booked = (r.total_seats as number) - (r.available_seats as number);
+                return sum + Math.round((r.fare_paise as number) / 100) * booked;
+              }, 0);
+              const requestEarnings = (earnings.requests as Array<Record<string, unknown>>).reduce((sum, d) => {
+                const req = d.request as Record<string, unknown> | null;
+                return sum + (req ? Math.round((req.fare_paise as number) / 100) : 0);
+              }, 0);
+              const total = rideEarnings + requestEarnings;
+              const tripCount = earnings.rides.length + earnings.requests.length;
+
+              return (
+                <>
+                  <div className="bg-forest rounded-2xl p-5 text-white mb-2">
+                    <p className="text-lime/60 text-xs font-semibold uppercase tracking-wide mb-1">Total Earnings</p>
+                    <p className="font-display text-4xl text-lime mb-1">₹{total.toLocaleString("en-IN")}</p>
+                    <p className="text-lime/60 text-sm">{tripCount} completed trip{tripCount !== 1 ? "s" : ""}</p>
+                  </div>
+
+                  {(earnings.rides as unknown[]).length > 0 && (
+                    <>
+                      <h3 className="text-xs font-bold text-sub uppercase tracking-wide mt-3 mb-2">Cab Rides</h3>
+                      {(earnings.rides as Array<Record<string, unknown>>).map((r) => {
+                        const booked = (r.total_seats as number) - (r.available_seats as number);
+                        const earned = Math.round((r.fare_paise as number) / 100) * booked;
+                        return (
+                          <div key={r.id as string} className="bg-white border border-border rounded-2xl p-4 mb-2">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-semibold text-text">{r.from_city as string} → {r.to_city as string}</p>
+                                <p className="text-xs text-sub mt-0.5">
+                                  {new Date(r.departure_time as string).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })} · {booked} seat{booked !== 1 ? "s" : ""}
+                                </p>
+                              </div>
+                              <p className="font-display text-lg text-forest">₹{earned.toLocaleString("en-IN")}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+
+                  {(earnings.requests as unknown[]).length > 0 && (
+                    <>
+                      <h3 className="text-xs font-bold text-sub uppercase tracking-wide mt-3 mb-2">Ride Requests</h3>
+                      {(earnings.requests as Array<Record<string, unknown>>).map((d) => {
+                        const req = d.request as Record<string, unknown> | null;
+                        if (!req) return null;
+                        const earned = Math.round((req.fare_paise as number) / 100);
+                        return (
+                          <div key={d.id as string} className="bg-white border border-border rounded-2xl p-4 mb-2">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-semibold text-text">{req.from_city as string} → {req.to_city as string}</p>
+                                <p className="text-xs text-sub mt-0.5">
+                                  {new Date(req.travel_date as string).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}
+                                </p>
+                              </div>
+                              <p className="font-display text-lg text-forest">₹{earned.toLocaleString("en-IN")}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+
+                  {tripCount === 0 && (
+                    <div className="bg-white border border-border rounded-2xl p-8 text-center text-sm text-sub">
+                      No completed trips yet. Earnings will appear here after your first completed ride.
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </>
         )}
 
@@ -257,13 +396,38 @@ export default function DriverDashboardPage() {
                       <ArrowRight className="w-3.5 h-3.5 text-sub" />
                       <span>{r.to_city as string}</span>
                     </div>
-                    <span className="text-xs text-sub">{r.status as string}</span>
+                    <span className={cn(
+                      "text-[10px] font-bold px-2 py-0.5 rounded-full",
+                      r.status === "SCHEDULED" ? "bg-amber-50 text-amber-600" :
+                      r.status === "IN_PROGRESS" ? "bg-leaf/10 text-leaf" :
+                      r.status === "COMPLETED" ? "bg-gray-50 text-sub" : "bg-red-50 text-red-500"
+                    )}>
+                      {r.status as string}
+                    </span>
                   </div>
-                  <p className="text-xs text-sub">
-                    {new Date(r.departure_time as string).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} ·{" "}
+                  <p className="text-xs text-sub mb-3">
+                    {new Date(r.departure_time as string).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })} ·{" "}
                     ₹{Math.round((r.fare_paise as number) / 100)} ·{" "}
                     {r.available_seats as number}/{r.total_seats as number} seats
                   </p>
+                  {r.status === "SCHEDULED" && (
+                    <button
+                      onClick={() => updateRideStatus(r.id as string, "IN_PROGRESS")}
+                      disabled={updatingRide === r.id as string}
+                      className="w-full bg-leaf text-white font-bold py-2.5 rounded-xl text-sm disabled:opacity-60"
+                    >
+                      {updatingRide === r.id as string ? "Starting…" : "▶ Start Ride"}
+                    </button>
+                  )}
+                  {r.status === "IN_PROGRESS" && (
+                    <button
+                      onClick={() => updateRideStatus(r.id as string, "COMPLETED")}
+                      disabled={updatingRide === r.id as string}
+                      className="w-full bg-forest text-white font-bold py-2.5 rounded-xl text-sm disabled:opacity-60"
+                    >
+                      {updatingRide === r.id as string ? "Completing…" : "✓ End Ride"}
+                    </button>
+                  )}
                 </div>
               ))
             )}

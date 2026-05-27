@@ -1,23 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowRight, Star, Clock, Loader2, AlertCircle, Phone } from "lucide-react";
 import { BottomNav } from "@/components/shared/BottomNav";
+import { DriverSheet } from "@/components/booking/DriverSheet";
 import { useBookingStore } from "@/store/booking";
 import { todayISO } from "@/lib/utils";
 import type { RideWithDriver } from "@/types";
 
 export default function RidesPage() {
-  const router = useRouter();
   const { origin, destination } = useBookingStore();
-  const [rides, setRides]       = useState<RideWithDriver[]>([]);
-  const [loading, setLoading]   = useState(true);
+  const [rides, setRides]   = useState<RideWithDriver[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [bookingRide, setBookingRide] = useState<RideWithDriver | null>(null);
 
   useEffect(() => {
     if (!origin) { setLoading(false); return; }
-    const to   = destination ?? "";
-    const url  = `/api/rides?from=${encodeURIComponent(origin)}&to=${encodeURIComponent(to)}&date=${todayISO()}`;
+    const to  = destination ?? "";
+    const url = `/api/rides?from=${encodeURIComponent(origin)}&to=${encodeURIComponent(to)}&date=${todayISO()}`;
 
     fetch(url)
       .then((r) => r.json())
@@ -45,6 +45,14 @@ export default function RidesPage() {
       </header>
 
       <div className="px-4 mt-4">
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4">
+          <p className="text-xs font-bold text-amber-700 mb-1.5">Two ways to book</p>
+          <div className="space-y-1.5 text-xs text-amber-700">
+            <p>🚗 <strong>Cab seat</strong> — Choose from rides posted below. Pay online, instant confirmation.</p>
+            <p>📋 <strong>Private request</strong> — Request a full cab for your date. We find you a driver (can take a few minutes).</p>
+          </div>
+        </div>
+
         {loading && (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="w-6 h-6 animate-spin text-leaf" />
@@ -61,13 +69,13 @@ export default function RidesPage() {
                 : "Select your origin on the home screen first."}
             </p>
             <a
-              href="tel:+919999999999"
+              href="tel:+919668021577"
               className="mt-5 flex items-center gap-2 bg-leaf text-white
                          text-sm font-semibold px-5 py-3 rounded-xl touch-target
                          transition-colors hover:bg-leaf/90"
             >
               <Phone className="w-4 h-4" />
-              No cabs — call to book · +91 99999 99999
+              No cabs — call to book · +91 96680 21577
             </a>
           </div>
         )}
@@ -123,7 +131,7 @@ export default function RidesPage() {
                 <p className="text-xs text-sub mt-0.5">Full Cab</p>
               </div>
               <button
-                onClick={() => router.push("/login")}
+                onClick={() => setBookingRide(ride)}
                 className="bg-leaf text-white text-sm font-semibold
                            px-5 py-2.5 rounded-xl touch-target transition-colors
                            hover:bg-leaf/90"
@@ -134,6 +142,16 @@ export default function RidesPage() {
           </div>
         ))}
       </div>
+
+      {bookingRide && (
+        <DriverSheet
+          open={!!bookingRide}
+          onClose={() => setBookingRide(null)}
+          from={bookingRide.from_city}
+          to={bookingRide.to_city}
+          fareRupees={Math.round(bookingRide.fare_paise / 100)}
+        />
+      )}
 
       <BottomNav />
     </div>

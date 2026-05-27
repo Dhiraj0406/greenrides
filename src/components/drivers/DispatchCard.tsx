@@ -17,6 +17,7 @@ interface DispatchRequest {
     fare_paise:  number;
     travel_date: string;
     notes:       string | null;
+    rider_phone: string | null;
   } | null;
 }
 
@@ -31,6 +32,12 @@ export function DispatchCard({ driverId, initial }: Props) {
   const [responding, setResponding] = useState(false);
   const [showEta, setShowEta]     = useState(false);
   const [etaInput, setEtaInput]   = useState("15");
+  const [accepted, setAccepted]   = useState(false);
+  const [riderPhone, setRiderPhone] = useState<string | null>(null);
+  const [completing, setCompleting] = useState(false);
+  const [showEtaUpdate, setShowEtaUpdate] = useState(false);
+  const [etaUpdateInput, setEtaUpdateInput] = useState("15");
+  const [updatingEta, setUpdatingEta] = useState(false);
 
   // Recalculate seconds remaining
   useEffect(() => {
@@ -57,7 +64,7 @@ export function DispatchCard({ driverId, initial }: Props) {
           if (row.status === "PENDING") {
             const { data: req } = await supabase
               .from("RideRequest")
-              .select("from_city, to_city, fare_paise, travel_date, notes")
+              .select("from_city, to_city, fare_paise, travel_date, notes, rider_phone")
               .eq("id", row.request_id as string)
               .single();
             setDispatch({
@@ -96,7 +103,12 @@ export function DispatchCard({ driverId, initial }: Props) {
       if (!res.ok) { toast.error(json.error ?? "Failed to respond"); return; }
 
       toast.success(action === "accept" ? "Ride accepted! Rider has been notified." : "Ride rejected.");
-      setDispatch(null);
+      if (action === "accept") {
+        setAccepted(true);
+        setRiderPhone(dispatch.request?.rider_phone ?? null);
+      } else {
+        setDispatch(null);
+      }
       setShowEta(false);
     } catch {
       toast.error("Something went wrong");
@@ -104,6 +116,124 @@ export function DispatchCard({ driverId, initial }: Props) {
       setResponding(false);
     }
   }, [dispatch]);
+
+  const completeRide = useCallback(async () => {
+    if (!dispatch) return;
+    setCompleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch(`/api/requests/${dispatch.request_id}/complete`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const json = await res.json();
+      if (!res.ok) { toast.error(json.error ?? "Failed to complete ride"); return; }
+      toast.success("Ride marked as completed!");
+      setAccepted(false);
+      setDispatch(null);
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setCompleting(false);
+    }
+  }, [dispatch]);
+
+  const updateEta = useCallback(async () => {
+    if (!dispatch) return;
+    const eta = parseInt(etaUpdateInput, 10);
+    if (!Number.isFinite(eta) || eta < 1) { toast.error("Enter a valid ETA"); return; }
+    setUpdatingEta(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch(`/api/requests/${dispatch.request_id}/eta`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ eta_min: eta }),
+      });
+      const json = await res.json();
+      if (!res.ok) { toast.error(json.error ?? "Failed to update ETA"); return; }
+      toast.success(`ETA updated: ~${eta} min`);
+      setShowEtaUpdate(false);
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setUpdatingEta(false);
+    }
+  }, [dispatch, etaUpdateInput]);
+
+  if (accepted && dispatch?.request) {
+    return (
+      <div className="bg-white border-2 border-leaf rounded-2xl p-4 shadow-lg">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-2 h-2 rounded-full bg-leaf animate-pulse inline-block" />
+          <span className="text-sm font-bold text-leaf">Ride Confirmed</span>
+        </div>
+        <div className="mb-3">
+          <p className="font-bold text-text text-base">
+            {dispatch.request.from_city} → {dispatch.request.to_city}
+          </p>
+          <p className="text-sm text-sub mt-0.5">
+            ₹{Math.round(dispatch.request.fare_paise / 100)} ·{" "}
+            {new Date(dispatch.request.travel_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" })}
+          </p>
+        </div>
+        {riderPhone ? (
+          <a
+            href={`tel:${riderPhone}`}
+            className="flex items-center justify-center gap-2 bg-leaf text-white font-bold py-3 rounded-xl text-sm w-full mb-3"
+          >
+            📞 Call Rider · {riderPhone}
+          </a>
+        ) : (
+          <p className="text-sm text-sub mb-3">Contact rider via Telegram notification.</p>
+        )}
+        {showEtaUpdate ? (
+          <div className="mb-3 space-y-2">
+            <input
+              type="number"
+              min={1}
+              max={300}
+              value={etaUpdateInput}
+              onChange={(e) => setEtaUpdateInput(e.target.value)}
+              className="w-full bg-gray-50 border border-border rounded-xl px-4 py-2.5 text-sm font-bold text-text outline-none focus:ring-2 ring-leaf/30"
+              placeholder="Minutes away"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowEtaUpdate(false)}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-gray-50 border border-border text-sub"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={updateEta}
+                disabled={updatingEta}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-leaf text-white disabled:opacity-60"
+              >
+                {updatingEta ? "Updating…" : "Send Update"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowEtaUpdate(true)}
+            className="w-full mb-3 py-2.5 rounded-xl text-xs font-bold border border-leaf/30 text-leaf bg-leaf/5"
+          >
+            📍 Update ETA
+          </button>
+        )}
+        <button
+          onClick={completeRide}
+          disabled={completing}
+          className="w-full flex items-center justify-center gap-2 bg-forest text-white font-bold py-3 rounded-xl text-sm disabled:opacity-60"
+        >
+          {completing ? <span className="w-4 h-4 animate-spin border-2 border-white border-t-transparent rounded-full inline-block" /> : "✓ Mark Ride Completed"}
+        </button>
+      </div>
+    );
+  }
 
   if (!dispatch || !dispatch.request) return null;
 
@@ -147,7 +277,7 @@ export function DispatchCard({ driverId, initial }: Props) {
         </p>
         <p className="text-sm text-sub mt-0.5">
           ₹{Math.round(request.fare_paise / 100)} ·{" "}
-          {new Date(request.travel_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+          {new Date(request.travel_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" })}
         </p>
         {request.notes && (
           <p className="text-xs text-sub mt-1 italic">{request.notes}</p>

@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   if (!isAdmin(req)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const payouts = await prisma.ownerPayout.findMany({
-    include: { owner: { include: { user: { select: { name: true, phone: true } } } } },
+    include: { owner: { select: { name: true, phone: true } } },
     orderBy: { created_at: "desc" },
   });
   return Response.json({ data: payouts, error: null });
@@ -32,6 +32,9 @@ export async function POST(req: NextRequest) {
     return Response.json({ data: null, error: parsed.error.issues[0].message }, { status: 400 });
   }
 
-  const payout = await prisma.ownerPayout.create({ data: parsed.data });
+  const payout = await prisma.ownerPayout.create({
+    data:    parsed.data,
+    include: { owner: { select: { name: true, phone: true } } },
+  });
   return Response.json({ data: payout, error: null }, { status: 201 });
 }

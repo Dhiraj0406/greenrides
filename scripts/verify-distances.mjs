@@ -1,0 +1,173 @@
+/**
+ * Uses OSRM public demo server (OpenStreetMap road data) to get real road
+ * distances for every route pair. Run: node scripts/verify-distances.mjs
+ * Output: updated RAW array ready to paste into static-routes.ts
+ */
+
+// GPS coordinates (lat, lng) for each place — verified against Google Maps
+const COORDS = {
+  "Koraput":            [18.8129,  82.7149],
+  "Jeypore":            [18.8516,  82.5557],
+  "Semiliguda":         [18.7508,  82.5500],
+  "Sunabeda":           [18.8696,  82.2887], // township on NH-30 between Jeypore & Nabarangpur
+  "Boipariguda":        [18.6833,  82.8333],
+  "Damonjodi":          [18.8500,  82.6667],
+  "Kundra":             [18.9833,  83.1667],
+  "Narayanpatna":       [18.7500,  82.8333],
+  "Nabarangpur":        [19.2306,  82.5439],
+  "Malkangiri":         [18.3418,  81.8985],
+  "Rayagada":           [19.1706,  83.4145],
+  "Jagdalpur":          [19.0714,  82.0314],
+  "Vizianagaram":       [18.1178,  83.4059],
+  "Visakhapatnam":      [17.6868,  83.2185],
+  "Duduma Falls":       [18.1833,  82.4500],
+  "Gupteswar":          [18.5167,  82.3333],
+  "Deomali":            [18.7167,  82.7000],
+  "Kolab Dam":          [18.8167,  82.5667],
+  "Pottangi":           [18.6500,  82.9833],
+  "Sunabeda Wildlife":  [19.4383,  82.0622],
+};
+
+const PAIRS = [
+  // KORAPUT
+  ["Koraput", "Jeypore"],
+  ["Koraput", "Semiliguda"],
+  ["Koraput", "Sunabeda"],
+  ["Koraput", "Boipariguda"],
+  ["Koraput", "Damonjodi"],
+  ["Koraput", "Kundra"],
+  ["Koraput", "Narayanpatna"],
+  ["Koraput", "Nabarangpur"],
+  ["Koraput", "Malkangiri"],
+  ["Koraput", "Rayagada"],
+  ["Koraput", "Jagdalpur"],
+  ["Koraput", "Vizianagaram"],
+  ["Koraput", "Visakhapatnam"],
+  ["Koraput", "Duduma Falls"],
+  ["Koraput", "Gupteswar"],
+  ["Koraput", "Deomali"],
+  // JEYPORE
+  ["Jeypore", "Koraput"],
+  ["Jeypore", "Semiliguda"],
+  ["Jeypore", "Sunabeda"],
+  ["Jeypore", "Boipariguda"],
+  ["Jeypore", "Damonjodi"],
+  ["Jeypore", "Kundra"],
+  ["Jeypore", "Narayanpatna"],
+  ["Jeypore", "Nabarangpur"],
+  ["Jeypore", "Malkangiri"],
+  ["Jeypore", "Rayagada"],
+  ["Jeypore", "Jagdalpur"],
+  ["Jeypore", "Vizianagaram"],
+  ["Jeypore", "Visakhapatnam"],
+  ["Jeypore", "Kolab Dam"],
+  ["Jeypore", "Pottangi"],
+  ["Jeypore", "Sunabeda Wildlife"],
+  // SUNABEDA
+  ["Sunabeda", "Koraput"],
+  ["Sunabeda", "Jeypore"],
+  ["Sunabeda", "Nabarangpur"],
+  ["Sunabeda", "Rayagada"],
+  ["Sunabeda", "Malkangiri"],
+  ["Sunabeda", "Jagdalpur"],
+  ["Sunabeda", "Visakhapatnam"],
+  // RAYAGADA
+  ["Rayagada", "Koraput"],
+  ["Rayagada", "Jeypore"],
+  ["Rayagada", "Sunabeda"],
+  ["Rayagada", "Nabarangpur"],
+  ["Rayagada", "Malkangiri"],
+  ["Rayagada", "Visakhapatnam"],
+  ["Rayagada", "Vizianagaram"],
+  // NABARANGPUR
+  ["Nabarangpur", "Koraput"],
+  ["Nabarangpur", "Jeypore"],
+  ["Nabarangpur", "Sunabeda"],
+  ["Nabarangpur", "Rayagada"],
+  ["Nabarangpur", "Malkangiri"],
+  ["Nabarangpur", "Jagdalpur"],
+  ["Nabarangpur", "Visakhapatnam"],
+  // MALKANGIRI
+  ["Malkangiri", "Koraput"],
+  ["Malkangiri", "Jeypore"],
+  ["Malkangiri", "Rayagada"],
+  ["Malkangiri", "Nabarangpur"],
+  ["Malkangiri", "Visakhapatnam"],
+  // JAGDALPUR
+  ["Jagdalpur", "Koraput"],
+  ["Jagdalpur", "Jeypore"],
+  ["Jagdalpur", "Nabarangpur"],
+  ["Jagdalpur", "Rayagada"],
+  ["Jagdalpur", "Visakhapatnam"],
+  // VISAKHAPATNAM
+  ["Visakhapatnam", "Koraput"],
+  ["Visakhapatnam", "Jeypore"],
+  ["Visakhapatnam", "Sunabeda"],
+  ["Visakhapatnam", "Rayagada"],
+  ["Visakhapatnam", "Nabarangpur"],
+  ["Visakhapatnam", "Malkangiri"],
+];
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function getOsrmDistance(from, to) {
+  const [lat1, lng1] = COORDS[from];
+  const [lat2, lng2] = COORDS[to];
+  const url = `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=false`;
+
+  const res = await fetch(url, {
+    headers: { "User-Agent": "green-rides-distance-verify/1.0" },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${from}→${to}`);
+  const data = await res.json();
+  if (data.code !== "Ok" || !data.routes?.length) {
+    throw new Error(`No route: ${from}→${to} (${data.code})`);
+  }
+  const km = Math.round(data.routes[0].distance / 1000);
+  const min = Math.round(data.routes[0].duration / 60);
+  return { km, min };
+}
+
+async function main() {
+  const results = [];
+  const errors = [];
+
+  console.error(`Fetching ${PAIRS.length} routes from OSRM…\n`);
+
+  for (const [from, to] of PAIRS) {
+    try {
+      const { km, min } = await getOsrmDistance(from, to);
+      results.push({ from, to, km, min });
+      console.error(`  ✓  ${from} → ${to}: ${km} km  (${min} min)`);
+    } catch (err) {
+      errors.push({ from, to, err: err.message });
+      console.error(`  ✗  ${from} → ${to}: ${err.message}`);
+    }
+    await sleep(350); // be polite to the public server
+  }
+
+  if (errors.length) {
+    console.error(`\n${errors.length} errors — those routes kept old values.\n`);
+  }
+
+  // Output updated RAW array
+  console.log("// Auto-generated by scripts/verify-distances.mjs (OSRM road data)");
+  console.log("const RAW = [");
+
+  let currentFrom = null;
+  for (const r of results) {
+    if (r.from !== currentFrom) {
+      if (currentFrom !== null) console.log();
+      console.log(`  // ── ${r.from.toUpperCase()} ────────────────────────────────────────────────`);
+      currentFrom = r.from;
+    }
+    const pad = " ".repeat(Math.max(0, 22 - r.to.length));
+    console.log(`  { from: "${r.from}", to: "${r.to}",${pad} km: ${r.km}  },`);
+  }
+
+  console.log("];");
+}
+
+main().catch((e) => { console.error(e); process.exit(1); });

@@ -59,6 +59,55 @@ const ROUTES = [
   { from: "Jeypore", to: "Kolab Dam",         km: 18  },
   { from: "Jeypore", to: "Pottangi",          km: 65  },
   { from: "Jeypore", to: "Sunabeda Wildlife", km: 28  },
+
+  // ── SUNABEDA origins ─────────────────────────────────────────────────────
+  { from: "Sunabeda", to: "Koraput",          km: 42  },
+  { from: "Sunabeda", to: "Jeypore",          km: 28  },
+  { from: "Sunabeda", to: "Nabarangpur",      km: 55  },
+  { from: "Sunabeda", to: "Rayagada",         km: 110 },
+  { from: "Sunabeda", to: "Malkangiri",       km: 120 },
+  { from: "Sunabeda", to: "Jagdalpur",        km: 165 },
+  { from: "Sunabeda", to: "Visakhapatnam",    km: 175 },
+
+  // ── RAYAGADA origins ─────────────────────────────────────────────────────
+  { from: "Rayagada", to: "Koraput",          km: 148 },
+  { from: "Rayagada", to: "Jeypore",          km: 112 },
+  { from: "Rayagada", to: "Sunabeda",         km: 110 },
+  { from: "Rayagada", to: "Nabarangpur",      km: 95  },
+  { from: "Rayagada", to: "Malkangiri",       km: 195 },
+  { from: "Rayagada", to: "Visakhapatnam",    km: 200 },
+  { from: "Rayagada", to: "Vizianagaram",     km: 130 },
+
+  // ── NABARANGPUR origins ──────────────────────────────────────────────────
+  { from: "Nabarangpur", to: "Koraput",       km: 80  },
+  { from: "Nabarangpur", to: "Jeypore",       km: 95  },
+  { from: "Nabarangpur", to: "Sunabeda",      km: 55  },
+  { from: "Nabarangpur", to: "Rayagada",      km: 95  },
+  { from: "Nabarangpur", to: "Malkangiri",    km: 130 },
+  { from: "Nabarangpur", to: "Jagdalpur",     km: 115 },
+  { from: "Nabarangpur", to: "Visakhapatnam", km: 230 },
+
+  // ── MALKANGIRI origins ───────────────────────────────────────────────────
+  { from: "Malkangiri", to: "Koraput",        km: 135 },
+  { from: "Malkangiri", to: "Jeypore",        km: 145 },
+  { from: "Malkangiri", to: "Rayagada",       km: 195 },
+  { from: "Malkangiri", to: "Nabarangpur",    km: 130 },
+  { from: "Malkangiri", to: "Visakhapatnam",  km: 290 },
+
+  // ── JAGDALPUR origins ────────────────────────────────────────────────────
+  { from: "Jagdalpur", to: "Koraput",         km: 190 },
+  { from: "Jagdalpur", to: "Jeypore",         km: 160 },
+  { from: "Jagdalpur", to: "Nabarangpur",     km: 115 },
+  { from: "Jagdalpur", to: "Rayagada",        km: 245 },
+  { from: "Jagdalpur", to: "Visakhapatnam",   km: 310 },
+
+  // ── VISAKHAPATNAM origins ────────────────────────────────────────────────
+  { from: "Visakhapatnam", to: "Koraput",     km: 220 },
+  { from: "Visakhapatnam", to: "Jeypore",     km: 195 },
+  { from: "Visakhapatnam", to: "Sunabeda",    km: 175 },
+  { from: "Visakhapatnam", to: "Rayagada",    km: 200 },
+  { from: "Visakhapatnam", to: "Nabarangpur", km: 230 },
+  { from: "Visakhapatnam", to: "Malkangiri",  km: 290 },
 ];
 
 async function main() {

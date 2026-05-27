@@ -31,20 +31,8 @@ function LoginForm() {
     setError("");
 
     try {
-      const { error: authError } = await import("@/lib/supabase").then(
-        (m) => m.supabase.auth.signInWithOtp({ phone: `+91${cleaned}` })
-      );
-      if (authError) {
-        // If SMS provider isn't configured, reveal admin bypass option
-        if (authError.code === "phone_provider_disabled") {
-          setShowAdminOption(true);
-          setAdminMode(true);
-          setError("SMS not available — use admin login below.");
-        } else {
-          throw authError;
-        }
-        return;
-      }
+      const { sendOtp } = await import("@/lib/phone-auth");
+      await sendOtp(cleaned);
       router.push(`/verify?phone=%2B91${cleaned}&next=${encodeURIComponent(next)}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to send OTP. Try again.");

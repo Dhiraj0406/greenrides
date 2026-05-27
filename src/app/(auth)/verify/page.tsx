@@ -40,13 +40,25 @@ function VerifyForm() {
     setError("");
 
     try {
-      const { supabase } = await import("@/lib/supabase");
-      const { error: authError } = await supabase.auth.verifyOtp({
-        phone,
-        token: otp,
-        type:  "sms",
-      });
-      if (authError) throw authError;
+      const phoneNum = phone.replace("+91", "");
+      const { verifyOtp: doVerify } = await import("@/lib/phone-auth");
+      const session = await doVerify(phoneNum, otp);
+
+      // Provision User record
+      await fetch("/api/users/me", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      }).catch(() => {});
+
+      const consentValue = sessionStorage.getItem("whatsapp_consent");
+      if (consentValue === "1") {
+        fetch("/api/users/me", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ whatsapp_consent: true }),
+        }).catch(() => {});
+        sessionStorage.removeItem("whatsapp_consent");
+      }
+
       router.replace(next);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Invalid code. Try again.");

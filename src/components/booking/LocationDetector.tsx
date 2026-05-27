@@ -9,7 +9,7 @@ type State = "idle" | "detecting" | "found" | "error";
 
 export function LocationDetector() {
   const [state, setState] = useState<State>("idle");
-  const { detectedCity, setDetectedCity, setOrigin } = useBookingStore();
+  const { detectedCity, setDetectedCity, setOrigin, origin } = useBookingStore();
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -25,7 +25,9 @@ export function LocationDetector() {
           if (json.data?.city) {
             const city = json.data.city as string;
             setDetectedCity(city);
-            setOrigin(city);
+            if (!useBookingStore.getState().origin) {
+              setOrigin(city);
+            }
             track.locationDetected(city);
             setState("found");
           } else {

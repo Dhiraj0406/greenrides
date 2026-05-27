@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { getAdminClient } from "@/lib/supabase";
 import { todayISO } from "@/lib/utils";
 
 const querySchema = z.object({
@@ -13,10 +13,10 @@ const querySchema = z.object({
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const parsed = querySchema.safeParse({
-    from:  searchParams.get("from"),
-    to:    searchParams.get("to"),
-    date:  searchParams.get("date"),
-    seats: searchParams.get("seats"),
+    from:  searchParams.get("from")  ?? undefined,
+    to:    searchParams.get("to")    ?? undefined,
+    date:  searchParams.get("date")  ?? undefined,
+    seats: searchParams.get("seats") ?? undefined,
   });
 
   if (!parsed.success) {
@@ -28,65 +28,67 @@ export async function GET(req: NextRequest) {
 
   const { from, to, date, seats } = parsed.data;
   const targetDate = date ?? todayISO();
-  const startOfDay = new Date(`${targetDate}T00:00:00.000Z`);
-  const endOfDay   = new Date(`${targetDate}T23:59:59.999Z`);
+  const startOfDay = new Date(`${targetDate}T00:00:00.000Z`).toISOString();
+  const endOfDay   = new Date(`${targetDate}T23:59:59.999Z`).toISOString();
 
   try {
-    const rides = await prisma.ride.findMany({
-      where: {
-        status:         "SCHEDULED",
-        ...(from  ? { from_city: from }          : {}),
-        ...(to    ? { to_city: to }              : {}),
-        departure_time: { gte: startOfDay, lte: endOfDay },
-        ...(seats ? { available_seats: { gte: seats } } : {}),
-      },
-      include: {
-        driver: {
-          select: {
-            id:         true,
-            name:       true,
-            phone:      true,
-            avatar_url: true,
-            driver_profile: {
-              select: {
-                vehicle_type:   true,
-                vehicle_number: true,
-                vehicle_model:  true,
-                avg_rating:     true,
-                total_trips:    true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: { departure_time: "asc" },
-    });
+    const db = getAdminClient();
+    let query = db
+      .from("Ride")
+      .select(`
+        id, from_city, to_city, departure_time, total_seats, available_seats,
+        fare_paise, pickup_points, notes, status,
+        User!driver_id (id, name, phone, avatar_url,
+          DriverProfile (vehicle_type, vehicle_number, vehicle_model, avg_rating, total_trips)
+        )
+      `)
+      .eq("status", "SCHEDULED")
+      .gte("departure_time", startOfDay)
+      .lte("departure_time", endOfDay)
+      .order("departure_time", { ascending: true });
+
+    if (from)  query = query.eq("from_city", from)  as typeof query;
+    if (to)    query = query.eq("to_city", to)      as typeof query;
+    if (seats) query = query.gte("available_seats", seats) as typeof query;
+
+    const { data: rides, error } = await query;
+
+    if (error) {
+      console.error("[rides GET]", error);
+      return Response.json({ data: null, error: "Failed to fetch rides" }, { status: 500 });
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const formatted = (rides as any[]).map((r) => ({
-      id:              r.id,
-      from_city:       r.from_city,
-      to_city:         r.to_city,
-      departure_time:  r.departure_time.toISOString(),
-      total_seats:     r.total_seats,
-      available_seats: r.available_seats,
-      fare_paise:      r.fare_paise,
-      fare_rupees:     Math.round(r.fare_paise / 100),
-      pickup_points:   r.pickup_points,
-      notes:           r.notes,
-      status:          r.status,
-      driver: {
-        id:            r.driver.id,
-        name:          r.driver.name ?? "Driver",
-        phone:         r.driver.phone,
-        avatar_url:    r.driver.avatar_url,
-        vehicle_type:  r.driver.driver_profile?.vehicle_type  ?? "",
-        vehicle_number: r.driver.driver_profile?.vehicle_number ?? "",
-        vehicle_model: r.driver.driver_profile?.vehicle_model  ?? "",
-        avg_rating:    r.driver.driver_profile?.avg_rating      ?? 0,
-        total_trips:   r.driver.driver_profile?.total_trips     ?? 0,
-      },
-    }));
+    const formatted = (rides as any[]).map((r) => {
+      const driver = r.User ?? {};
+      const profile = Array.isArray(driver.DriverProfile)
+        ? driver.DriverProfile[0]
+        : driver.DriverProfile;
+      return {
+        id:              r.id,
+        from_city:       r.from_city,
+        to_city:         r.to_city,
+        departure_time:  r.departure_time,
+        total_seats:     r.total_seats,
+        available_seats: r.available_seats,
+        fare_paise:      r.fare_paise,
+        fare_rupees:     Math.round(r.fare_paise / 100),
+        pickup_points:   r.pickup_points,
+        notes:           r.notes,
+        status:          r.status,
+        driver: {
+          id:             driver.id ?? "",
+          name:           driver.name ?? "Driver",
+          phone:          driver.phone ?? "",
+          avatar_url:     driver.avatar_url ?? null,
+          vehicle_type:   profile?.vehicle_type   ?? "",
+          vehicle_number: profile?.vehicle_number ?? "",
+          vehicle_model:  profile?.vehicle_model  ?? "",
+          avg_rating:     profile?.avg_rating      ?? 0,
+          total_trips:    profile?.total_trips     ?? 0,
+        },
+      };
+    });
 
     return Response.json({ data: formatted, error: null });
   } catch (err) {
@@ -129,14 +131,47 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const token = req.headers.get("authorization")?.replace("Bearer ", "");
+  if (!token) {
+    return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
+  }
+
+  const db = getAdminClient();
+  const { data: { user } } = await db.auth.getUser(token);
+  if (!user) {
+    return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (user.id !== parsed.data.driver_id) {
+    return Response.json({ data: null, error: "Forbidden" }, { status: 403 });
+  }
+
+  const now = new Date().toISOString();
+
   try {
-    const ride = await prisma.ride.create({
-      data: {
-        ...parsed.data,
-        departure_time:  new Date(parsed.data.departure_time),
+    const { data: ride, error } = await db
+      .from("Ride")
+      .insert({
+        id:              crypto.randomUUID(),
+        driver_id:       parsed.data.driver_id,
+        from_city:       parsed.data.from_city,
+        to_city:         parsed.data.to_city,
+        departure_time:  new Date(parsed.data.departure_time).toISOString(),
+        total_seats:     parsed.data.total_seats,
         available_seats: parsed.data.total_seats,
-      },
-    });
+        fare_paise:      parsed.data.fare_paise,
+        pickup_points:   parsed.data.pickup_points,
+        notes:           parsed.data.notes ?? null,
+        updated_at:      now,
+      })
+      .select("id")
+      .single();
+
+    if (error || !ride) {
+      console.error("[rides POST]", error);
+      return Response.json({ data: null, error: "Failed to create ride" }, { status: 500 });
+    }
+
     return Response.json({ data: { id: ride.id }, error: null }, { status: 201 });
   } catch (err) {
     console.error("[rides POST]", err);

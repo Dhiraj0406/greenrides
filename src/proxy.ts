@@ -31,23 +31,15 @@ export async function proxy(req: NextRequest) {
   if (host.startsWith("admin.")) {
     const url = req.nextUrl.clone();
     url.pathname = `/admin${pathname === "/" ? "" : pathname}`;
-
-    const adminCookie = req.cookies.get("green_admin_token")?.value;
-    if (adminCookie && adminCookie === process.env.ADMIN_SECRET) {
-      return NextResponse.rewrite(url);
-    }
-
-    const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.rewrite(url);
   }
 
-  // ── Fleet subdomain ──────────────────────────────────
-  if (host.startsWith("fleet.")) {
+  // ── Driver / Owner subdomains ────────────────────────
+  if (host.startsWith("driver.") || host.startsWith("owner.")) {
     const url = req.nextUrl.clone();
     url.pathname = `/fleet${pathname === "/" ? "" : pathname}`;
 
-    // Register and pending pages are public on fleet subdomain
+    // Register, pending, and login pages are public
     if (pathname === "/register" || pathname === "/pending" || pathname === "/login") {
       return NextResponse.rewrite(url);
     }
