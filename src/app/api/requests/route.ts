@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getAdminClient } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { prisma } from "@/lib/prisma";
+import { getFlag } from "@/modules/platform/db";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
@@ -157,12 +158,23 @@ async function buildDispatchQueue(
 
   if (!rideRequest) return;
 
+  const [requireKyc, telegramCascade] = await Promise.all([
+    getFlag("kyc.require_for_dispatch", false),
+    getFlag("dispatch.telegram_cascade", true),
+  ]);
+
   // Get all approved, online drivers
-  const { data: profiles } = await db
+  let profileQuery = db
     .from("DriverProfile")
-    .select("id, user_id, avg_rating, total_trips, approved_at, availability, telegram_chat_id")
+    .select("id, user_id, avg_rating, total_trips, approved_at, availability, telegram_chat_id, kyc_status")
     .eq("is_approved", true)
     .eq("is_online", true);
+
+  if (requireKyc) {
+    profileQuery = profileQuery.eq("kyc_status", "APPROVED");
+  }
+
+  const { data: profiles } = await profileQuery;
 
   if (!profiles || profiles.length === 0) return;
 
@@ -199,9 +211,9 @@ async function buildDispatchQueue(
   await db.from("DriverDispatch").insert(dispatches);
   await db.from("RideRequest").update({ dispatched: true }).eq("id", requestId);
 
-  // Notify first driver via Telegram
+  // Notify first driver via Telegram (gated by dispatch.telegram_cascade flag)
   const firstDriver = eligible[0];
-  if (firstDriver.telegram_chat_id) {
+  if (telegramCascade && firstDriver.telegram_chat_id) {
     await sendTelegramMessage(
       firstDriver.telegram_chat_id,
       `🚗 <b>New ride request</b>\n\n${rideRequest.from_city} → ${rideRequest.to_city} · ₹${Math.round(rideRequest.fare_paise / 100)}\n\nYou have 60 seconds to respond. Open the app now.`

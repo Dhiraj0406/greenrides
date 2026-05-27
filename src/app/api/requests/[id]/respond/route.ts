@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { getAdminClient } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { getFlag } from "@/modules/platform/db";
 
 const schema = z.object({
   action:      z.enum(["accept", "reject"]),
@@ -94,7 +95,8 @@ export async function PATCH(
       .eq("id", requestId)
       .single();
 
-    if (rideReqData) {
+    const razorpayEnabled = await getFlag("payments.razorpay_enabled", false);
+    if (razorpayEnabled && rideReqData) {
       try {
         const { createOrder } = await import("@/lib/razorpay");
         const order = await createOrder(rideReqData.fare_paise, requestId);
@@ -152,7 +154,8 @@ export async function PATCH(
       .eq("id", nextDispatch.id)
       .eq("status", "WAITING");
 
-    // Notify next driver
+    // Notify next driver (gated by dispatch.telegram_cascade flag)
+    const telegramCascade = await getFlag("dispatch.telegram_cascade", true);
     const { data: nextProfile } = await db
       .from("DriverProfile")
       .select("telegram_chat_id")
@@ -165,7 +168,7 @@ export async function PATCH(
       .eq("id", requestId)
       .single();
 
-    if (nextProfile?.telegram_chat_id && request) {
+    if (telegramCascade && nextProfile?.telegram_chat_id && request) {
       await sendTelegramMessage(
         nextProfile.telegram_chat_id,
         `🚗 <b>New ride request</b>\n\n${request.from_city} → ${request.to_city} · ₹${Math.round(request.fare_paise / 100)}\n\nYou have 60 seconds to respond. Open the app now.`

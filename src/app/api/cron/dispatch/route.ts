@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAdminClient } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { getFlag } from "@/modules/platform/db";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest) {
     return Response.json({ ok: true, cascaded: 0 });
   }
 
+  const telegramCascade = await getFlag("dispatch.telegram_cascade", true);
   let cascaded = 0;
 
   for (const dispatch of expired) {
@@ -65,7 +67,7 @@ export async function GET(req: NextRequest) {
         .eq("id", dispatch.request_id)
         .single();
 
-      if (profile?.telegram_chat_id && request) {
+      if (telegramCascade && profile?.telegram_chat_id && request) {
         await sendTelegramMessage(
           profile.telegram_chat_id,
           `🚗 <b>New ride request</b>\n\n${request.from_city} → ${request.to_city} · ₹${Math.round(request.fare_paise / 100)}\n\nYou have 60 seconds to respond. Open the app now.`

@@ -440,6 +440,18 @@ model Document {
   @@index([status])
 }
 
+// ─── ROLE CHANGE AUDIT ───────────────────────────────
+model UserRoleHistory {
+  id         String   @id @default(uuid())
+  user_id    String
+  old_role   String
+  new_role   String
+  changed_at DateTime @default(now())
+  changed_by String
+
+  @@index([user_id])
+}
+
 // ─── REMOTE FEATURE FLAGS ─────────────────────────────
 model AppRemoteConfig {
   key          String      @id
