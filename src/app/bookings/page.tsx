@@ -323,13 +323,12 @@ export default function MyBookingsPage() {
 
   useEffect(() => {
     async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         router.replace("/login?next=/bookings");
         return;
       }
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token ?? "";
+      const accessToken = session.access_token;
       setToken(accessToken);
       await fetchRequests(accessToken);
       try {

@@ -13,33 +13,38 @@ export async function GET(req: NextRequest) {
     return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabaseAdmin = getAdminClient();
-  const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
-  if (authErr || !user) {
-    return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
-  }
+  try {
+    const supabaseAdmin = getAdminClient();
+    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
+    if (authErr || !user) {
+      return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
+    }
 
-  const db = getAdminClient();
-  const { data: requests, error: fetchErr } = await db
-    .from("RideRequest")
-    .select("id, from_city, to_city, fare_paise, travel_date, status, notes, driver_name, driver_phone, eta_min, razorpay_order_id, payment_status, created_at")
-    .eq("rider_id", user.id)
-    .order("created_at", { ascending: false });
+    const db = getAdminClient();
+    const { data: requests, error: fetchErr } = await db
+      .from("RideRequest")
+      .select("id, from_city, to_city, fare_paise, travel_date, status, notes, driver_name, driver_phone, eta_min, razorpay_order_id, payment_status, created_at")
+      .eq("rider_id", user.id)
+      .order("created_at", { ascending: false });
 
-  if (fetchErr) {
-    console.error("[requests GET]", fetchErr);
+    if (fetchErr) {
+      console.error("[requests GET]", fetchErr);
+      return Response.json({ data: [], error: null });
+    }
+
+    const rows = requests ?? [];
+    const ids = rows.map((r: { id: string }) => r.id);
+    const ratedIds = ids.length
+      ? await prisma.rating.findMany({ where: { request_id: { in: ids }, rater_id: user.id }, select: { request_id: true } })
+      : [];
+    const ratedSet = new Set(ratedIds.map((r: { request_id: string | null }) => r.request_id));
+
+    const data = rows.map((r: { id: string; [key: string]: unknown }) => ({ ...r, has_rating: ratedSet.has(r.id) }));
+    return Response.json({ data, error: null });
+  } catch (err) {
+    console.error("[requests GET]", err);
     return Response.json({ data: [], error: null });
   }
-
-  const rows = requests ?? [];
-  const ids = rows.map((r: { id: string }) => r.id);
-  const ratedIds = ids.length
-    ? await prisma.rating.findMany({ where: { request_id: { in: ids }, rater_id: user.id }, select: { request_id: true } })
-    : [];
-  const ratedSet = new Set(ratedIds.map((r: { request_id: string | null }) => r.request_id));
-
-  const data = rows.map((r: { id: string; [key: string]: unknown }) => ({ ...r, has_rating: ratedSet.has(r.id) }));
-  return Response.json({ data, error: null });
 }
 
 const createSchema = z.object({
