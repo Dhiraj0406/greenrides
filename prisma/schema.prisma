@@ -75,6 +75,25 @@ enum ModuleScope {
   PLATFORM
 }
 
+enum KycStatus {
+  NOT_SUBMITTED
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum DocumentEntityType {
+  DRIVER
+  VEHICLE
+  OWNER
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // ─── USERS ───────────────────────────────────────────
 model User {
   id                String   @id @default(uuid())
@@ -117,6 +136,7 @@ model DriverProfile {
   availability     Json?
   approved_at      DateTime?
   owner_id         String?
+  kyc_status       KycStatus @default(NOT_SUBMITTED)
 
   user     User      @relation(fields: [user_id], references: [id])
   owner    Owner?    @relation(fields: [owner_id], references: [id])
@@ -362,6 +382,24 @@ model OwnerPayout {
   owner Owner @relation(fields: [owner_id], references: [id])
 
   @@index([owner_id])
+}
+
+// ─── KYC DOCUMENTS ───────────────────────────────────
+model Document {
+  id           String             @id @default(uuid())
+  entity_type  DocumentEntityType
+  entity_id    String
+  doc_type     String
+  storage_path String
+  status       DocumentStatus     @default(PENDING)
+  verified_by  String?
+  verified_at  DateTime?
+  expires_at   DateTime?
+  created_at   DateTime           @default(now())
+  updated_at   DateTime           @updatedAt
+
+  @@index([entity_type, entity_id])
+  @@index([status])
 }
 
 // ─── REMOTE FEATURE FLAGS ─────────────────────────────
