@@ -1,0 +1,112 @@
+name: Green Rides · Daily QA
+
+on:
+  schedule:
+    - cron: '30 1 * * *'   # 07:00 IST daily
+  workflow_dispatch:         # manual trigger from GitHub UI
+
+permissions:
+  contents: read
+  issues:   write
+
+jobs:
+  qa:
+    name: E2E QA — All Portals
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run QA suite
+        id: playwright
+        run: npx playwright test qa/ --reporter=list,html,json
+        continue-on-error: true
+        env:
+          TEST_PHONE_RIDER:  ${{ secrets.TEST_PHONE_RIDER }}
+          TEST_PHONE_DRIVER: ${{ secrets.TEST_PHONE_DRIVER }}
+          TEST_PHONE_OWNER:  ${{ secrets.TEST_PHONE_OWNER }}
+          TEST_OTP:          ${{ secrets.TEST_OTP }}
+          ADMIN_PIN:         ${{ secrets.ADMIN_PIN }}
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Open or update failure issue
+        if: steps.playwright.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl  = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const date    = new Date().toISOString().slice(0, 10);
+            const title   = `🔴 QA Failure — ${date}`;
+
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner:  context.repo.owner,
+              repo:   context.repo.repo,
+              labels: 'qa-fail',
+              state:  'open',
+            });
+
+            if (open.length > 0) {
+              await github.rest.issues.createComment({
+                owner:        context.repo.owner,
+                repo:         context.repo.repo,
+                issue_number: open[0].number,
+                body:         `QA still failing as of ${new Date().toUTCString()}.\n[View run](${runUrl})`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner:  context.repo.owner,
+                repo:   context.repo.repo,
+                title,
+                labels: ['qa-fail', 'automated'],
+                body:   [
+                  `Daily QA suite failed on ${new Date().toUTCString()}.`,
+                  ``,
+                  `**Run:** [${runUrl}](${runUrl})`,
+                  ``,
+                  `Open the run above and download the \`playwright-report\` artifact for screenshots and the full HTML report.`,
+                ].join('\n'),
+              });
+            }
+
+      - name: Close failure issue on full pass
+        if: steps.playwright.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner:  context.repo.owner,
+              repo:   context.repo.repo,
+              labels: 'qa-fail',
+              state:  'open',
+            });
+
+            for (const issue of open) {
+              await github.rest.issues.createComment({
+                owner:        context.repo.owner,
+                repo:         context.repo.repo,
+                issue_number: issue.number,
+                body:         `✅ All portals passing as of ${new Date().toUTCString()}.`,
+              });
+              await github.rest.issues.update({
+                owner:        context.repo.owner,
+                repo:         context.repo.repo,
+                issue_number: issue.number,
+                state:        'closed',
+              });
+            }
