@@ -39,6 +39,9 @@ export async function POST(
     return Response.json({ error: "Failed to complete request" }, { status: 500 });
   }
 
+  // Clean up location row — no stale pin for completed trips
+  await db.from("DriverLocation").delete().eq("request_id", requestId);
+
   const { data: profile } = await db
     .from("DriverProfile")
     .select("total_trips")
