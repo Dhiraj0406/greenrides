@@ -32,4 +32,26 @@ CREATE POLICY IF NOT EXISTS "location_rider_read" ON "DriverLocation"
   );
 
 -- Enable Realtime publication so Supabase broadcasts row changes
-ALTER PUBLICATION supabase_realtime ADD TABLE "DriverLocation";
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND tablename = 'DriverLocation'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE "DriverLocation";
+  END IF;
+END $$;
+
+-- Trigger to auto-refresh updated_at on every UPDATE
+CREATE OR REPLACE FUNCTION update_driver_location_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER driver_location_updated_at
+  BEFORE UPDATE ON "DriverLocation"
+  FOR EACH ROW EXECUTE FUNCTION update_driver_location_timestamp();
