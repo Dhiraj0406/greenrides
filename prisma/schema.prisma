@@ -94,6 +94,20 @@ enum DocumentStatus {
   REJECTED
 }
 
+enum AssetClass {
+  CAB
+  RENTAL
+  CARGO
+  EV_CHARGER
+  PARCEL_LOCKER
+}
+
+enum AssetStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
 // ─── USERS ───────────────────────────────────────────
 model User {
   id                String   @id @default(uuid())
@@ -206,6 +220,7 @@ model Booking {
 
   traveler_name  String?
   traveler_phone String?
+  asset_id       String?
 
   ride    Ride     @relation(fields: [ride_id], references: [id])
   rider   User     @relation(fields: [rider_id], references: [id])
@@ -249,6 +264,7 @@ model RideRequest {
   trip_otp            String?
   started_at          DateTime?
   completed_at        DateTime?
+  asset_id            String?
   created_at          DateTime          @default(now())
   updated_at          DateTime          @updatedAt
   dispatched          Boolean           @default(false)
@@ -330,6 +346,7 @@ model Owner {
 
   user     User            @relation(fields: [user_id], references: [id])
   vehicles Vehicle[]
+  assets   Asset[]
   payouts  OwnerPayout[]
   drivers  DriverProfile[]
 
@@ -348,10 +365,13 @@ model Vehicle {
   driver_id  String?
   created_at DateTime @default(now())
 
-  owner  Owner         @relation(fields: [owner_id], references: [id])
-  driver DriverProfile? @relation(fields: [driver_id], references: [id])
+  asset_id   String?
+  asset      Asset?        @relation(fields: [asset_id], references: [id])
+  owner      Owner         @relation(fields: [owner_id], references: [id])
+  driver     DriverProfile? @relation(fields: [driver_id], references: [id])
 
   @@index([owner_id])
+  @@index([asset_id])
 }
 
 // ─── NOTIFICATION ─────────────────────────────────────
@@ -382,6 +402,24 @@ model OwnerPayout {
   owner Owner @relation(fields: [owner_id], references: [id])
 
   @@index([owner_id])
+}
+
+// ─── ASSET (polymorphic resource node) ───────────────
+model Asset {
+  id           String      @id @default(uuid())
+  asset_class  AssetClass
+  owner_id     String
+  display_name String
+  meta_json    Json        @default("{}")
+  status       AssetStatus @default(ACTIVE)
+  created_at   DateTime    @default(now())
+  updated_at   DateTime    @updatedAt
+
+  owner    Owner     @relation(fields: [owner_id], references: [id])
+  vehicles Vehicle[]
+
+  @@index([owner_id])
+  @@index([asset_class])
 }
 
 // ─── KYC DOCUMENTS ───────────────────────────────────
