@@ -212,6 +212,10 @@ function DispatchCard({
             <Phone className="w-4 h-4" /> Call Rider · {req.rider_phone}
           </a>
         )}
+        <p className="text-xs text-lime/60 flex items-center gap-1.5 mb-3">
+          <span className="w-1.5 h-1.5 rounded-full bg-lime animate-pulse inline-block" />
+          Sharing location
+        </p>
         <button
           onClick={completeTrip}
           disabled={loading}
@@ -263,6 +267,35 @@ export default function TodayPage() {
     const id = setInterval(() => fetchDispatches(token), 15000);
     return () => clearInterval(id);
   }, [token, dispatches, fetchDispatches]);
+
+  // GPS ping loop — active only while a trip is IN_PROGRESS
+  useEffect(() => {
+    const inProgress = dispatches.find(
+      (d) => d.status === "ACCEPTED" && d.request?.status === "IN_PROGRESS"
+    );
+    if (!inProgress || !token) return;
+
+    const interval = setInterval(() => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          fetch("/api/location/ping", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body:    JSON.stringify({
+              request_id: inProgress.request_id,
+              lat:        pos.coords.latitude,
+              lng:        pos.coords.longitude,
+              heading:    pos.coords.heading ?? undefined,
+            }),
+          }).catch(() => {});
+        },
+        () => {},
+        { enableHighAccuracy: false, timeout: 8000 },
+      );
+    }, 10_000);
+
+    return () => clearInterval(interval);
+  }, [dispatches, token]);
 
   const pendingDispatches  = dispatches.filter((d) => d.status === "PENDING");
   const acceptedDispatches = dispatches.filter((d) => d.status === "ACCEPTED");
