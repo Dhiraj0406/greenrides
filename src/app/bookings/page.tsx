@@ -8,6 +8,9 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { BottomNav } from "@/components/shared/BottomNav";
 import { CardSkeleton } from "@/components/shared/LoadingSkeleton";
+import dynamic from "next/dynamic";
+
+const LiveMap = dynamic(() => import("@/components/shared/LiveMap"), { ssr: false });
 
 interface MyRequest {
   id:                 string;
@@ -110,7 +113,7 @@ function PayNowButton({ requestId, orderId, amountPaise }: { requestId: string; 
   );
 }
 
-function ConfirmedHeroCard({ req }: { req: MyRequest }) {
+function ConfirmedHeroCard({ req, token }: { req: MyRequest; token: string }) {
   return (
     <div className="bg-forest rounded-2xl p-5 mb-4 text-white">
       <div className="flex items-center gap-1.5 text-lime/60 text-xs font-semibold uppercase tracking-wide mb-3">
@@ -173,6 +176,8 @@ function ConfirmedHeroCard({ req }: { req: MyRequest }) {
           amountPaise={req.fare_paise}
         />
       )}
+
+      <LiveMap requestId={req.id} token={token} />
     </div>
   );
 }
@@ -423,7 +428,7 @@ export default function MyBookingsPage() {
         {!loading && !error && (
           <>
             {confirmed.map((req) => (
-              <ConfirmedHeroCard key={req.id} req={req} />
+              <ConfirmedHeroCard key={req.id} req={req} token={token} />
             ))}
             {otherReqs.map((req) => (
               <RequestCard key={req.id} request={req} onRate={(id) => { setRatingFor({ type: "request", id }); setRatingScore(5); }} />
