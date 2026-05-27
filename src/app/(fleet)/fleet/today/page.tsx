@@ -275,14 +275,16 @@ export default function TodayPage() {
     );
     if (!inProgress || !token) return;
 
-    const interval = setInterval(() => {
+    const requestId = inProgress.request_id;
+
+    function ping() {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           fetch("/api/location/ping", {
             method:  "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             body:    JSON.stringify({
-              request_id: inProgress.request_id,
+              request_id: requestId,
               lat:        pos.coords.latitude,
               lng:        pos.coords.longitude,
               heading:    pos.coords.heading ?? undefined,
@@ -292,7 +294,10 @@ export default function TodayPage() {
         () => {},
         { enableHighAccuracy: false, timeout: 8000 },
       );
-    }, 10_000);
+    }
+
+    ping(); // immediate first ping
+    const interval = setInterval(ping, 10_000);
 
     return () => clearInterval(interval);
   }, [dispatches, token]);
