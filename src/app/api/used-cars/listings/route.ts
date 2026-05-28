@@ -126,3 +126,49 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Failed to create listing" }, { status: 500 });
   }
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function serialize(l: any) {
+  return { ...l, price_paise: l.price_paise.toString() };
+}
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const page     = Math.max(1, parseInt(searchParams.get("page")  || "1",  10));
+  const limit    = Math.min(48, Math.max(1, parseInt(searchParams.get("limit") || "12", 10)));
+  const skip     = (page - 1) * limit;
+  const make     = searchParams.get("make")      || undefined;
+  const fuelType = searchParams.get("fuel_type") || undefined;
+  const minPrice = searchParams.get("min_price") || undefined;
+  const maxPrice = searchParams.get("max_price") || undefined;
+
+  // Validate BigInt price params
+  let minPriceBigInt: bigint | undefined;
+  let maxPriceBigInt: bigint | undefined;
+  try {
+    if (minPrice) minPriceBigInt = BigInt(minPrice);
+    if (maxPrice) maxPriceBigInt = BigInt(maxPrice);
+  } catch {
+    return Response.json({ error: "Invalid price filter" }, { status: 400 });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const where: any = {
+    status: "APPROVED",
+    ...(make     ? { make: { contains: make, mode: "insensitive" } } : {}),
+    ...(fuelType ? { fuel_type: fuelType }                           : {}),
+    ...(minPriceBigInt || maxPriceBigInt ? {
+      price_paise: {
+        ...(minPriceBigInt ? { gte: minPriceBigInt } : {}),
+        ...(maxPriceBigInt ? { lte: maxPriceBigInt } : {}),
+      },
+    } : {}),
+  };
+
+  const [listings, total] = await Promise.all([
+    prisma.carListing.findMany({ where, orderBy: { created_at: "desc" }, skip, take: limit }),
+    prisma.carListing.count({ where }),
+  ]);
+
+  return Response.json({ data: listings.map(serialize), total, page, error: null });
+}
