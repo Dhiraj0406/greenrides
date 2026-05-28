@@ -9,7 +9,9 @@ import { DayTrips } from "@/components/booking/DayTrips";
 import { FareCard } from "@/components/booking/FareCard";
 import { CustomRouteBox } from "@/components/booking/CustomRouteBox";
 import { BottomNav } from "@/components/shared/BottomNav";
-import { Leaf, Phone, Star, MapPin, Shield } from "lucide-react";
+import Link from "next/link";
+import { getFlag } from "@/modules/platform/db";
+import { Leaf, Phone, Star, MapPin, Shield, Car } from "lucide-react";
 import type { RouteInfo } from "@/types";
 
 async function getAllRoutes(): Promise<RouteInfo[]> {
@@ -63,7 +65,11 @@ async function getDemandRoutes(): Promise<Array<{ from_city: string; to_city: st
 }
 
 export default async function HomePage() {
-  const [allRoutes, demandRoutes] = await Promise.all([getAllRoutes(), getDemandRoutes()]);
+  const [allRoutes, demandRoutes, usedCarsEnabled] = await Promise.all([
+    getAllRoutes(),
+    getDemandRoutes(),
+    getFlag("used_cars.module_enabled", false),
+  ]);
 
   return (
     <div className="green-container min-h-screen bg-cream pb-24">
@@ -173,6 +179,26 @@ export default async function HomePage() {
 
       {/* AI custom route estimator */}
       <CustomRouteBox />
+
+      {/* Used Cars banner (flag-gated) */}
+      {usedCarsEnabled && (
+        <div className="px-4 mt-4">
+          <p className="text-xs font-semibold text-sub uppercase tracking-wider mb-2">More Services</p>
+          <Link href="/used-cars"
+            className="flex items-center justify-between bg-white border border-border rounded-2xl px-4 py-4 hover:border-leaf/50 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-leaf/10 flex items-center justify-center">
+                <Car className="w-4 h-4 text-leaf" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-text">Used Cars</p>
+                <p className="text-xs text-sub">Buy or sell a car in Odisha</p>
+              </div>
+            </div>
+            <span className="text-sub text-sm">→</span>
+          </Link>
+        </div>
+      )}
 
       {/* Sticky call-to-book bar */}
       <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pointer-events-none">

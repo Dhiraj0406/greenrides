@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, ClipboardList, Users, IndianRupee, TrendingUp, Tag, CheckSquare, Truck, Wallet, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { Loader2, ClipboardList, Users, IndianRupee, TrendingUp, Tag, CheckSquare, Truck, Wallet, ShieldCheck, SlidersHorizontal, Car } from "lucide-react";
 import { AdminGate } from "@/components/admin/AdminGate";
 
 interface Stats {
@@ -139,6 +139,14 @@ function Dashboard({ token }: { token: string }) {
                 <div className="flex items-center gap-3">
                   <ShieldCheck className="w-5 h-5 text-leaf" />
                   <span className="text-sm font-semibold text-text">KYC Documents</span>
+                </div>
+                <span className="text-sub text-sm">→</span>
+              </Link>
+              <Link href="/admin/used-cars"
+                className="flex items-center justify-between bg-white border border-border rounded-2xl px-4 py-4 hover:border-leaf/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Car className="w-5 h-5 text-leaf" />
+                  <span className="text-sm font-semibold text-text">Used Cars</span>
                 </div>
                 <span className="text-sub text-sm">→</span>
               </Link>
