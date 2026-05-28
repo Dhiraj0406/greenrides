@@ -462,3 +462,41 @@ model AppRemoteConfig {
 
   @@map("app_remote_config")
 }
+
+// ─── USED CARS MARKETPLACE ────────────────────────────
+model CarListing {
+  id           String   @id @default(uuid())
+  make         String
+  model        String
+  year         Int
+  price_paise  BigInt
+  mileage_km   Int?
+  fuel_type    String
+  transmission String
+  location     String
+  description  String?
+  seller_name  String
+  seller_phone String
+  status       String   @default("PENDING")
+  photos       String[]
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  inquiries    CarInquiry[]
+
+  @@index([status])
+  @@index([make])
+}
+
+model CarInquiry {
+  id          String     @id @default(uuid())
+  listing_id  String
+  buyer_name  String
+  buyer_phone String
+  message     String?
+  created_at  DateTime   @default(now())
+
+  listing     CarListing @relation(fields: [listing_id], references: [id], onDelete: Cascade)
+
+  @@index([listing_id])
+}
