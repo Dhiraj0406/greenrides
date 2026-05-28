@@ -24,12 +24,12 @@ CREATE INDEX IF NOT EXISTS idx_car_listing_make   ON "CarListing"(make);
 ALTER TABLE "CarListing" ENABLE ROW LEVEL SECURITY;
 
 -- Public can read APPROVED and SOLD listings
-CREATE POLICY "car_listing_public_read" ON "CarListing"
+CREATE POLICY IF NOT EXISTS "car_listing_public_read" ON "CarListing"
   FOR SELECT
   USING (status IN ('APPROVED', 'SOLD'));
 
 -- Anyone can submit a new listing (always goes to PENDING)
-CREATE POLICY "car_listing_public_insert" ON "CarListing"
+CREATE POLICY IF NOT EXISTS "car_listing_public_insert" ON "CarListing"
   FOR INSERT
   WITH CHECK (status = 'PENDING');
 
@@ -48,7 +48,7 @@ CREATE INDEX IF NOT EXISTS idx_car_inquiry_listing ON "CarInquiry"(listing_id);
 ALTER TABLE "CarInquiry" ENABLE ROW LEVEL SECURITY;
 
 -- Anyone can submit an inquiry
-CREATE POLICY "car_inquiry_public_insert" ON "CarInquiry"
+CREATE POLICY IF NOT EXISTS "car_inquiry_public_insert" ON "CarInquiry"
   FOR INSERT
   WITH CHECK (true);
 
@@ -61,5 +61,5 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ── Remote config flag ────────────────────────────────────
 INSERT INTO "app_remote_config" (key, module_scope, enabled, value_json)
-VALUES ('used_cars.module_enabled', 'USED_CARS'::"ModuleScope", false, '{}')
+VALUES ('used_cars.module_enabled', 'USED_CARS', false, '{}')
 ON CONFLICT (key) DO NOTHING;
