@@ -29,7 +29,9 @@ export async function GET(req: NextRequest) {
     .createSignedUrls(paths.map((p) => p.name), 3600);
 
   const urlMap = new Map(
-    (signedUrls ?? []).map((s: { path: string; signedUrl: string }) => [s.path, s.signedUrl])
+    (signedUrls ?? [])
+      .filter((s): s is { path: string; signedUrl: string; error: null } => s.path !== null && s.signedUrl !== null)
+      .map((s) => [s.path, s.signedUrl])
   );
 
   // Enrich with uploader name/phone from User table (DRIVER entity_id = user_id)
