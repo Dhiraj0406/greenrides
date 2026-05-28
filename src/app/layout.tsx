@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { DM_Serif_Display, DM_Sans, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { AnalyticsProvider } from "@/components/shared/AnalyticsProvider";
+import { ServiceWorker } from "@/components/shared/ServiceWorker";
 import "./globals.css";
 
 const dmSerifDisplay = DM_Serif_Display({
@@ -22,7 +23,7 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500"],
 });
 
-const APP_URL = "https://green-rides.vercel.app";
+const APP_URL = "https://greenrides.co.in";
 
 export const metadata: Metadata = {
   title: "Green — Odisha Hill Routes",
@@ -30,6 +31,12 @@ export const metadata: Metadata = {
     "Premium ride platform connecting Koraput, Jeypore, and Odisha hill towns. Book intercity rides with verified drivers.",
   keywords: ["koraput", "jeypore", "odisha", "rides", "cab", "intercity"],
   metadataBase: new URL(APP_URL),
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Green Rides",
+  },
   openGraph: {
     title: "Green — Odisha Hill Routes",
     description: "Book intercity rides with verified drivers on Odisha's hill routes.",
@@ -45,6 +52,22 @@ export const metadata: Metadata = {
     description: "Book intercity rides with verified drivers on Odisha's hill routes.",
     images: ["/og"],
   },
+  icons: {
+    icon: [
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: "/favicon-32.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0d2818",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -59,6 +82,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-cream font-sans">
         <AnalyticsProvider />
+        <ServiceWorker />
         {children}
         <Toaster position="top-center" richColors />
       </body>

@@ -1,0 +1,39 @@
+{
+  "name": "Green — Odisha Hill Routes",
+  "short_name": "Green Rides",
+  "description": "Book private cabs on Odisha hill routes. Verified drivers, intercity rides.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8f6f2",
+  "theme_color": "#0d2818",
+  "categories": ["travel", "transportation"],
+  "lang": "en-IN",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Book a Ride",
+      "url": "/",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Bookings",
+      "url": "/bookings",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
