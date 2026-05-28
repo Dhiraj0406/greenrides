@@ -63,48 +63,66 @@ export async function POST(request: NextRequest) {
   }
 
   // Generate listing ID upfront so storage paths include it
-  const listingId = randomUUID();
-  const db        = getAdminClient();
+  const listingId     = randomUUID();
+  const photoUrls:     string[] = [];
+  const uploadedPaths: string[] = [];
 
-  // Upload photos to Supabase Storage
-  const photoUrls: string[] = [];
-  for (const file of files) {
-    const ext      = (file.name.split(".").pop() || "jpg").toLowerCase();
-    const filename = `${randomUUID()}.${ext}`;
-    const path     = `${listingId}/${filename}`;
-    const buffer   = Buffer.from(await file.arrayBuffer());
+  // Only instantiate the admin client when there are photos to upload
+  if (files.length > 0) {
+    const db = getAdminClient();
+    for (const file of files) {
+      const ext      = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const filename = `${randomUUID()}.${ext}`;
+      const path     = `${listingId}/${filename}`;
+      const buffer   = Buffer.from(await file.arrayBuffer());
 
-    const { error: uploadErr } = await db.storage
-      .from(BUCKET)
-      .upload(path, buffer, { contentType: file.type });
+      const { error: uploadErr } = await db.storage
+        .from(BUCKET)
+        .upload(path, buffer, { contentType: file.type });
 
-    if (uploadErr) {
-      console.error("[used-cars/listings POST] upload error:", uploadErr);
-      return Response.json({ error: "Photo upload failed" }, { status: 500 });
+      if (uploadErr) {
+        console.error("[used-cars/listings POST] upload error:", uploadErr);
+        if (uploadedPaths.length > 0) {
+          await db.storage.from(BUCKET).remove(uploadedPaths);
+        }
+        return Response.json({ error: "Photo upload failed" }, { status: 500 });
+      }
+
+      uploadedPaths.push(path);
+      const { data: urlData } = db.storage.from(BUCKET).getPublicUrl(path);
+      photoUrls.push(urlData.publicUrl);
     }
-
-    const { data: urlData } = db.storage.from(BUCKET).getPublicUrl(path);
-    photoUrls.push(urlData.publicUrl);
   }
 
   // Create listing row (status defaults to PENDING)
-  const listing = await prisma.carListing.create({
-    data: {
-      id:           listingId,
-      make:         parsed.data.make,
-      model:        parsed.data.model,
-      year:         parsed.data.year,
-      price_paise:  parsed.data.price_paise,
-      mileage_km:   parsed.data.mileage_km ?? null,
-      fuel_type:    parsed.data.fuel_type,
-      transmission: parsed.data.transmission,
-      location:     parsed.data.location,
-      description:  parsed.data.description ?? null,
-      seller_name:  parsed.data.seller_name,
-      seller_phone: parsed.data.seller_phone,
-      photos:       photoUrls,
-    },
-  });
-
-  return Response.json({ id: listing.id, ok: true });
+  try {
+    const listing = await prisma.carListing.create({
+      data: {
+        id:           listingId,
+        make:         parsed.data.make,
+        model:        parsed.data.model,
+        year:         parsed.data.year,
+        price_paise:  parsed.data.price_paise,
+        mileage_km:   parsed.data.mileage_km ?? null,
+        fuel_type:    parsed.data.fuel_type,
+        transmission: parsed.data.transmission,
+        location:     parsed.data.location,
+        description:  parsed.data.description ?? null,
+        seller_name:  parsed.data.seller_name,
+        seller_phone: parsed.data.seller_phone,
+        photos:       photoUrls,
+      },
+    });
+    return Response.json({ id: listing.id, ok: true });
+  } catch (err) {
+    console.error("[used-cars/listings POST] db error:", err);
+    if (uploadedPaths.length > 0) {
+      try {
+        await getAdminClient().storage.from(BUCKET).remove(uploadedPaths);
+      } catch (cleanupErr) {
+        console.error("[used-cars/listings POST] storage cleanup error:", cleanupErr);
+      }
+    }
+    return Response.json({ error: "Failed to create listing" }, { status: 500 });
+  }
 }
