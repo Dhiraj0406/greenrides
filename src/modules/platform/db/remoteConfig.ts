@@ -16,8 +16,7 @@ export async function getFlag(key: string, defaultValue: boolean): Promise<boole
     const value = data != null ? (data.enabled as boolean) : defaultValue;
     cache.set(key, { value, expiresAt: now + 60_000 });
     return value;
-  } catch (err) {
-    console.error("[getFlag] key=%s error:", key, err);
+  } catch {
     return defaultValue;
   }
 }
