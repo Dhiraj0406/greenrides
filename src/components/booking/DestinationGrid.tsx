@@ -129,6 +129,7 @@ export function DestinationGrid({ initialRoutes }: Props) {
     : [];
 
   // Fallback: cross-origin results from cache when current origin has no match
+  // eslint-disable-next-line react-hooks/refs -- routeCacheRef.current is a read-only cache, safe to read during render
   const crossSuggestions: RouteInfo[] = !loading && trimmed.length >= 1 && suggestions.length === 0
     ? Object.entries(routeCacheRef.current)
         .flatMap(([, routes]) => routes)

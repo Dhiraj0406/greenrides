@@ -182,6 +182,42 @@ function ConfirmedHeroCard({ req, token }: { req: MyRequest; token: string }) {
   );
 }
 
+function PendingCard({ req }: { req: MyRequest }) {
+  const fareRupees = Math.round(req.fare_paise / 100);
+  return (
+    <div className="bg-white border border-gold/30 rounded-2xl p-4">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5 font-semibold text-text text-base">
+          <span>{req.from_city}</span>
+          <ArrowRight className="w-4 h-4 text-sub flex-shrink-0" />
+          <span>{req.to_city}</span>
+        </div>
+        <span className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-gold/15 text-gold">
+          <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse inline-block" />
+          In Progress
+        </span>
+      </div>
+      <div className="flex items-center gap-1.5 text-sm text-sub mb-3">
+        <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+        <span>{formatTravelDate(req.travel_date)}</span>
+        <span className="text-sub">·</span>
+        <span className="font-semibold text-forest">₹{fareRupees}</span>
+      </div>
+      <div className="bg-amber-50 border border-gold/20 rounded-xl p-3 mb-3">
+        <p className="text-sm font-semibold text-gold">Finding your driver…</p>
+        <p className="text-xs text-sub mt-0.5">We&apos;ll call you once a driver is confirmed.</p>
+      </div>
+      <a
+        href="tel:+919668021577"
+        className="flex items-center justify-center gap-2 border border-forest/20 text-forest font-semibold text-sm py-2.5 rounded-xl w-full"
+      >
+        <Phone className="w-4 h-4" />
+        Call Green Rides
+      </a>
+    </div>
+  );
+}
+
 function RequestCard({ request, onRate }: { request: MyRequest; onRate: (id: string) => void }) {
   const fareRupees = Math.round(request.fare_paise / 100);
   const shortId = request.id.replace(/-/g, "").slice(0, 8).toUpperCase();
@@ -208,9 +244,6 @@ function RequestCard({ request, onRate }: { request: MyRequest; onRate: (id: str
 
       <p className="text-xs text-sub font-mono">#{shortId}</p>
 
-      {request.status === "PENDING" && (
-        <p className="text-xs text-leaf mt-2">Call us to confirm your booking.</p>
-      )}
       {request.status === "COMPLETED" && !request.has_rating && (
         <button
           onClick={() => onRate(request.id)}
@@ -337,7 +370,12 @@ export default function MyBookingsPage() {
 
   useEffect(() => {
     async function init() {
-      const { data: { session } } = await supabase.auth.getSession();
+      let { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // Session may not have hydrated from storage yet — try refreshing
+        const { data } = await supabase.auth.refreshSession();
+        session = data.session;
+      }
       if (!session) {
         router.replace("/login?next=/bookings");
         return;
@@ -355,13 +393,13 @@ export default function MyBookingsPage() {
     init();
   }, [router, fetchRequests]);
 
-  // Poll every 15s when there's a confirmed ride in flight
+  // Poll every 10s while any ride is active (PENDING = finding driver, CONFIRMED/IN_PROGRESS = en route)
   useEffect(() => {
     if (!token) return;
-    const hasActive = requests.some((r) => r.status === "CONFIRMED" || r.status === "IN_PROGRESS");
+    const hasActive = requests.some((r) => r.status === "PENDING" || r.status === "CONFIRMED" || r.status === "IN_PROGRESS");
     if (!hasActive) return;
 
-    const interval = setInterval(() => fetchRequests(token), 15000);
+    const interval = setInterval(() => fetchRequests(token), 10000);
     return () => clearInterval(interval);
   }, [token, requests, fetchRequests]);
 
@@ -391,7 +429,8 @@ export default function MyBookingsPage() {
   }
 
   const confirmed  = requests.filter((r) => r.status === "CONFIRMED" || r.status === "IN_PROGRESS");
-  const otherReqs  = requests.filter((r) => r.status !== "CONFIRMED" && r.status !== "IN_PROGRESS");
+  const pending    = requests.filter((r) => r.status === "PENDING");
+  const otherReqs  = requests.filter((r) => r.status !== "CONFIRMED" && r.status !== "IN_PROGRESS" && r.status !== "PENDING");
 
   return (
     <div className="green-container min-h-screen bg-cream pb-24">
@@ -423,12 +462,15 @@ export default function MyBookingsPage() {
           </div>
         )}
 
-        {!loading && !error && requests.length === 0 && <EmptyState />}
+        {!loading && !error && requests.length === 0 && bookings.length === 0 && <EmptyState />}
 
         {!loading && !error && (
           <>
             {confirmed.map((req) => (
               <ConfirmedHeroCard key={req.id} req={req} token={token} />
+            ))}
+            {pending.map((req) => (
+              <PendingCard key={req.id} req={req} />
             ))}
             {otherReqs.map((req) => (
               <RequestCard key={req.id} request={req} onRate={(id) => { setRatingFor({ type: "request", id }); setRatingScore(5); }} />

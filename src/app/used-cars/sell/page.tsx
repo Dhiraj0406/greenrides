@@ -92,7 +92,7 @@ export default function SellPage() {
           <CheckCircle className="w-8 h-8 text-leaf" />
         </div>
         <h2 className="font-display text-2xl text-forest mb-2">Listing submitted!</h2>
-        <p className="text-sm text-sub mb-6">Your listing is under review. We'll publish it within 24 hours.</p>
+        <p className="text-sm text-sub mb-6">Your listing is under review. We&apos;ll publish it within 24 hours.</p>
         <button
           onClick={() => router.push("/used-cars")}
           className="bg-forest text-white text-sm font-semibold px-6 py-3 rounded-2xl"

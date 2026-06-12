@@ -214,7 +214,7 @@ export function WhereToBar({ initialRoutes }: Props) {
               </>
             ) : (
               <div className="px-4 py-12 text-center">
-                <p className="text-sm text-sub">No route found for "{query.trim()}"</p>
+                <p className="text-sm text-sub">No route found for &quot;{query.trim()}&quot;</p>
                 <p className="text-xs text-sub/60 mt-1">Try the custom estimator on the home screen</p>
               </div>
             )}

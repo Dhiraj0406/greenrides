@@ -162,7 +162,7 @@ export default function ListingDetailPage() {
                 <CheckCircle className="w-5 h-5 text-leaf flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-semibold text-text">Inquiry submitted!</p>
-                  <p className="text-xs text-sub mt-0.5">We'll connect you with the seller soon.</p>
+                  <p className="text-xs text-sub mt-0.5">We&apos;ll connect you with the seller soon.</p>
                 </div>
               </div>
             ) : showForm ? (
@@ -205,7 +205,7 @@ export default function ListingDetailPage() {
                 className="w-full bg-forest text-white text-sm font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2"
               >
                 <Phone className="w-4 h-4" />
-                I'm Interested
+                I&apos;m Interested
               </button>
             )}
           </div>

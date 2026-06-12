@@ -35,7 +35,7 @@ export default function PendingPage() {
         <span className="font-display text-xl text-text">Under Review</span>
       </div>
       <p className="text-sub text-sm max-w-xs mb-4">
-        Your registration is being reviewed by our team. You'll receive a Telegram message once approved — usually within 24 hours.
+        Your registration is being reviewed by our team. You&apos;ll receive a Telegram message once approved — usually within 24 hours.
       </p>
       <div className="flex gap-1 mt-2">
         {[0, 1, 2].map((i) => (

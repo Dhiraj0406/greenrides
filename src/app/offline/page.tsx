@@ -12,7 +12,7 @@ export default function OfflinePage() {
 
       <WifiOff className="w-8 h-8 text-sub mb-4" />
 
-      <h1 className="font-display text-2xl text-forest mb-2">You're offline</h1>
+      <h1 className="font-display text-2xl text-forest mb-2">You&apos;re offline</h1>
       <p className="text-sm text-sub mb-8 max-w-xs">
         No internet connection. To book a ride, call us directly.
       </p>

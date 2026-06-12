@@ -131,7 +131,7 @@ function VerifyForm() {
         </button>
 
         <p className="text-xs text-sub text-center mt-4">
-          Didn't receive it?{" "}
+          Didn&apos;t receive it?{" "}
           <button
             onClick={() => router.replace(`/login?next=${encodeURIComponent(next)}`)}
             className="text-leaf font-semibold"

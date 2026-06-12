@@ -14,7 +14,7 @@ export default function DriversLandingPage() {
           Drive with us.<br />Earn on your terms.
         </h1>
         <p className="text-lime/70 text-sm mb-8 max-w-xs mx-auto">
-          Join Odisha's trusted cab network. Set your own schedule, choose your routes, get paid fairly.
+          Join Odisha&apos;s trusted cab network. Set your own schedule, choose your routes, get paid fairly.
         </p>
         <Link
           href="/login?next=/drivers"

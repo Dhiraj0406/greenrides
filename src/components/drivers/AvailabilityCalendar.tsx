@@ -41,7 +41,7 @@ export function AvailabilityCalendar({ value, onChange }: Props) {
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selected, setSelected]   = useState<string | null>(toDateKey(today));
 
-  const requiredKeys = useMemo(getRequiredKeys, []);
+  const requiredKeys = useMemo(() => getRequiredKeys(), []);
 
   const unfilledRequired = requiredKeys.filter((k) => !value[k]);
   const selectedEntry    = selected ? value[selected] : undefined;

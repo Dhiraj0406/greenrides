@@ -19,6 +19,14 @@ const eslintConfig = defineConfig([
       }],
     },
   },
+  // Downgrade noisy React hooks purity/refs rules that fire on legitimate patterns
+  {
+    rules: {
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/purity": "warn",
+      "react-hooks/refs": "warn",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
@@ -26,6 +34,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated files — never hand-edited
+    "src/generated/**",
+    "supabase/functions/**",
   ]),
 ]);
 

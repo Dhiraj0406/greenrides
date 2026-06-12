@@ -104,7 +104,7 @@ function LoginForm() {
         </div>
         <h1 className="font-display text-4xl text-lime text-center">Green</h1>
         <p className="text-lime/60 text-sm text-center mt-1">
-          Odisha's premium hill route rides
+          Odisha&apos;s premium hill route rides
         </p>
       </div>
 
@@ -112,7 +112,7 @@ function LoginForm() {
       <div className="bg-cream rounded-t-3xl px-6 pt-8 pb-safe-bottom pb-10">
         <h2 className="font-display text-2xl text-text mb-1">Sign in</h2>
         <p className="text-sub text-sm mb-6">
-          We'll send a one-time code to your phone
+          We&apos;ll send a one-time code to your phone
         </p>
 
         {/* Phone input */}
