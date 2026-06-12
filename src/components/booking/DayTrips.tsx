@@ -106,7 +106,7 @@ export function DayTrips() {
                         shadow-md hover:shadow-xl animate-fade-in-up`}
           >
             {/* Gradient image area */}
-            <div className={`w-full bg-gradient-to-br ${trip.gradient} px-3.5 pt-3 pb-2`}>
+            <div className={`w-full h-[72px] bg-gradient-to-br ${trip.gradient} px-3.5 pt-3 pb-2`}>
               <span className="text-2xl leading-none block mb-2">{trip.emoji}</span>
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${trip.tagColor}`}>
                 {trip.tag}

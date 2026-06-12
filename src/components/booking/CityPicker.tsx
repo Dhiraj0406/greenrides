@@ -125,9 +125,10 @@ export function CityPicker({ initialRoutes }: Props) {
                 <button
                   key={route.to_city}
                   onClick={() => selectRoute(route)}
+                  style={{ boxShadow: "var(--sh-sm)" }}
                   className={cn(
                     "flex flex-col items-start p-3.5 rounded-2xl border text-left",
-                    "transition-all duration-150 touch-target",
+                    "transition-all duration-150 touch-target min-w-[140px]",
                     active
                       ? "bg-forest border-leaf shadow-lg"
                       : "bg-white border-border hover:border-leaf/40 hover:shadow-sm"
