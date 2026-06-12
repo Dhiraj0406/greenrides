@@ -34,10 +34,13 @@ export function DispatchCard({ driverId, initial }: Props) {
   const [etaInput, setEtaInput]   = useState("15");
   const [accepted, setAccepted]   = useState(false);
   const [riderPhone, setRiderPhone] = useState<string | null>(null);
-  const [completing, setCompleting] = useState(false);
   const [showEtaUpdate, setShowEtaUpdate] = useState(false);
   const [etaUpdateInput, setEtaUpdateInput] = useState("15");
   const [updatingEta, setUpdatingEta] = useState(false);
+  const [requestStatus, setRequestStatus] = useState<"CONFIRMED" | "IN_PROGRESS" | "COMPLETED">("CONFIRMED");
+  const [otpInput, setOtpInput] = useState("");
+  const [isStarting, setIsStarting] = useState(false);
+  const [isEnding, setIsEnding] = useState(false);
 
   // Recalculate seconds remaining
   useEffect(() => {
@@ -106,6 +109,7 @@ export function DispatchCard({ driverId, initial }: Props) {
       if (action === "accept") {
         setAccepted(true);
         setRiderPhone(dispatch.request?.rider_phone ?? null);
+        setRequestStatus("CONFIRMED");
       } else {
         setDispatch(null);
       }
@@ -117,9 +121,36 @@ export function DispatchCard({ driverId, initial }: Props) {
     }
   }, [dispatch]);
 
-  const completeRide = useCallback(async () => {
+  const handleStartTrip = useCallback(async () => {
     if (!dispatch) return;
-    setCompleting(true);
+    if (otpInput.length !== 6 || !/^\d{6}$/.test(otpInput)) {
+      toast.error("Enter the 6-digit OTP shown by the rider");
+      return;
+    }
+    setIsStarting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch(`/api/requests/${dispatch.request_id}/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ otp: otpInput }),
+      });
+      const json = await res.json();
+      if (!res.ok) { toast.error(json.error ?? "Failed to start trip"); return; }
+      toast.success("Trip started!");
+      setRequestStatus("IN_PROGRESS");
+      setOtpInput("");
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setIsStarting(false);
+    }
+  }, [dispatch, otpInput]);
+
+  const handleEndTrip = useCallback(async () => {
+    if (!dispatch) return;
+    setIsEnding(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -128,14 +159,15 @@ export function DispatchCard({ driverId, initial }: Props) {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       const json = await res.json();
-      if (!res.ok) { toast.error(json.error ?? "Failed to complete ride"); return; }
-      toast.success("Ride marked as completed!");
+      if (!res.ok) { toast.error(json.error ?? "Failed to complete trip"); return; }
+      toast.success("Trip completed!");
+      setRequestStatus("COMPLETED");
       setAccepted(false);
       setDispatch(null);
     } catch {
       toast.error("Something went wrong");
     } finally {
-      setCompleting(false);
+      setIsEnding(false);
     }
   }, [dispatch]);
 
@@ -224,13 +256,39 @@ export function DispatchCard({ driverId, initial }: Props) {
             📍 Update ETA
           </button>
         )}
-        <button
-          onClick={completeRide}
-          disabled={completing}
-          className="w-full flex items-center justify-center gap-2 bg-forest text-white font-bold py-3 rounded-xl text-sm disabled:opacity-60"
-        >
-          {completing ? <span className="w-4 h-4 animate-spin border-2 border-white border-t-transparent rounded-full inline-block" /> : "✓ Mark Ride Completed"}
-        </button>
+        {requestStatus === "CONFIRMED" && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-sub">Enter OTP shown by rider to start trip</p>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="\d{6}"
+              maxLength={6}
+              value={otpInput}
+              onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ""))}
+              placeholder="6-digit OTP"
+              className="w-full bg-gray-50 border border-border rounded-xl px-4 py-2.5 text-sm font-bold text-text outline-none focus:ring-2 ring-leaf/30 tracking-widest text-center"
+            />
+            <button
+              onClick={handleStartTrip}
+              disabled={isStarting}
+              className="w-full py-3 rounded-2xl font-bold text-white text-sm mt-1 disabled:opacity-60"
+              style={{ background: "var(--green)" }}
+            >
+              {isStarting ? "Starting…" : "▶ Start Trip"}
+            </button>
+          </div>
+        )}
+        {requestStatus === "IN_PROGRESS" && (
+          <button
+            onClick={handleEndTrip}
+            disabled={isEnding}
+            className="w-full py-3 rounded-2xl font-bold text-white text-sm mt-3 disabled:opacity-60"
+            style={{ background: "var(--ink)" }}
+          >
+            {isEnding ? "Completing…" : "✓ End Trip"}
+          </button>
+        )}
       </div>
     );
   }
