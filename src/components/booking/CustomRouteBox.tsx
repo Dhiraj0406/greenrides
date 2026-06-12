@@ -232,6 +232,9 @@ export function CustomRouteBox() {
               </span>
             </div>
             <p className="text-xs text-sub mt-1">{result.notes}</p>
+            <p className="text-[10px] text-center mt-2" style={{ color: "var(--ink-4)" }}>
+              Powered by Claude AI
+            </p>
           </div>
         )}
       </div>

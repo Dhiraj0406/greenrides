@@ -50,7 +50,7 @@ export function FareCard() {
   return (
     <>
       <section id="fare-card" className="px-4 mt-6">
-        <div className="bg-forest rounded-2xl p-5 text-white">
+        <div className="bg-forest p-5 text-white" style={{ borderRadius: "var(--r-lg)" }}>
           {/* Route header */}
           <div className="flex items-center gap-2 text-sm text-lime/80 mb-3">
             <span>{origin}</span>
@@ -60,7 +60,7 @@ export function FareCard() {
 
           {/* Fare */}
           <div className="flex items-end gap-2 mb-1">
-            <span className="font-display text-5xl font-bold text-white leading-none">
+            <span className="font-display font-bold text-white leading-none" style={{ fontSize: "2rem" }}>
               ₹{fareRupees?.toLocaleString("en-IN")}
             </span>
             {discountPct > 0 && (
