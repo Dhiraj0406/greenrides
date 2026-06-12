@@ -235,4 +235,5 @@
   .animate-ring-pop    { animation: ringPop .5s cubic-bezier(.4,0,.2,1) both; }
   .animate-car-float   { animation: carFloat 1.6s ease-in-out infinite; }
   .animate-live-pulse  { animation: livePulse 1.5s ease-in-out infinite; }
+  .animate-shimmer     { animation: shimmer 1.4s ease infinite; }
 }
