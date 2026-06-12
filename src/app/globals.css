@@ -74,6 +74,55 @@
   --radius:               0.75rem;
 }
 
+/* Spec design tokens */
+:root {
+  --green:   #1a3d24;
+  --green-2: #245a32;
+  --green-3: #2e7040;
+  --green-4: #d6ead9;
+  --green-5: #edf5ee;
+
+  --ink:   #111109;
+  --ink-2: #3d3c36;
+  --ink-3: #7a7870;
+  --ink-4: #b0ada6;
+  --ink-5: #dedad3;
+
+  --paper:   #faf9f6;
+  --paper-2: #f5f3ef;
+  --paper-3: #edeae3;
+
+  --wa:   #075e54;
+  --wa-l: #e8f5f3;
+
+  --r-sm: 6px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+  --r-full: 999px;
+
+  --sh-sm: 0 1px 3px rgba(17,17,9,.06);
+  --sh-md: 0 4px 16px rgba(17,17,9,.09);
+  --sh-lg: 0 12px 40px rgba(17,17,9,.13);
+  --sh-xl: 0 24px 64px rgba(17,17,9,.16);
+}
+
+[data-app="driver"] {
+  --green:   #1a2d4a;
+  --green-2: #243d64;
+  --green-3: #2e5080;
+  --green-4: #d6e0ea;
+  --green-5: #edf2f5;
+}
+
+[data-app="admin"] {
+  --green:   #2d1a4a;
+  --green-2: #3d2464;
+  --green-3: #502e80;
+  --green-4: #e0d6ea;
+  --green-5: #f2edf5;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -113,6 +162,35 @@
   from { background-position: -200% center; }
   to   { background-position:  200% center; }
 }
+@keyframes screenIn {
+  from { opacity:0; transform:translateX(16px) }
+  to   { opacity:1; transform:none }
+}
+@keyframes pillIn {
+  from { opacity:0; transform:translateY(6px) }
+  to   { opacity:1; transform:none }
+}
+@keyframes sheetUp {
+  from { transform:translateY(100%) }
+  to   { transform:none }
+}
+@keyframes ringPop {
+  0%   { transform:scale(.7); opacity:0 }
+  60%  { transform:scale(1.08) }
+  100% { transform:scale(1); opacity:1 }
+}
+@keyframes checkDraw {
+  from { stroke-dashoffset:100 }
+  to   { stroke-dashoffset:0 }
+}
+@keyframes carFloat {
+  0%,100% { transform:translate(-50%,-70%) }
+  50%      { transform:translate(-50%,-85%) }
+}
+@keyframes livePulse {
+  0%,100% { transform:scale(1); opacity:.6 }
+  50%      { transform:scale(1.6); opacity:0 }
+}
 
 /* Green-specific utilities */
 @layer utilities {
@@ -151,4 +229,10 @@
     backdrop-filter: blur(12px);
     border: 1px solid rgba(255,255,255,0.12);
   }
+  .animate-screen-in   { animation: screenIn .3s cubic-bezier(.4,0,.2,1) both; }
+  .animate-pill-in     { animation: pillIn .25s ease both; }
+  .animate-sheet-up    { animation: sheetUp .3s cubic-bezier(.4,0,.2,1) both; }
+  .animate-ring-pop    { animation: ringPop .5s cubic-bezier(.4,0,.2,1) both; }
+  .animate-car-float   { animation: carFloat 1.6s ease-in-out infinite; }
+  .animate-live-pulse  { animation: livePulse 1.5s ease-in-out infinite; }
 }

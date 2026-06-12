@@ -1,20 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Serif_Display, DM_Sans, JetBrains_Mono } from "next/font/google";
+import { Fraunces, Inter, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { AnalyticsProvider } from "@/components/shared/AnalyticsProvider";
 import { ServiceWorker } from "@/components/shared/ServiceWorker";
 import "./globals.css";
 
-const dmSerifDisplay = DM_Serif_Display({
+const fraunces = Fraunces({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: "400",
+  weight: ["300", "600", "700"],
+  style: ["normal", "italic"],
+  axes: ["opsz"],
 });
 
-const dmSans = DM_Sans({
+const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -78,7 +80,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${dmSerifDisplay.variable} ${dmSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${fraunces.variable} ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-cream font-sans">
         <AnalyticsProvider />
