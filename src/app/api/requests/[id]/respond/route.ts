@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getAdminClient } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { getFlag } from "@/modules/platform/db";
+import { notifyRiderBookingConfirmed } from "@/lib/notifications";
 
 const schema = z.object({
   action:      z.enum(["accept", "reject"]),
@@ -109,10 +110,10 @@ export async function PATCH(
       }
     }
 
-    // Notify the rider via Telegram
+    // Notify the rider via Telegram + WhatsApp
     const { data: rideRequest } = await db
       .from("RideRequest")
-      .select("rider_id, from_city, to_city")
+      .select("rider_id, from_city, to_city, rider_phone, travel_date, fare_paise")
       .eq("id", requestId)
       .single();
 
@@ -123,11 +124,38 @@ export async function PATCH(
         .eq("user_id", rideRequest.rider_id)
         .maybeSingle();
 
+      // Telegram notification
       if (riderProfile?.telegram_chat_id) {
         await sendTelegramMessage(
           riderProfile.telegram_chat_id,
           `✅ <b>Driver found!</b>\n\n${userRow?.name ?? "Driver"} · ${userRow?.phone ?? ""}\nETA: ${eta_min ? `${eta_min} mins` : "Will contact you"}\n\nRoute: ${rideRequest.from_city} → ${rideRequest.to_city}`
         );
+      }
+
+      // WhatsApp notification to passenger
+      if (rideRequest.rider_phone) {
+        const { data: riderUser } = await db
+          .from("User")
+          .select("name")
+          .eq("id", rideRequest.rider_id)
+          .maybeSingle();
+
+        const travelDt = new Date(rideRequest.travel_date);
+        const dateStr  = travelDt.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
+        const timeStr  = travelDt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" });
+
+        await notifyRiderBookingConfirmed({
+          phone:       rideRequest.rider_phone,
+          name:        riderUser?.name ?? "Rider",
+          from:        rideRequest.from_city,
+          to:          rideRequest.to_city,
+          date:        dateStr,
+          time:        timeStr,
+          driverName:  userRow?.name ?? "Driver",
+          driverPhone: userRow?.phone ?? "",
+          seats:       1,
+          amount:      Math.round(rideRequest.fare_paise / 100),
+        }).catch((err) => console.error("[respond/accept] WhatsApp notify failed", err));
       }
     }
 
