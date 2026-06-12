@@ -1,6 +1,5 @@
 export const dynamic = "force-dynamic";
 
-import { prisma } from "@/lib/prisma";
 import { getAdminClient } from "@/lib/supabase";
 import { STATIC_ROUTES } from "@/data/static-routes";
 import { LocationDetector } from "@/components/booking/LocationDetector";
@@ -8,32 +7,38 @@ import { CityPicker } from "@/components/booking/CityPicker";
 import { DayTrips } from "@/components/booking/DayTrips";
 import { FareCard } from "@/components/booking/FareCard";
 import { CustomRouteBox } from "@/components/booking/CustomRouteBox";
+import { AppBar } from "@/components/shared/AppBar";
 import { BottomNav } from "@/components/shared/BottomNav";
 import Link from "next/link";
 import { getFlag } from "@/modules/platform/db";
-import { Leaf, Phone, Star, MapPin, Shield, Car } from "lucide-react";
+import { Phone, MapPin, Shield, Car } from "lucide-react";
 import type { RouteInfo } from "@/types";
 
 async function getAllRoutes(): Promise<RouteInfo[]> {
   try {
-    const routes = await prisma.routeConfig.findMany({
-      where:   { is_active: true },
-      include: { fare_rule: true },
-      orderBy: { distance_km: "asc" },
-    });
-    if (!(routes as unknown[]).length) return STATIC_ROUTES;
+    const { data: routes, error } = await getAdminClient()
+      .from("RouteConfig")
+      .select("from_city, to_city, distance_km, duration_min, base_fare, FareRule(discount_pct, discount_label)")
+      .eq("is_active", true)
+      .order("distance_km", { ascending: true });
+
+    if (error || !routes?.length) return STATIC_ROUTES;
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (routes as any[]).map((r) => ({
-      from_city:      r.from_city,
-      to_city:        r.to_city,
-      distance_km:    r.distance_km,
-      duration_min:   r.duration_min,
-      duration_text:  `${Math.floor(r.duration_min / 60)}h ${r.duration_min % 60}m`,
-      fare_paise:     r.base_fare,
-      fare_rupees:    Math.round(r.base_fare / 100),
-      discount_pct:   r.fare_rule?.discount_pct ?? 0,
-      discount_label: r.fare_rule?.discount_label ?? null,
-    }));
+    return (routes as any[]).map((r) => {
+      const fareRule = Array.isArray(r.FareRule) ? r.FareRule[0] : r.FareRule;
+      return {
+        from_city:      r.from_city,
+        to_city:        r.to_city,
+        distance_km:    r.distance_km,
+        duration_min:   r.duration_min,
+        duration_text:  `${Math.floor(r.duration_min / 60)}h ${r.duration_min % 60}m`,
+        fare_paise:     r.base_fare,
+        fare_rupees:    Math.round(r.base_fare / 100),
+        discount_pct:   fareRule?.discount_pct ?? 0,
+        discount_label: fareRule?.discount_label ?? null,
+      };
+    });
   } catch {
     return STATIC_ROUTES;
   }
@@ -74,29 +79,11 @@ export default async function HomePage() {
   return (
     <div className="green-container min-h-screen bg-cream pb-24">
 
-      {/* ── Header + Hero ─────────────────────────────────────────────── */}
+      <AppBar />
+
+      {/* ── Hero ──────────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden"
            style={{ background: "linear-gradient(160deg, #051a0e 0%, #0d2818 40%, #1a3d25 100%)" }}>
-
-        {/* Top nav */}
-        <header className="px-4 pt-safe-top">
-          <div className="flex items-center justify-between pt-4 pb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-leaf flex items-center justify-center flex-shrink-0
-                              shadow-lg shadow-leaf/30">
-                <Leaf className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <span className="font-display text-xl text-lime tracking-tight leading-none">Green</span>
-                <p className="text-lime/50 text-[10px] leading-tight mt-0.5 tracking-wide">The peaceful ride</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1 bg-white/10 rounded-full px-2.5 py-1 border border-white/10">
-              <Star className="w-3 h-3 text-gold fill-gold" />
-              <span className="text-white/80 text-xs font-semibold">4.8</span>
-            </div>
-          </div>
-        </header>
 
         {/* Hero text */}
         <div className="px-5 pt-2 pb-6 animate-fade-in-up">
