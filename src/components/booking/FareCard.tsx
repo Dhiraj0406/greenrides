@@ -1,24 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowRight, MapPin, Clock, ChevronRight } from "lucide-react";
 import { useBookingStore } from "@/store/booking";
 import { track } from "@/lib/analytics";
 import { formatDuration } from "@/lib/utils";
-import { RequestSheet } from "./RequestSheet";
+import { genRef } from "@/data/constants";
+import { supabase } from "@/lib/supabase";
+import { BookingConfirmSheet } from "@/components/booking/BookingConfirmSheet";
+import { SuccessSheet } from "@/components/booking/SuccessSheet";
 
 export function FareCard() {
   const {
     origin, destination, distanceKm, durationMin, durationText,
     fareRupees, discountPct, discountLabel,
   } = useBookingStore();
-  const [showRequest, setShowRequest] = useState(false);
+
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [bookingRef]                  = useState(genRef);
+  const [userName, setUserName]       = useState("");
+  const [userPhone, setUserPhone]     = useState("");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      setUserName(
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        user.email ||
+        ""
+      );
+      setUserPhone(user.user_metadata?.phone || user.phone || "");
+    });
+  }, []);
 
   if (!origin || !destination || fareRupees === null) return null;
 
-  function handleConfirm() {
+  const today    = new Date();
+  const dateStr  = today.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+  const timeStr  = today.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+  const durStr   = durationText ?? (durationMin ? formatDuration(durationMin) : "");
+
+  function handleBookClick() {
     track.fareConfirmed(origin!, destination!, fareRupees!);
-    setShowRequest(true);
+    setShowConfirm(true);
   }
 
   return (
@@ -68,24 +94,41 @@ export function FareCard() {
 
           {/* CTA */}
           <button
-            onClick={handleConfirm}
+            onClick={handleBookClick}
             className="w-full flex items-center justify-center gap-2 bg-leaf hover:bg-leaf/90
                        text-white font-semibold py-4 rounded-xl touch-target
                        transition-colors text-base"
           >
-            Request This Cab
+            Book · ₹{fareRupees?.toLocaleString("en-IN")} →
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </section>
 
-      <RequestSheet
-        open={showRequest}
-        onClose={() => setShowRequest(false)}
-        from={origin}
-        to={destination}
-        fareRupees={fareRupees}
-      />
+      {showConfirm && (
+        <BookingConfirmSheet
+          booking={{
+            ref:   bookingRef,
+            from:  origin,
+            to:    destination,
+            date:  dateStr,
+            time:  timeStr,
+            fare:  fareRupees,
+            km:    distanceKm ?? 0,
+            dur:   durStr,
+            name:  userName,
+            phone: userPhone,
+          }}
+          onConfirm={() => { setShowConfirm(false); setShowSuccess(true); }}
+          onClose={() => setShowConfirm(false)}
+        />
+      )}
+      {showSuccess && (
+        <SuccessSheet
+          bookingRef={bookingRef}
+          onDone={() => setShowSuccess(false)}
+        />
+      )}
     </>
   );
 }
