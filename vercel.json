@@ -8,5 +8,11 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
       ]
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/confirm-improve",
+      "schedule": "30 3 * * *"
+    }
   ]
 }

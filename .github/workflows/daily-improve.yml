@@ -1,0 +1,63 @@
+name: Daily Improvement Agent
+
+on:
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+    inputs:
+      day_override:
+        description: 'Force a specific day number (blank = auto-pick next pending)'
+        required: false
+        type: string
+
+jobs:
+  improve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Phase 1 — Generate improvement
+        env:
+          ANTHROPIC_API_KEY:         ${{ secrets.ANTHROPIC_API_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL:  ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DAY_OVERRIDE:              ${{ github.event.inputs.day_override }}
+        run: npx tsx scripts/daily-improve.ts
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "Green Rides Improvement Agent"
+          git config user.email "agent@greenrides.co.in"
+          git add -A
+          git diff --staged --quiet || git commit -m "improve(day-$(cat /tmp/gr-day)): $(cat /tmp/gr-title)"
+          git push
+
+      - name: Record push timestamp
+        id: push_ts
+        run: echo "ts=$(date +%s)000" >> $GITHUB_OUTPUT
+
+      - name: Phase 2 — Smoke test and notify
+        env:
+          NEXT_PUBLIC_SUPABASE_URL:  ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          VERCEL_TOKEN:              ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID:         ${{ secrets.VERCEL_PROJECT_ID }}
+          TELEGRAM_BOT_TOKEN:        ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:          ${{ secrets.TELEGRAM_CHAT_ID }}
+          PUSHED_AT:                 ${{ steps.push_ts.outputs.ts }}
+        run: npx tsx scripts/post-deploy.ts
