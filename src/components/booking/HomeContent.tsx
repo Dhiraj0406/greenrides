@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useBookingStore } from "@/store/booking";
-import { DESTINATIONS, DAY_TRIPS, PICKUP_TIMES, fmt, genRef } from "@/data/constants";
+import { DESTINATIONS, DAY_TRIPS, PICKUP_TIMES, fmt } from "@/data/constants";
 import { BookingConfirmSheet } from "@/components/booking/BookingConfirmSheet";
-import { SuccessSheet } from "@/components/booking/SuccessSheet";
+import { FindingDriverSheet } from "@/components/booking/FindingDriverSheet";
+import { DayTripBookSheet } from "@/components/booking/DayTripBookSheet";
+import type { DayTrip } from "@/components/booking/DayTripBookSheet";
 import { supabase } from "@/lib/supabase";
 import type { RouteInfo } from "@/types";
 
@@ -21,7 +23,7 @@ const DAY_GRADIENTS = [
   "linear-gradient(145deg,#cce8d2,#aad4b4)",
 ];
 
-const todayStr = () => new Date().toISOString().split("T")[0];
+const todayStr = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 
 const selStyle: React.CSSProperties = {
   width: "100%",
@@ -103,8 +105,8 @@ export function HomeContent({ initialRoutes }: Props) {
   const [date, setDate]             = useState(todayStr());
   const [time, setTime]             = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [bookingRef] = useState(genRef);
+  const [selectedDayTrip, setSelectedDayTrip] = useState<DayTrip | null>(null);
+  const [activeBooking, setActiveBooking] = useState<{ requestId: string; from: string; to: string; fare: number } | null>(null);
 
   const [allRoutes, setAllRoutes]   = useState<RouteInfo[]>(initialRoutes);
   const loadedCities = useRef(new Set(initialRoutes.map((r) => r.from_city)));
@@ -331,16 +333,16 @@ export function HomeContent({ initialRoutes }: Props) {
             /* ── Day Trip list ── */
             <div>
               {DAY_TRIPS.map((t, i) => (
-                <a
+                <button
                   key={t.name}
-                  href={`https://wa.me/919668021577?text=${encodeURIComponent(`Hi, I want to book a day trip to ${t.name} from Koraput.`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  onClick={() => setSelectedDayTrip(t)}
                   style={{
+                    width: "100%",
                     display: "flex", alignItems: "center", gap: 12,
                     padding: "12px 0",
                     borderBottom: i < DAY_TRIPS.length - 1 ? "1px solid var(--border)" : "none",
-                    cursor: "pointer", textDecoration: "none",
+                    cursor: "pointer", background: "none", border: "none",
+                    fontFamily: "inherit", textAlign: "left",
                   }}
                 >
                   <div style={{ fontSize: 28, width: 44, height: 44, background: "var(--green-5)", borderRadius: "var(--r-md)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -355,8 +357,9 @@ export function HomeContent({ initialRoutes }: Props) {
                       {fmt(t.fare)}
                     </div>
                     <div style={{ fontSize: 10, color: "var(--ink-4)" }}>{t.km} km return</div>
+                    <div style={{ fontSize: 9, color: "var(--green)", fontWeight: 600, marginTop: 2 }}>Book →</div>
                   </div>
-                </a>
+                </button>
               ))}
             </div>
           )}
@@ -405,16 +408,15 @@ export function HomeContent({ initialRoutes }: Props) {
       </div>
       <div style={{ display: "flex", gap: 12, padding: "0 20px 4px", overflowX: "auto" }}>
         {DAY_TRIPS.map((t, i) => (
-          <a
+          <button
             key={t.name}
-            href={`https://wa.me/919668021577?text=${encodeURIComponent(`Hi, I want to book a day trip to ${t.name} from Koraput.`)}`}
-            target="_blank"
-            rel="noopener noreferrer"
+            onClick={() => setSelectedDayTrip(t)}
             style={{
               flexShrink: 0, width: 160, background: "#fff",
               border: "1.5px solid var(--border)", borderRadius: "var(--r-xl)",
-              overflow: "hidden", cursor: "pointer", textDecoration: "none",
-              boxShadow: "var(--sh-sm)",
+              overflow: "hidden", cursor: "pointer",
+              boxShadow: "var(--sh-sm)", padding: 0, fontFamily: "inherit",
+              textAlign: "left",
             }}
           >
             <div style={{ height: 80, background: DAY_GRADIENTS[i % 5], display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, position: "relative" }}>
@@ -435,7 +437,7 @@ export function HomeContent({ initialRoutes }: Props) {
                 {fmt(t.fare)}
               </div>
             </div>
-          </a>
+          </button>
         ))}
       </div>
 
@@ -443,23 +445,44 @@ export function HomeContent({ initialRoutes }: Props) {
       {showConfirm && to && fareRupees !== null && (
         <BookingConfirmSheet
           booking={{
-            ref:   bookingRef,
             from,
             to,
-            date:  dispDate,
+            rawDate: date,
+            date:    dispDate,
             time,
-            fare:  fareRupees,
-            km:    distanceKm ?? 0,
-            dur:   durationText ?? "",
-            name:  userName,
-            phone: userPhone,
+            fare:    fareRupees,
+            km:      distanceKm ?? 0,
+            dur:     durationText ?? "",
+            name:    userName,
+            phone:   userPhone,
           }}
-          onConfirm={() => { setShowConfirm(false); setShowSuccess(true); }}
+          onConfirm={(requestId) => {
+            setShowConfirm(false);
+            setActiveBooking({ requestId, from, to, fare: fareRupees! });
+          }}
           onClose={() => setShowConfirm(false)}
         />
       )}
-      {showSuccess && (
-        <SuccessSheet bookingRef={bookingRef} onDone={() => setShowSuccess(false)} />
+
+      {selectedDayTrip && !activeBooking && (
+        <DayTripBookSheet
+          trip={selectedDayTrip}
+          onClose={() => setSelectedDayTrip(null)}
+          onSuccess={(requestId) => {
+            setSelectedDayTrip(null);
+            setActiveBooking({ requestId, from: "Koraput", to: selectedDayTrip.name, fare: selectedDayTrip.fare });
+          }}
+        />
+      )}
+
+      {activeBooking && (
+        <FindingDriverSheet
+          requestId={activeBooking.requestId}
+          from={activeBooking.from}
+          to={activeBooking.to}
+          fare={activeBooking.fare}
+          onDone={() => setActiveBooking(null)}
+        />
       )}
     </>
   );

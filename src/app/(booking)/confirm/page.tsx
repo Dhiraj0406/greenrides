@@ -18,7 +18,13 @@ function ConfirmContent() {
   useEffect(() => {
     if (!bookingId) { router.replace("/"); return; }
 
-    fetch(`/api/bookings/${bookingId}`)
+    import("@/lib/supabase").then(({ supabase }) =>
+      supabase.auth.getSession()
+    ).then(({ data: { session } }) => {
+      const headers: Record<string, string> = {};
+      if (session) headers["Authorization"] = `Bearer ${session.access_token}`;
+      return fetch(`/api/bookings/${bookingId}`, { headers });
+    })
       .then((r) => r.json())
       .then((j) => {
         if (j.error) throw new Error(j.error);
@@ -60,7 +66,7 @@ function ConfirmContent() {
           </div>
           <h1 className="font-display text-2xl text-white">Booking Confirmed!</h1>
           <p className="text-lime/70 text-sm mt-1">
-            A WhatsApp confirmation has been sent to you
+            Your booking is confirmed. Pay cash to the driver.
           </p>
         </div>
       </div>
@@ -130,6 +136,12 @@ function ConfirmContent() {
         >
           <Leaf className="w-4 h-4" />
           Back to Home
+        </button>
+        <button
+          onClick={() => router.push("/bookings")}
+          className="w-full text-center text-sm font-semibold text-leaf py-2"
+        >
+          View my trips →
         </button>
       </div>
 

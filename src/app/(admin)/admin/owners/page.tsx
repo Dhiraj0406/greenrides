@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Truck, ToggleLeft, ToggleRight } from "lucide-react";
+import Link from "next/link";
+import { Loader2, Truck, ToggleLeft, ToggleRight, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { AdminGate } from "@/components/admin/AdminGate";
 
@@ -14,32 +15,44 @@ interface AdminOwner {
 function OwnersContent({ token }: { token: string }) {
   const [owners, setOwners]   = useState<AdminOwner[]>([]);
   const [loading, setLoading] = useState(true);
+  const [toggling, setToggling] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/owners", { headers: { "x-admin-token": token } })
       .then((r) => r.json())
-      .then((j) => { setOwners(j.data ?? []); setLoading(false); });
+      .then((j) => { setOwners(j.data ?? []); })
+      .catch(() => toast.error("Failed to load owners"))
+      .finally(() => setLoading(false));
   }, [token]);
 
   async function toggleStatus(id: string, current: "ACTIVE" | "SUSPENDED") {
     const newStatus = current === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
-    const res = await fetch(`/api/admin/owners/${id}`, {
-      method:  "PATCH",
-      headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body:    JSON.stringify({ status: newStatus }),
-    });
-    const j = await res.json();
-    if (j.error) { toast.error(j.error); return; }
-    setOwners((prev) => prev.map((o) => o.id === id ? { ...o, status: newStatus } : o));
-    toast.success(`Owner ${newStatus === "ACTIVE" ? "activated" : "suspended"}`);
+    setToggling(id);
+    try {
+      const res = await fetch(`/api/admin/owners/${id}`, {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body:    JSON.stringify({ status: newStatus }),
+      });
+      const j = await res.json();
+      if (!res.ok || j.error) { toast.error(j.error ?? "Action failed"); return; }
+      setOwners((prev) => prev.map((o) => o.id === id ? { ...o, status: newStatus } : o));
+      toast.success(`Owner ${newStatus === "ACTIVE" ? "activated" : "suspended"}`);
+    } catch { toast.error("Network error"); }
+    finally { setToggling(null); }
   }
 
   return (
     <div className="green-container min-h-screen bg-cream pb-16">
       <header className="bg-forest px-4 pt-safe-top pb-6">
-        <div className="pt-4">
-          <p className="text-lime/60 text-xs font-mono-green uppercase tracking-widest mb-1">Green Admin</p>
-          <h1 className="font-display text-2xl text-white">Fleet Owners</h1>
+        <div className="pt-4 flex items-center gap-3">
+          <Link href="/admin" className="text-lime/70 -ml-1">
+            <ChevronLeft className="w-5 h-5" />
+          </Link>
+          <div>
+            <p className="text-lime/60 text-xs font-mono-green uppercase tracking-widest mb-1">Green Admin</p>
+            <h1 className="font-display text-2xl text-white">Fleet Owners</h1>
+          </div>
         </div>
       </header>
       <div className="px-4 mt-6">
@@ -62,7 +75,7 @@ function OwnersContent({ token }: { token: string }) {
                 </div>
               </div>
               <div className="flex flex-col items-end gap-1">
-                <button onClick={() => toggleStatus(o.id, o.status)}>
+                <button onClick={() => toggleStatus(o.id, o.status)} disabled={toggling === o.id}>
                   {o.status === "ACTIVE"
                     ? <ToggleRight className="w-7 h-7 text-leaf" />
                     : <ToggleLeft  className="w-7 h-7 text-sub" />}

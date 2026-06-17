@@ -34,7 +34,7 @@ const TIME_SLOTS = [
 type TimeSlotId = typeof TIME_SLOTS[number]["id"];
 
 function isoDate(d: Date) {
-  return d.toISOString().split("T")[0];
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
 function addDays(d: Date, n: number) {
   const r = new Date(d);

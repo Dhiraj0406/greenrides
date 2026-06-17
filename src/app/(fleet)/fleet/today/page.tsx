@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, MapPin, Clock, Phone, ArrowRight, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -44,6 +45,30 @@ interface TodayRide {
 
 // ─── Dispatch Card ───────────────────────────────────────────────────────────
 
+function ExpiryCountdown({ expiresAt, onExpired }: { expiresAt: string; onExpired: () => void }) {
+  const [secsLeft, setSecsLeft] = useState(() =>
+    Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000))
+  );
+  useEffect(() => {
+    if (secsLeft <= 0) { onExpired(); return; }
+    const id = setInterval(() => {
+      setSecsLeft((s) => {
+        if (s <= 1) { clearInterval(id); onExpired(); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const mins = Math.floor(secsLeft / 60);
+  const secs = secsLeft % 60;
+  const urgent = secsLeft <= 30;
+  return (
+    <span className={`font-mono font-bold tabular-nums ${urgent ? "text-red-500" : "text-leaf"}`}>
+      {mins}:{String(secs).padStart(2, "0")}
+    </span>
+  );
+}
+
 function DispatchCard({
   dispatch,
   token,
@@ -69,7 +94,8 @@ function DispatchCard({
       if (!res.ok) { toast.error(json.error ?? "Failed"); return; }
       toast.success(action === "accept" ? "Ride accepted!" : "Ride rejected");
       onRefresh();
-    } finally { setLoading(false); }
+    } catch { toast.error("Network error — please try again"); }
+    finally { setLoading(false); }
   }
 
   async function startTrip() {
@@ -85,7 +111,8 @@ function DispatchCard({
       if (!res.ok) { toast.error(json.error ?? "Failed to start trip"); return; }
       toast.success("Trip started!");
       onRefresh();
-    } finally { setLoading(false); }
+    } catch { toast.error("Network error — please try again"); }
+    finally { setLoading(false); }
   }
 
   async function completeTrip() {
@@ -99,7 +126,8 @@ function DispatchCard({
       if (!res.ok) { toast.error(json.error ?? "Failed to complete trip"); return; }
       toast.success("Trip completed!");
       onRefresh();
-    } finally { setLoading(false); }
+    } catch { toast.error("Network error — please try again"); }
+    finally { setLoading(false); }
   }
 
   const fare = req ? `₹${Math.round(req.fare_paise / 100)}` : "";
@@ -125,6 +153,12 @@ function DispatchCard({
           <span>·</span>
           <Clock className="w-3.5 h-3.5" />
           <span>{travelDate}</span>
+          {dispatch.expires_at && (
+            <>
+              <span>·</span>
+              <ExpiryCountdown expiresAt={dispatch.expires_at} onExpired={onRefresh} />
+            </>
+          )}
         </div>
         {req?.notes && (
           <p className="text-xs text-sub bg-cream rounded-xl px-3 py-2 mb-3">{req.notes}</p>
@@ -133,14 +167,14 @@ function DispatchCard({
           <button
             onClick={() => respond("reject")}
             disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 border border-red-300 text-red-500 font-semibold py-3 rounded-xl text-sm disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-2 border border-red-300 text-red-500 font-semibold py-4 rounded-xl text-sm disabled:opacity-50"
           >
             <XCircle className="w-4 h-4" /> Reject
           </button>
           <button
             onClick={() => respond("accept")}
             disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 bg-leaf text-white font-semibold py-3 rounded-xl text-sm disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-2 bg-leaf text-white font-semibold py-4 rounded-xl text-sm disabled:opacity-50"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
             Accept
@@ -174,11 +208,12 @@ function DispatchCard({
         <p className="text-sm text-lime/70 mb-2">Ask the rider for the 6-digit OTP to start the trip.</p>
         <div className="flex gap-2">
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
             maxLength={6}
             placeholder="Enter OTP"
             value={otpInput}
-            onChange={(e) => setOtpInput(e.target.value.slice(0, 6))}
+            onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
             className="flex-1 bg-white/10 text-white placeholder-lime/40 border border-white/20 rounded-xl px-3 py-2.5 text-sm font-mono tracking-widest text-center outline-none focus:border-lime/60"
           />
           <button
@@ -230,35 +265,72 @@ function DispatchCard({
   return null;
 }
 
+// ─── Notification sound ───────────────────────────────────────────────────────
+
+function playDispatchAlert() {
+  try {
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const notes = [523.25, 659.25, 783.99]; // C5 E5 G5 — ascending major chord
+    notes.forEach((freq, i) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const t = ctx.currentTime + i * 0.18;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.35, t + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+      osc.start(t);
+      osc.stop(t + 0.6);
+    });
+    setTimeout(() => ctx.close().catch(() => {}), 2500);
+  } catch {}
+  try { navigator.vibrate?.([200, 80, 200]); } catch {}
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TodayPage() {
+  const router                    = useRouter();
   const [token, setToken]         = useState("");
   const [dispatches, setDispatches] = useState<ActiveDispatch[]>([]);
   const [rides, setRides]         = useState<TodayRide[]>([]);
   const [loading, setLoading]     = useState(true);
+  const loadedOnce   = useRef(false);
+  const prevPending  = useRef(0);
 
   const fetchDispatches = useCallback(async (accessToken: string) => {
-    const res  = await fetch("/api/fleet/dispatches", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const json = await res.json();
-    setDispatches(json.data ?? []);
+    try {
+      const res  = await fetch("/api/fleet/dispatches", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const json = await res.json();
+      setDispatches(json.data ?? []);
+    } catch { /* non-fatal — dispatches will remain stale until next poll */ }
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) return;
-      const t = session.access_token;
-      setToken(t);
-      const today = new Date().toISOString().split("T")[0];
-      Promise.all([
-        fetchDispatches(t),
-        fetch(`/api/rides/driver?date=${today}`, { headers: { Authorization: `Bearer ${t}` } })
-          .then((r) => r.json())
-          .then((j) => setRides(j.data ?? [])),
-      ]).finally(() => setLoading(false));
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!session) { setLoading(false); router.replace("/fleet/login"); return; }
+        const t = session.access_token;
+        setToken(t);
+        const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+        Promise.all([
+          fetchDispatches(t),
+          fetch(`/api/rides/driver?date=${today}`, { headers: { Authorization: `Bearer ${t}` } })
+            .then((r) => r.json())
+            .then((j) => setRides(j.data ?? []))
+            .catch(() => toast.error("Failed to load today's rides")),
+        ]).finally(() => setLoading(false));
+      })
+      .catch(() => setLoading(false));
   }, [fetchDispatches]);
 
   // Poll dispatches every 15s while there's an active one
@@ -302,8 +374,22 @@ export default function TodayPage() {
     return () => clearInterval(interval);
   }, [dispatches, token]);
 
+  // Play alert when a new dispatch arrives after initial load
   const pendingDispatches  = dispatches.filter((d) => d.status === "PENDING");
   const acceptedDispatches = dispatches.filter((d) => d.status === "ACCEPTED");
+
+  useEffect(() => {
+    if (loading) return;
+    if (!loadedOnce.current) {
+      loadedOnce.current = true;
+      prevPending.current = pendingDispatches.length;
+      return;
+    }
+    if (pendingDispatches.length > prevPending.current) {
+      playDispatchAlert();
+    }
+    prevPending.current = pendingDispatches.length;
+  }, [pendingDispatches.length, loading]);
 
   return (
     <div className="px-4 py-6">

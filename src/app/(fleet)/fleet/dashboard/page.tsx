@@ -31,30 +31,39 @@ function StatCard({ icon: Icon, label, value, href }: {
 export default function OwnerDashboardPage() {
   const [data, setData]       = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) return;
-      const headers = { Authorization: `Bearer ${session.access_token}` };
-      const [vehiclesRes, earningsRes] = await Promise.all([
-        fetch("/api/fleet/vehicles", { headers }).then((r) => r.json()),
-        fetch("/api/fleet/earnings",  { headers }).then((r) => r.json()),
-      ]);
-      const vehicles = vehiclesRes.data ?? [];
-      setData({
-        vehicles: { total: vehicles.length, active: vehicles.filter((v: { active: boolean }) => v.active).length },
-        drivers:  vehicles.filter((v: { driver_id: string | null }) => v.driver_id).length,
-        earnings: earningsRes.data ?? { totalEarned: 0 },
-      });
-      setLoading(false);
-    });
+      if (!session) { setLoading(false); return; }
+      try {
+        const headers = { Authorization: `Bearer ${session.access_token}` };
+        const [vehiclesRes, earningsRes] = await Promise.all([
+          fetch("/api/fleet/vehicles", { headers }).then((r) => r.json()),
+          fetch("/api/fleet/earnings",  { headers }).then((r) => r.json()),
+        ]);
+        const vehicles = vehiclesRes.data ?? [];
+        setData({
+          vehicles: { total: vehicles.length, active: vehicles.filter((v: { active: boolean }) => v.active).length },
+          drivers:  vehicles.filter((v: { driver_id: string | null }) => v.driver_id).length,
+          earnings: earningsRes.data ?? { totalEarned: 0 },
+        });
+      } catch { setLoadError(true); }
+      finally { setLoading(false); }
+    }).catch(() => { setLoadError(true); setLoading(false); });
   }, []);
 
   return (
     <div className="px-4 py-6">
       <h2 className="font-display text-xl text-forest mb-4">Owner Dashboard</h2>
       {loading && <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-leaf" /></div>}
-      {!loading && data && (
+      {!loading && loadError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
+          <p className="text-red-500 text-sm">Failed to load dashboard data.</p>
+          <button onClick={() => window.location.reload()} className="mt-2 text-xs text-red-400 underline">Retry</button>
+        </div>
+      )}
+      {!loading && !loadError && data && (
         <div className="grid grid-cols-2 gap-3">
           <StatCard icon={Truck}      label="Total Vehicles"  value={data.vehicles.total}  href="/fleet/vehicles" />
           <StatCard icon={Truck}      label="Active Vehicles" value={data.vehicles.active} href="/fleet/vehicles" />

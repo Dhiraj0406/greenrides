@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getAdminClient } from "@/lib/supabase";
 
 function isAdmin(req: NextRequest) {
@@ -14,44 +13,50 @@ export async function GET(req: NextRequest) {
   const url    = new URL(req.url);
   const status = url.searchParams.get("status") ?? undefined;
 
-  const docs = await prisma.document.findMany({
-    where:   status ? { status: status as "PENDING" | "APPROVED" | "REJECTED" } : undefined,
-    orderBy: { created_at: "desc" },
-  });
+  try {
+    const db = getAdminClient();
+    let query = db
+      .from("Document")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-  if (docs.length === 0) return Response.json({ data: [], error: null });
+    if (status) query = query.eq("status", status);
 
-  // Generate 1-hour signed URLs so admin can preview each file
-  const db     = getAdminClient();
-  const paths  = docs.map((d) => ({ name: d.storage_path }));
-  const { data: signedUrls } = await db.storage
-    .from("kyc-documents")
-    .createSignedUrls(paths.map((p) => p.name), 3600);
+    const { data: docs, error } = await query;
+    if (error) throw error;
+    if (!docs?.length) return Response.json({ data: [], error: null });
 
-  const urlMap = new Map(
-    (signedUrls ?? [])
-      .filter((s): s is { path: string; signedUrl: string; error: null } => s.path !== null && s.signedUrl !== null)
-      .map((s) => [s.path, s.signedUrl])
-  );
+    // Generate 1-hour signed URLs so admin can preview each file
+    const { data: signedUrls } = await db.storage
+      .from("kyc-documents")
+      .createSignedUrls(docs.map((d) => d.storage_path), 3600);
 
-  // Enrich with uploader name/phone from User table (DRIVER entity_id = user_id)
-  const userIds = docs
-    .filter((d) => d.entity_type === "DRIVER")
-    .map((d) => d.entity_id);
+    const urlMap = new Map(
+      (signedUrls ?? [])
+        .filter((s): s is { path: string; signedUrl: string; error: null } => !!s.path && !!s.signedUrl)
+        .map((s) => [s.path, s.signedUrl])
+    );
 
-  const users = userIds.length
-    ? await prisma.user.findMany({
-        where:  { id: { in: userIds } },
-        select: { id: true, name: true, phone: true },
-      })
-    : [];
-  const userMap = new Map(users.map((u) => [u.id, u]));
+    // Enrich with uploader name/phone for DRIVER documents
+    const userIds = docs.filter((d) => d.entity_type === "DRIVER").map((d) => d.entity_id);
+    let userMap = new Map<string, { id: string; name: string | null; phone: string }>();
+    if (userIds.length) {
+      const { data: users } = await db
+        .from("User")
+        .select("id, name, phone")
+        .in("id", userIds);
+      userMap = new Map((users ?? []).map((u) => [u.id, u]));
+    }
 
-  const data = docs.map((d) => ({
-    ...d,
-    signed_url: urlMap.get(d.storage_path) ?? null,
-    uploader:   d.entity_type === "DRIVER" ? (userMap.get(d.entity_id) ?? null) : null,
-  }));
+    const data = docs.map((d) => ({
+      ...d,
+      signed_url: urlMap.get(d.storage_path) ?? null,
+      uploader:   d.entity_type === "DRIVER" ? (userMap.get(d.entity_id) ?? null) : null,
+    }));
 
-  return Response.json({ data, error: null });
+    return Response.json({ data, error: null });
+  } catch (err) {
+    console.error("[admin/documents GET]", err);
+    return Response.json({ data: null, error: "Failed to fetch documents" }, { status: 500 });
+  }
 }

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { getAdminClient } from "@/lib/supabase";
 
 function isAdmin(req: NextRequest) {
   return req.headers.get("x-admin-token") === process.env.ADMIN_SECRET;
@@ -38,21 +38,26 @@ export async function PATCH(
 
   const { status, driver_name, driver_phone, eta_min } = parsed.data;
 
-  const data: Record<string, unknown> = { status };
+  const updateData: Record<string, unknown> = { status };
   if (status === "CONFIRMED") {
-    if (driver_name  !== undefined) data.driver_name  = driver_name;
-    if (driver_phone !== undefined) data.driver_phone = driver_phone;
-    if (eta_min      !== undefined) data.eta_min      = eta_min;
+    if (driver_name  !== undefined) updateData.driver_name  = driver_name;
+    if (driver_phone !== undefined) updateData.driver_phone = driver_phone;
+    if (eta_min      !== undefined) updateData.eta_min      = eta_min;
   }
 
   try {
-    const updated = await prisma.rideRequest.update({
-      where: { id },
-      data,
-    });
-    return Response.json({ data: updated, error: null });
+    const db = getAdminClient();
+    const { data, error } = await db
+      .from("RideRequest")
+      .update(updateData)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return Response.json({ data, error: null });
   } catch (err) {
-    console.error("[admin/requests PATCH]", err);
+    console.error("[admin/requests/:id PATCH]", err);
     return Response.json({ data: null, error: "Not found or update failed" }, { status: 404 });
   }
 }

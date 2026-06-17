@@ -15,6 +15,7 @@ const schema = z.object({
   vehicle_number: z.string().min(4, "Enter vehicle number"),
   license_number: z.string().min(4, "Enter licence number"),
   telegram_code:  z.string().length(6, "Code must be 6 digits"),
+  agreed:         z.literal(true, { message: "You must agree to the Driver Agreement" }),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -123,6 +124,23 @@ export function RegisterForm() {
             {errors.license_number && <p className={errorClass}>{errors.license_number.message}</p>}
           </div>
         </div>
+      </div>
+
+      <div className="border-t border-border pt-4">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            {...register("agreed")}
+            className="mt-0.5 w-4 h-4 accent-leaf flex-shrink-0"
+          />
+          <span className="text-xs text-sub leading-relaxed">
+            I have read and agree to the{" "}
+            <a href="/driver-agreement" target="_blank" className="text-leaf underline">Driver Agreement</a>,{" "}
+            <a href="/terms" target="_blank" className="text-leaf underline">Terms of Service</a>, and{" "}
+            <a href="/privacy" target="_blank" className="text-leaf underline">Privacy Policy</a>.
+          </span>
+        </label>
+        {errors.agreed && <p className={errorClass}>{errors.agreed.message}</p>}
       </div>
 
       <button

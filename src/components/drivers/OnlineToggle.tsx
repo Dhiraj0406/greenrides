@@ -20,7 +20,7 @@ export function OnlineToggle({ initialValue, onChanged }: Props) {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) { setLoading(false); return; }
 
       const next = !isOnline;
       const res  = await fetch("/api/drivers/me", {

@@ -9,15 +9,13 @@ type DayEntry = { start: string; end: string } | "rest";
 type Availability = Record<string, DayEntry>;
 
 function toDateKey(date: Date): string {
-  return date.toISOString().split("T")[0];
+  return date.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
 
 function getRequiredKeys(): string[] {
   const keys: string[] = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
   for (let i = 0; i < 7; i++) {
-    const d = new Date(today);
+    const d = new Date();
     d.setDate(d.getDate() + i);
     keys.push(toDateKey(d));
   }

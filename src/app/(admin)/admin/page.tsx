@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Loader2, ClipboardList, Users, IndianRupee, TrendingUp, Tag, CheckSquare, Truck, Wallet, ShieldCheck, SlidersHorizontal, Car } from "lucide-react";
+import { toast } from "sonner";
 import { AdminGate } from "@/components/admin/AdminGate";
 
 interface Stats {
@@ -36,6 +37,7 @@ function Dashboard({ token }: { token: string }) {
             .reduce((sum: number, r) => sum + r.fare_paise, 0),
         });
       })
+      .catch(() => toast.error("Failed to load dashboard stats"))
       .finally(() => setLoading(false));
   }, [token]);
 
@@ -123,6 +125,14 @@ function Dashboard({ token }: { token: string }) {
                 <div className="flex items-center gap-3">
                   <Truck className="w-5 h-5 text-leaf" />
                   <span className="text-sm font-semibold text-text">Fleet Owners</span>
+                </div>
+                <span className="text-sub text-sm">→</span>
+              </Link>
+              <Link href="/admin/vehicles"
+                className="flex items-center justify-between bg-white border border-border rounded-2xl px-4 py-4 hover:border-leaf/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Car className="w-5 h-5 text-leaf" />
+                  <span className="text-sm font-semibold text-text">Vehicles & Photos</span>
                 </div>
                 <span className="text-sub text-sm">→</span>
               </Link>

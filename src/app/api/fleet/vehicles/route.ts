@@ -1,14 +1,19 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { getAdminClient } from "@/lib/supabase";
 
 async function getOwner(req: NextRequest) {
   const token = (req.headers.get("authorization") ?? "").replace("Bearer ", "");
   if (!token) return null;
-  const { data } = await getAdminClient().auth.getUser(token);
+  const db = getAdminClient();
+  const { data } = await db.auth.getUser(token);
   if (!data.user) return null;
-  return prisma.owner.findUnique({ where: { user_id: data.user.id } });
+  const { data: owner } = await db
+    .from("Owner")
+    .select("id, status")
+    .eq("user_id", data.user.id)
+    .maybeSingle();
+  return owner;
 }
 
 const createSchema = z.object({
@@ -22,12 +27,20 @@ export async function GET(req: NextRequest) {
   const owner = await getOwner(req);
   if (!owner) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
-  const vehicles = await prisma.vehicle.findMany({
-    where:   { owner_id: owner.id },
-    include: { driver: { include: { user: { select: { name: true, phone: true } } } } },
-    orderBy: { created_at: "desc" },
-  });
-  return Response.json({ data: vehicles, error: null });
+  const db = getAdminClient();
+  try {
+    const { data: vehicles, error } = await db
+      .from("Vehicle")
+      .select("*")
+      .eq("owner_id", owner.id)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return Response.json({ data: vehicles ?? [], error: null });
+  } catch (err) {
+    console.error("[fleet/vehicles GET]", err);
+    return Response.json({ data: null, error: "Failed to fetch vehicles" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -43,16 +56,22 @@ export async function POST(req: NextRequest) {
     return Response.json({ data: null, error: parsed.error.issues[0].message }, { status: 400 });
   }
 
+  const db = getAdminClient();
   try {
-    const vehicle = await prisma.vehicle.create({
-      data: { ...parsed.data, owner_id: owner.id },
-    });
-    return Response.json({ data: vehicle, error: null }, { status: 201 });
-  } catch (err: unknown) {
-    const e = err as { code?: string };
-    if (e.code === "P2002") {
-      return Response.json({ data: null, error: "Vehicle number already registered" }, { status: 409 });
+    const { data: vehicle, error } = await db
+      .from("Vehicle")
+      .insert({ ...parsed.data, owner_id: owner.id })
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === "23505") {
+        return Response.json({ data: null, error: "Vehicle number already registered" }, { status: 409 });
+      }
+      throw error;
     }
+    return Response.json({ data: vehicle, error: null }, { status: 201 });
+  } catch (err) {
     console.error("[fleet/vehicles POST]", err);
     return Response.json({ data: null, error: "Failed to create vehicle" }, { status: 500 });
   }

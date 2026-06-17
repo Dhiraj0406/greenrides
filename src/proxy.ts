@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/auth-helpers-nextjs";
 
-const RIDER_PROTECTED = ["/bookings", "/profile"];
+const RIDER_PROTECTED = ["/bookings", "/profile", "/tracker"];
 
 async function getSupabaseUser(req: NextRequest, res: NextResponse) {
   const supabase = createServerClient(
@@ -29,17 +29,34 @@ export async function proxy(req: NextRequest) {
 
   // ── Admin subdomain ──────────────────────────────────
   if (host.startsWith("admin.")) {
+    if (pathname.startsWith("/api/")) return NextResponse.next();
+    // Client-side nav from admin pages already carries the /admin/* prefix — skip rewrite
+    if (pathname.startsWith("/admin/") || pathname === "/admin") return NextResponse.next();
     const url = req.nextUrl.clone();
     url.pathname = `/admin${pathname === "/" ? "" : pathname}`;
     return NextResponse.rewrite(url);
   }
 
   // ── Driver / Owner subdomains ────────────────────────
-  if (host.startsWith("driver.") || host.startsWith("owner.")) {
+  if (host.startsWith("driver.") || host.startsWith("owner.") || host.startsWith("fleet.")) {
+    // API routes pass through unmodified
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.next();
+    }
+
+    // Client-side navigation (router.push/replace) from fleet pages arrives with
+    // the full /fleet/* prefix already present. Skip the rewrite to avoid
+    // double-prefixing (/fleet/today → /fleet/fleet/today → 404).
+    // Auth is enforced client-side in each page and at the API layer (Bearer token).
+    if (pathname.startsWith("/fleet/") || pathname === "/fleet") {
+      return NextResponse.next();
+    }
+
+    // First-load: rewrite bare subdomain paths to /fleet/*
     const url = req.nextUrl.clone();
     url.pathname = `/fleet${pathname === "/" ? "" : pathname}`;
 
-    // Register, pending, and login pages are public
+    // Public pages — no auth needed
     if (pathname === "/register" || pathname === "/pending" || pathname === "/login") {
       return NextResponse.rewrite(url);
     }

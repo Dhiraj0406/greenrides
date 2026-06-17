@@ -17,28 +17,36 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) return;
+      if (!session) { setLoading(false); return; }
       setToken(session.access_token);
       fetch("/api/fleet/notifications", {
         headers: { Authorization: `Bearer ${session.access_token}` },
       })
         .then((r) => r.json())
-        .then((j) => { setNotifs(j.data?.notifications ?? []); setLoading(false); });
-    });
+        .then((j) => { if (j.error) { toast.error(j.error); } else { setNotifs(j.data?.notifications ?? []); } })
+        .catch(() => toast.error("Failed to load notifications"))
+        .finally(() => setLoading(false));
+    }).catch(() => setLoading(false));
   }, []);
 
+  const [marking, setMarking] = useState(false);
+
   async function markAllRead() {
-    if (!token) return;
+    if (!token || marking) return;
     const unreadIds = notifs.filter((n) => !n.read).map((n) => n.id);
     if (unreadIds.length === 0) return;
-    const res = await fetch("/api/fleet/notifications", {
-      method:  "PATCH",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body:    JSON.stringify({ ids: unreadIds }),
-    });
-    const j = await res.json();
-    if (j.error) { toast.error(j.error); return; }
-    setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
+    setMarking(true);
+    try {
+      const res = await fetch("/api/fleet/notifications", {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body:    JSON.stringify({ ids: unreadIds }),
+      });
+      const j = await res.json();
+      if (!res.ok || j.error) { toast.error(j.error ?? "Failed to mark read"); return; }
+      setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch { toast.error("Network error"); }
+    finally { setMarking(false); }
   }
 
   const unreadCount = notifs.filter((n) => !n.read).length;
@@ -48,9 +56,9 @@ export default function NotificationsPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-display text-xl text-forest">Alerts</h2>
         {unreadCount > 0 && (
-          <button onClick={markAllRead}
-            className="flex items-center gap-1 text-xs text-leaf font-semibold">
-            <CheckCheck className="w-4 h-4" />
+          <button onClick={markAllRead} disabled={marking}
+            className="flex items-center gap-1 text-xs text-leaf font-semibold disabled:opacity-50">
+            {marking ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCheck className="w-4 h-4" />}
             Mark all read
           </button>
         )}

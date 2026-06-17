@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getAdminClient } from "@/lib/supabase";
 
 function isAdmin(req: NextRequest) {
   return req.headers.get("x-admin-token") === process.env.ADMIN_SECRET;
@@ -8,6 +8,17 @@ function isAdmin(req: NextRequest) {
 export async function GET(req: NextRequest) {
   if (!isAdmin(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-  const flags = await prisma.appRemoteConfig.findMany({ orderBy: [{ module_scope: "asc" }, { key: "asc" }] });
-  return Response.json({ data: flags, error: null });
+  try {
+    const db = getAdminClient();
+    const { data, error } = await db
+      .from("app_remote_config")
+      .select("*")
+      .order("module_scope", { ascending: true });
+
+    if (error) throw error;
+    return Response.json({ data, error: null });
+  } catch (err) {
+    console.error("[admin/config GET]", err);
+    return Response.json({ data: null, error: "Failed to fetch config" }, { status: 500 });
+  }
 }

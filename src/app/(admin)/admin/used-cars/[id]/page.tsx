@@ -48,19 +48,17 @@ function DetailContent({ token }: { token: string }) {
   const [newStatus, setNewStatus]     = useState<string>("");
 
   useEffect(() => {
+    const headers = { "x-admin-token": token };
     Promise.all([
-      fetch(`/api/admin/used-cars`,   { headers: { "x-admin-token": token } }),
-      fetch(`/api/admin/used-cars/${id}/inquiries`, { headers: { "x-admin-token": token } }),
-    ]).then(async ([listRes, inqRes]) => {
-      // Fetch single listing from list (no dedicated single-listing admin endpoint)
-      const listJson = await listRes.json();
-      const found = (listJson.data ?? []).find((l: Listing) => l.id === id);
-      setListing(found ?? null);
+      fetch(`/api/admin/used-cars/${id}`,           { headers }).then((r) => r.json()),
+      fetch(`/api/admin/used-cars/${id}/inquiries`, { headers }).then((r) => r.json()),
+    ]).then(([listJson, inqJson]) => {
+      const found = listJson.data ?? null;
+      setListing(found);
       setNewStatus(found?.status ?? "");
-
-      const inqJson = await inqRes.json();
       setInquiries(inqJson.data ?? []);
-    }).finally(() => setLoading(false));
+    }).catch(() => toast.error("Failed to load listing"))
+      .finally(() => setLoading(false));
   }, [id, token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function saveStatus() {
@@ -86,8 +84,14 @@ function DetailContent({ token }: { token: string }) {
   );
 
   if (!listing) return (
-    <div className="green-container min-h-screen bg-cream flex items-center justify-center">
+    <div className="green-container min-h-screen bg-cream flex flex-col items-center justify-center gap-4">
       <p className="text-sub text-sm">Listing not found.</p>
+      <button
+        onClick={() => router.push("/admin/used-cars")}
+        className="flex items-center gap-1 text-sm text-leaf font-semibold"
+      >
+        <ChevronLeft className="w-4 h-4" /> Back to listings
+      </button>
     </div>
   );
 

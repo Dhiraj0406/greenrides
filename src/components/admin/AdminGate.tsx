@@ -10,11 +10,12 @@ interface Props {
 }
 
 export function AdminGate({ children }: Props) {
-  const [token, setToken]     = useState<string | null>(null);
-  const [pin, setPin]         = useState("");
-  const [loading, setLoading] = useState(true);
+  const [token, setToken]       = useState<string | null>(null);
+  const [phone, setPhone]       = useState("");
+  const [otp, setOtp]           = useState("");
+  const [loading, setLoading]   = useState(true);
   const [checking, setChecking] = useState(false);
-  const [error, setError]     = useState("");
+  const [error, setError]       = useState("");
 
   useEffect(() => {
     const stored = sessionStorage.getItem(STORAGE_KEY);
@@ -23,7 +24,7 @@ export function AdminGate({ children }: Props) {
   }, []);
 
   async function handleLogin() {
-    if (!pin.trim()) return;
+    if (!phone.trim() || !otp.trim()) return;
     setChecking(true);
     setError("");
 
@@ -31,10 +32,10 @@ export function AdminGate({ children }: Props) {
       const res  = await fetch("/api/admin/auth", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin: pin.trim() }),
+        body: JSON.stringify({ phone: phone.trim(), otp: otp.trim() }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Wrong PIN");
+      if (!res.ok) throw new Error(json.error ?? "Wrong credentials");
       sessionStorage.setItem(STORAGE_KEY, json.token);
       setToken(json.token);
     } catch (err) {
@@ -60,14 +61,24 @@ export function AdminGate({ children }: Props) {
             <Lock className="w-6 h-6 text-leaf" />
           </div>
           <h1 className="font-display text-2xl text-forest mb-1">Admin Access</h1>
-          <p className="text-sub text-sm mb-6">Enter your admin PIN to continue</p>
+          <p className="text-sub text-sm mb-6">Enter your phone and OTP to continue</p>
 
           <input
-            type="password"
-            value={pin}
-            onChange={(e) => { setPin(e.target.value); setError(""); }}
+            type="tel"
+            value={phone}
+            onChange={(e) => { setPhone(e.target.value); setError(""); }}
+            placeholder="Phone number"
+            className="w-full bg-warm border border-border rounded-xl px-4 py-3 text-sm
+                       text-text outline-none focus:border-leaf focus:ring-1 focus:ring-leaf/30 mb-3"
+          />
+
+          <input
+            type="text"
+            inputMode="numeric"
+            value={otp}
+            onChange={(e) => { setOtp(e.target.value); setError(""); }}
             onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-            placeholder="Admin PIN"
+            placeholder="OTP"
             className="w-full bg-warm border border-border rounded-xl px-4 py-3 text-sm
                        text-text outline-none focus:border-leaf focus:ring-1 focus:ring-leaf/30 mb-3"
           />
@@ -76,7 +87,7 @@ export function AdminGate({ children }: Props) {
 
           <button
             onClick={handleLogin}
-            disabled={checking || !pin.trim()}
+            disabled={checking || !phone.trim() || !otp.trim()}
             className="w-full bg-leaf disabled:opacity-50 text-white font-semibold
                        py-3.5 rounded-xl flex items-center justify-center gap-2 text-sm"
           >

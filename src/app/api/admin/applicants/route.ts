@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getAdminClient } from "@/lib/supabase";
 
 function isAdmin(req: NextRequest) {
@@ -10,20 +9,19 @@ export async function GET(req: NextRequest) {
   if (!isAdmin(req)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   try {
-    const [pendingDrivers, pendingOwners] = await Promise.all([
-      prisma.driverProfile.findMany({
-        where:   { is_approved: false },
-        include: { user: { select: { id: true, name: true, phone: true } } },
-        orderBy: { created_at: "desc" },
-      }),
-      prisma.owner.findMany({
-        where:   { status: "PENDING" },
-        include: { user: { select: { id: true, name: true, phone: true } } },
-        orderBy: { created_at: "desc" },
-      }),
+    const db = getAdminClient();
+    const [{ data: drivers }, { data: owners }] = await Promise.all([
+      db.from("DriverProfile")
+        .select("*, user:user_id(id, name, phone)")
+        .eq("is_approved", false)
+        .order("created_at", { ascending: false }),
+      db.from("Owner")
+        .select("*, user:user_id(id, name, phone)")
+        .eq("status", "PENDING")
+        .order("created_at", { ascending: false }),
     ]);
 
-    return Response.json({ data: { drivers: pendingDrivers, owners: pendingOwners }, error: null });
+    return Response.json({ data: { drivers: drivers ?? [], owners: owners ?? [] }, error: null });
   } catch (err) {
     console.error("[admin/applicants GET]", err);
     return Response.json({ data: null, error: "Failed to fetch" }, { status: 500 });
@@ -48,7 +46,7 @@ export async function PATCH(req: NextRequest) {
     return Response.json({ data: null, error: "Invalid applicant_type" }, { status: 400 });
   }
 
-  const adminClient = getAdminClient();
+  const db = getAdminClient();
 
   try {
     if (action === "approve") {
@@ -57,37 +55,34 @@ export async function PATCH(req: NextRequest) {
       const roles: string[] = [];
 
       if (isDriver) {
-        await prisma.driverProfile.update({
-          where: { user_id },
-          data:  { is_approved: true, approved_at: new Date() },
-        });
-        await prisma.user.update({ where: { id: user_id }, data: { role: "DRIVER" } });
+        await db.from("DriverProfile")
+          .update({ is_approved: true, approved_at: new Date().toISOString() })
+          .eq("user_id", user_id);
+        await db.from("User").update({ role: "DRIVER" }).eq("id", user_id);
         roles.push("driver");
       }
 
       if (isOwner) {
-        await prisma.owner.update({ where: { user_id }, data: { status: "ACTIVE" } });
+        await db.from("Owner").update({ status: "ACTIVE" }).eq("user_id", user_id);
         if (!roles.includes("driver")) {
-          await prisma.user.update({ where: { id: user_id }, data: { role: "OWNER" } });
+          await db.from("User").update({ role: "OWNER" }).eq("id", user_id);
         }
         roles.push("owner");
       }
 
-      await adminClient.auth.admin.updateUserById(user_id, {
+      await db.auth.admin.updateUserById(user_id, {
         app_metadata: { roles, fleet_status: "active" },
       });
 
-      const user = await prisma.user.findUnique({ where: { id: user_id }, select: { name: true } });
-      await prisma.notification.create({
-        data: {
-          user_id,
-          type:  "application_approved",
-          title: "Application Approved!",
-          body:  `Welcome to Green Rides fleet, ${user?.name ?? ""}. You can now log in.`,
-        },
+      const { data: user } = await db.from("User").select("name").eq("id", user_id).single();
+      await db.from("Notification").insert({
+        user_id,
+        type:  "application_approved",
+        title: "Application Approved!",
+        body:  `Welcome to Green Rides fleet, ${user?.name ?? ""}. You can now log in.`,
       });
     } else {
-      await adminClient.auth.admin.updateUserById(user_id, {
+      await db.auth.admin.updateUserById(user_id, {
         app_metadata: { fleet_status: "rejected" },
       });
     }

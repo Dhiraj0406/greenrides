@@ -17,9 +17,10 @@ interface Props {
   from:        string;
   to:          string;
   fareRupees:  number;
+  date?:       string;
 }
 
-export function DriverSheet({ open, onClose, from, to, fareRupees }: Props) {
+export function DriverSheet({ open, onClose, from, to, fareRupees, date }: Props) {
   const router = useRouter();
   const [rides, setRides] = useState<RideWithDriver[]>([]);
   const [loading, setLoading] = useState(false);
@@ -46,14 +47,14 @@ export function DriverSheet({ open, onClose, from, to, fareRupees }: Props) {
     setLoading(true);
     track.driverSheetOpened();
 
-    fetch(`/api/rides?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${todayISO()}`)
+    fetch(`/api/rides?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${date ?? todayISO()}`)
       .then((r) => r.json())
       .then((j) => {
         setRides(j.data ?? []);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
-  }, [open, from, to, onClose, router]);
+      .catch(() => { toast.error("Failed to load rides"); setLoading(false); });
+  }, [open, from, to, date, onClose, router]);
 
   async function handleBook(ride: RideWithDriver) {
     setBooking(true);
@@ -74,10 +75,11 @@ export function DriverSheet({ open, onClose, from, to, fareRupees }: Props) {
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         },
         body: JSON.stringify({
-          ride_id:      ride.id,
-          rider_id:     user.id,
-          seats:        1,
-          pickup_point: ride.pickup_points[0] ?? from,
+          ride_id:        ride.id,
+          rider_id:       user.id,
+          seats:          1,
+          pickup_point:   ride.pickup_points[0] ?? from,
+          payment_method: "cash",
           ...(forSomeoneElse && travelerName ? { traveler_name: travelerName, traveler_phone: travelerPhone || null } : {}),
         }),
       });
@@ -86,46 +88,14 @@ export function DriverSheet({ open, onClose, from, to, fareRupees }: Props) {
       if (json.error) throw new Error(json.error);
 
       setSelectedRide(ride);
-      setBookingState(json.data.booking_id, json.data.razorpay_order_id, json.data.amount_paise);
-      initiateRazorpay(json.data);
+      track.bookingConfirmed(json.data.booking_id, Math.round(json.data.amount_paise / 100));
+      router.push(`/confirm?booking=${json.data.booking_id}`);
     } catch (err) {
       console.error(err);
       toast.error("Booking failed. Please try again.");
     } finally {
       setBooking(false);
     }
-  }
-
-  function initiateRazorpay(data: {
-    razorpay_order_id: string;
-    amount_paise: number;
-    booking_id: string;
-  }) {
-    const options = {
-      key:         process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-      amount:      data.amount_paise,
-      currency:    "INR",
-      name:        "Green Rides",
-      description: `${from} → ${to}`,
-      order_id:    data.razorpay_order_id,
-      theme:       { color: "#52b788" },
-      handler: function (response: {
-        razorpay_order_id: string;
-        razorpay_payment_id: string;
-        razorpay_signature: string;
-      }) {
-        track.bookingConfirmed(data.booking_id, Math.round(data.amount_paise / 100));
-        window.location.href = `/confirm?booking=${data.booking_id}`;
-      },
-    };
-
-    // @ts-expect-error Razorpay loaded via script
-    const rzp = new window.Razorpay(options);
-    rzp.on("payment.failed", () => {
-      track.paymentAbandoned(data.booking_id);
-      toast.error("Payment failed. Please try again.");
-    });
-    rzp.open();
   }
 
   const ride = rides[0] ?? null;
@@ -255,7 +225,7 @@ export function DriverSheet({ open, onClose, from, to, fareRupees }: Props) {
                 {booking ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
-                  `Book Now · Pay ₹${fareRupees}`
+                  `Book Now · Pay Cash ₹${fareRupees}`
                 )}
               </button>
             </>

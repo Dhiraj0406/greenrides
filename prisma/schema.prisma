@@ -4,9 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
 }
 
 // ─── ENUMS ───────────────────────────────────────────
@@ -365,6 +363,7 @@ model Vehicle {
   seats      Int      @default(4)
   active     Boolean  @default(true)
   driver_id  String?
+  photos     String[] @default([])
   created_at DateTime @default(now())
 
   asset_id   String?

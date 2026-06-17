@@ -3,33 +3,49 @@ import { z } from "zod";
 import { getAdminClient } from "@/lib/supabase";
 import { createClient } from "@supabase/supabase-js";
 
-const ADMIN_EMAIL = "admin@green-rides.app";
-const ADMIN_PHONE = "+919668021577";
-const body = z.object({ pin: z.string().min(1) });
+const ADMIN_EMAIL        = "admin@green-rides.app";
+const ADMIN_SUPABASE_PHONE = "+919668021577";
+
+const body = z.object({
+  pin:   z.string().optional(),
+  phone: z.string().optional(),
+  otp:   z.string().optional(),
+});
 
 export async function POST(req: NextRequest) {
-  let parsed: { pin: string };
+  // Read credentials inside the handler so they're never baked in at build time.
+  // .trim() guards against \r\n artifacts from stdin-piped env var setup on Windows.
+  const adminPhone = (process.env.ADMIN_PHONE || "").trim();
+  const adminOtp   = (process.env.ADMIN_OTP   || "").trim();
+
+  let parsed: { pin?: string; phone?: string; otp?: string };
   try {
     parsed = body.parse(await req.json());
   } catch {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const secret = process.env.ADMIN_SECRET;
-  if (!secret) return Response.json({ error: "Admin not configured" }, { status: 500 });
-  if (parsed.pin !== secret) return Response.json({ error: "Wrong PIN" }, { status: 401 });
+  const phoneMatch = !!adminPhone && parsed.phone === adminPhone && parsed.otp === adminOtp;
+  const pinSecret  = process.env.ADMIN_SECRET || "";
+  const pinMatch   = !!pinSecret && parsed.pin === pinSecret;
+
+  if (!phoneMatch && !pinMatch) {
+    return Response.json({ error: "Wrong credentials" }, { status: 401 });
+  }
+
+  const secret = pinSecret || adminOtp;
 
   try {
     const db = getAdminClient();
 
     // Ensure admin user exists
-    const { data: listData } = await db.auth.admin.listUsers({ perPage: 200 });
+    const { data: listData } = await db.auth.admin.listUsers({ perPage: 1000 });
     let adminUser = (listData?.users ?? []).find((u) => u.email === ADMIN_EMAIL);
 
     if (!adminUser) {
       const { data: newUser } = await db.auth.admin.createUser({
         email:         ADMIN_EMAIL,
-        phone:         ADMIN_PHONE,
+        phone:         ADMIN_SUPABASE_PHONE,
         email_confirm: true,
         phone_confirm: true,
       });

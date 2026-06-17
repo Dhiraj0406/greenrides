@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, CheckCircle, XCircle, User } from "lucide-react";
+import Link from "next/link";
+import { Loader2, CheckCircle, XCircle, User, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { AdminGate } from "@/components/admin/AdminGate";
 
@@ -20,6 +21,7 @@ interface Applicant {
 function ApprovalsContent({ token }: { token: string }) {
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [loading, setLoading]       = useState(true);
+  const [deciding, setDeciding]     = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/applicants", { headers: { "x-admin-token": token } })
@@ -54,34 +56,44 @@ function ApprovalsContent({ token }: { token: string }) {
           kind:    "owner" as const,
         }));
         setApplicants([...drivers, ...owners]);
-        setLoading(false);
-      });
+      })
+      .catch(() => toast.error("Failed to load applicants"))
+      .finally(() => setLoading(false));
   }, [token]);
 
   async function decide(applicant: Applicant, action: "approve" | "reject") {
-    const res = await fetch("/api/admin/applicants", {
-      method:  "PATCH",
-      headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body:    JSON.stringify({
-        user_id:        applicant.user_id,
-        action,
-        applicant_type: applicant.kind,
-      }),
-    });
-    const j = await res.json();
-    if (j.error) { toast.error(j.error); return; }
-    toast.success(action === "approve" ? "Approved!" : "Rejected");
-    setApplicants((prev) =>
-      prev.filter((a) => !(a.id === applicant.id && a.kind === applicant.kind))
-    );
+    setDeciding(applicant.id);
+    try {
+      const res = await fetch("/api/admin/applicants", {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body:    JSON.stringify({
+          user_id:        applicant.user_id,
+          action,
+          applicant_type: applicant.kind,
+        }),
+      });
+      const j = await res.json();
+      if (!res.ok || j.error) { toast.error(j.error ?? "Action failed"); return; }
+      toast.success(action === "approve" ? "Approved!" : "Rejected");
+      setApplicants((prev) =>
+        prev.filter((a) => !(a.id === applicant.id && a.kind === applicant.kind))
+      );
+    } catch { toast.error("Network error"); }
+    finally { setDeciding(null); }
   }
 
   return (
     <div className="green-container min-h-screen bg-cream pb-16">
       <header className="bg-forest px-4 pt-safe-top pb-6">
-        <div className="pt-4">
-          <p className="text-lime/60 text-xs font-mono-green uppercase tracking-widest mb-1">Green Admin</p>
-          <h1 className="font-display text-2xl text-white">Fleet Approvals</h1>
+        <div className="pt-4 flex items-center gap-3">
+          <Link href="/admin" className="text-lime/70 -ml-1">
+            <ChevronLeft className="w-5 h-5" />
+          </Link>
+          <div>
+            <p className="text-lime/60 text-xs font-mono-green uppercase tracking-widest mb-1">Green Admin</p>
+            <h1 className="font-display text-2xl text-white">Fleet Approvals</h1>
+          </div>
         </div>
       </header>
       <div className="px-4 mt-6">
@@ -111,12 +123,12 @@ function ApprovalsContent({ token }: { token: string }) {
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => decide(a, "approve")}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-leaf/10 text-leaf text-sm font-semibold">
+              <button onClick={() => decide(a, "approve")} disabled={deciding === a.id}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-leaf/10 text-leaf text-sm font-semibold disabled:opacity-60">
                 <CheckCircle className="w-4 h-4" /> Approve
               </button>
-              <button onClick={() => decide(a, "reject")}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-red-50 text-red-500 text-sm font-semibold">
+              <button onClick={() => decide(a, "reject")} disabled={deciding === a.id}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-red-50 text-red-500 text-sm font-semibold disabled:opacity-60">
                 <XCircle className="w-4 h-4" /> Reject
               </button>
             </div>

@@ -68,7 +68,7 @@ export default function DriversLayout({ children }: { children: React.ReactNode 
       if (!profile) { router.replace("/drivers/register"); return; }
       if (!profile.is_approved) { router.replace("/drivers/pending"); return; }
       setReady(true);
-    });
+    }).catch(() => setReady(true));
   }, [pathname, router]);
 
   if (!ready) return (

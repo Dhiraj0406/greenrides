@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Loader2, ChevronLeft, Save, ArrowRight } from "lucide-react";
+import { toast } from "sonner";
 import { AdminGate } from "@/components/admin/AdminGate";
 
 interface RouteRow {
@@ -23,7 +24,7 @@ function FaresContent({ token }: { token: string }) {
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
-    fetch("/api/fares")
+    fetch("/api/fares", { headers: { "x-admin-token": token } })
       .then((r) => r.json())
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .then((j) => {
@@ -42,8 +43,9 @@ function FaresContent({ token }: { token: string }) {
           }))
         );
       })
+      .catch(() => toast.error("Failed to load fares"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [token]);
 
   function handleChange(id: string, rupees: number) {
     setRows((prev) =>
@@ -62,19 +64,19 @@ function FaresContent({ token }: { token: string }) {
     setRows((prev) => prev.map((r) => r.id === id ? { ...r, saving: true } : r));
 
     const paise = row.edited * 100;
-    await fetch("/api/fares", {
-      method:  "PUT",
-      headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ routes: [{ id, base_fare: paise }] }),
-    });
-
-    setRows((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? { ...r, base_fare: paise, dirty: false, saving: false }
-          : r
-      )
-    );
+    try {
+      const res = await fetch("/api/fares", {
+        method:  "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({ routes: [{ id, base_fare: paise }] }),
+      });
+      if (!res.ok) { const j = await res.json(); toast.error(j.error ?? "Failed to save"); return; }
+      toast.success("Fare updated");
+      setRows((prev) => prev.map((r) => r.id === id ? { ...r, base_fare: paise, dirty: false } : r));
+    } catch { toast.error("Network error"); }
+    finally {
+      setRows((prev) => prev.map((r) => r.id === id ? { ...r, saving: false } : r));
+    }
   }
 
   const visible = rows.filter(

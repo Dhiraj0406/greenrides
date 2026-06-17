@@ -2,7 +2,6 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { getAdminClient } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
-import { prisma } from "@/lib/prisma";
 import { getFlag } from "@/modules/platform/db";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -30,21 +29,30 @@ export async function GET(req: NextRequest) {
 
     if (fetchErr) {
       console.error("[requests GET]", fetchErr);
-      return Response.json({ data: [], error: null });
+      return Response.json({ data: null, error: fetchErr.message }, { status: 500 });
     }
 
     const rows = requests ?? [];
     const ids = rows.map((r: { id: string }) => r.id);
-    const ratedIds = ids.length
-      ? await prisma.rating.findMany({ where: { request_id: { in: ids }, rater_id: user.id }, select: { request_id: true } })
-      : [];
-    const ratedSet = new Set(ratedIds.map((r: { request_id: string | null }) => r.request_id));
+
+    let ratedSet = new Set<string | null>();
+    try {
+      if (ids.length) {
+        const rdb = getAdminClient();
+        const { data: ratedIds } = await rdb
+          .from("Rating")
+          .select("request_id")
+          .in("request_id", ids)
+          .eq("rater_id", user.id);
+        ratedSet = new Set((ratedIds ?? []).map((r: { request_id: string | null }) => r.request_id));
+      }
+    } catch { /* non-critical — ratings unavailable, requests still returned */ }
 
     const data = rows.map((r: { id: string; [key: string]: unknown }) => ({ ...r, has_rating: ratedSet.has(r.id) }));
     return Response.json({ data, error: null });
   } catch (err) {
     console.error("[requests GET]", err);
-    return Response.json({ data: [], error: null });
+    return Response.json({ data: null, error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -55,7 +63,7 @@ const createSchema = z.object({
   travel_date:    z.string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .refine(
-      (d) => d >= new Date().toISOString().split("T")[0],
+      (d) => d >= new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }),
       "Travel date must be today or in the future"
     ),
   notes:          z.string().max(300).optional(),
@@ -195,7 +203,7 @@ async function buildDispatchQueue(
   });
 
   const now    = new Date();
-  const expiry = new Date(now.getTime() + 60_000).toISOString();
+  const expiry = new Date(now.getTime() + 300_000).toISOString(); // 5-minute window
 
   const dispatches = eligible.map((p, i) => ({
     id:            crypto.randomUUID(),

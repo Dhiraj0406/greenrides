@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, ToggleLeft, ToggleRight } from "lucide-react";
+import Link from "next/link";
+import { Loader2, ToggleLeft, ToggleRight, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { AdminGate } from "@/components/admin/AdminGate";
 
@@ -36,10 +37,15 @@ function ConfigContent({ token }: { token: string }) {
   const [toggling, setToggling] = useState<string | null>(null);
 
   async function load() {
-    const res = await fetch("/api/admin/config", { headers: { "x-admin-token": token } });
-    const j   = await res.json();
-    setFlags(j.data ?? []);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/admin/config", { headers: { "x-admin-token": token } });
+      const j   = await res.json();
+      setFlags(j.data ?? []);
+    } catch {
+      toast.error("Failed to load remote config");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -69,9 +75,14 @@ function ConfigContent({ token }: { token: string }) {
   return (
     <div className="green-container min-h-screen bg-cream pb-16">
       <header className="bg-forest px-4 pt-safe-top pb-6">
-        <div className="pt-4">
-          <p className="text-lime/60 text-xs font-mono uppercase tracking-widest mb-1">Green Admin</p>
-          <h1 className="font-display text-2xl text-white">Remote Config</h1>
+        <div className="pt-4 flex items-center gap-3">
+          <Link href="/admin" className="text-lime/70 -ml-1">
+            <ChevronLeft className="w-5 h-5" />
+          </Link>
+          <div>
+            <p className="text-lime/60 text-xs font-mono uppercase tracking-widest mb-1">Green Admin</p>
+            <h1 className="font-display text-2xl text-white">Remote Config</h1>
+          </div>
         </div>
       </header>
 

@@ -34,6 +34,10 @@ async function sendWhatsApp(
   templateName: string,
   params: Record<string, string>
 ): Promise<void> {
+  if (!process.env.INTERAKT_API_KEY) {
+    console.warn("[WhatsApp] INTERAKT_API_KEY not set — skipping notification");
+    return;
+  }
   const res = await fetch(INTERAKT_URL, {
     method: "POST",
     headers: makeHeaders(),

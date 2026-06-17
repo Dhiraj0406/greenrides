@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getAdminClient } from "@/lib/supabase";
 
 async function getUserId(req: NextRequest): Promise<string | null> {
@@ -13,13 +12,22 @@ export async function GET(req: NextRequest) {
   const userId = await getUserId(req);
   if (!userId) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
-  const notifications = await prisma.notification.findMany({
-    where:   { user_id: userId },
-    orderBy: { created_at: "desc" },
-    take:    50,
-  });
-  const unread = notifications.filter((n) => !n.read).length;
-  return Response.json({ data: { notifications, unread }, error: null });
+  const db = getAdminClient();
+  try {
+    const { data: notifications, error } = await db
+      .from("Notification")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) throw error;
+    const unread = (notifications ?? []).filter((n: { read: boolean }) => !n.read).length;
+    return Response.json({ data: { notifications: notifications ?? [], unread }, error: null });
+  } catch (err) {
+    console.error("[fleet/notifications GET]", err);
+    return Response.json({ data: null, error: "Failed to fetch notifications" }, { status: 500 });
+  }
 }
 
 export async function PATCH(req: NextRequest) {
@@ -32,9 +40,18 @@ export async function PATCH(req: NextRequest) {
     return Response.json({ data: null, error: "ids array required" }, { status: 400 });
   }
 
-  await prisma.notification.updateMany({
-    where: { id: { in: ids }, user_id: userId },
-    data:  { read: true },
-  });
-  return Response.json({ data: { marked: ids.length }, error: null });
+  const db = getAdminClient();
+  try {
+    const { error } = await db
+      .from("Notification")
+      .update({ read: true })
+      .in("id", ids)
+      .eq("user_id", userId);
+
+    if (error) throw error;
+    return Response.json({ data: { marked: ids.length }, error: null });
+  } catch (err) {
+    console.error("[fleet/notifications PATCH]", err);
+    return Response.json({ data: null, error: "Failed to mark notifications" }, { status: 500 });
+  }
 }

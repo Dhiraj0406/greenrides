@@ -4,10 +4,11 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Phone, ArrowRight, ChevronLeft } from "lucide-react";
+import { toast } from "sonner";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { cn } from "@/lib/utils";
 
-type ReqStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
+type ReqStatus = "PENDING" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 
 interface Req {
   id:          string;
@@ -21,15 +22,17 @@ interface Req {
 }
 
 const STATUS_COLORS: Record<ReqStatus, string> = {
-  PENDING:   "bg-gold/10 text-gold",
-  CONFIRMED: "bg-leaf/10 text-leaf",
-  COMPLETED: "bg-gray-100 text-gray-500",
-  CANCELLED: "bg-red-50 text-red-500",
+  PENDING:     "bg-gold/10 text-gold",
+  CONFIRMED:   "bg-leaf/10 text-leaf",
+  IN_PROGRESS: "bg-blue-50 text-blue-600",
+  COMPLETED:   "bg-gray-100 text-gray-500",
+  CANCELLED:   "bg-red-50 text-red-500",
 };
 
 const NEXT_STATUS: Partial<Record<ReqStatus, ReqStatus>> = {
-  PENDING:   "CONFIRMED",
-  CONFIRMED: "COMPLETED",
+  PENDING:     "CONFIRMED",
+  CONFIRMED:   "COMPLETED",
+  IN_PROGRESS: "COMPLETED",
 };
 
 function fmtDate(iso: string) {
@@ -60,16 +63,20 @@ function BookingsContent({ token }: { token: string }) {
     fetch(url, { headers: { "x-admin-token": token } })
       .then((r) => r.json())
       .then((j) => setRequests(j.data ?? []))
+      .catch(() => toast.error("Failed to load bookings"))
       .finally(() => setLoading(false));
   }, [token, active]);
 
   async function updateStatus(id: string, status: ReqStatus) {
-    await fetch(`/api/admin/requests/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ status }),
-    });
-    setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+    try {
+      const res = await fetch(`/api/admin/requests/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) { const j = await res.json(); toast.error(j.error ?? "Update failed"); return; }
+      setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+    } catch { toast.error("Network error"); }
   }
 
   function openConfirmForm(id: string) {
@@ -88,22 +95,25 @@ function BookingsContent({ token }: { token: string }) {
 
   async function confirmRequest(id: string) {
     setSaving(true);
-    await fetch(`/api/admin/requests/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({
-        status:       "CONFIRMED",
-        driver_name:  driverName.trim() || undefined,
-        driver_phone: driverPhone.trim() || undefined,
-        eta_min:      etaMin ? parseInt(etaMin, 10) : undefined,
-      }),
-    });
-    setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "CONFIRMED" } : r));
-    setSaving(false);
-    closeConfirmForm();
+    try {
+      const res = await fetch(`/api/admin/requests/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({
+          status:       "CONFIRMED",
+          driver_name:  driverName.trim() || undefined,
+          driver_phone: driverPhone.trim() || undefined,
+          eta_min:      etaMin ? parseInt(etaMin, 10) : undefined,
+        }),
+      });
+      if (!res.ok) { const j = await res.json(); toast.error(j.error ?? "Confirm failed"); return; }
+      setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "CONFIRMED" } : r));
+      closeConfirmForm();
+    } catch { toast.error("Network error"); }
+    finally { setSaving(false); }
   }
 
-  const tabs: (ReqStatus | "ALL")[] = ["ALL", "PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"];
+  const tabs: (ReqStatus | "ALL")[] = ["ALL", "PENDING", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
 
   return (
     <div className="green-container min-h-screen bg-cream pb-16">

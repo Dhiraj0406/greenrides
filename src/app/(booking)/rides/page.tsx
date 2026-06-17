@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowRight, Star, Clock, Loader2, AlertCircle, Phone } from "lucide-react";
+import { ArrowRight, ArrowLeft, Star, Clock, Loader2, AlertCircle, Phone, Calendar } from "lucide-react";
+import Link from "next/link";
+import { toast } from "sonner";
 import { BottomNav } from "@/components/shared/BottomNav";
 import { DriverSheet } from "@/components/booking/DriverSheet";
 import { useBookingStore } from "@/store/booking";
@@ -10,37 +12,57 @@ import type { RideWithDriver } from "@/types";
 
 export default function RidesPage() {
   const { origin, destination } = useBookingStore();
-  const [rides, setRides]   = useState<RideWithDriver[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [rides, setRides]       = useState<RideWithDriver[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [date, setDate]         = useState(todayISO());
   const [bookingRide, setBookingRide] = useState<RideWithDriver | null>(null);
 
   useEffect(() => {
     if (!origin) { setLoading(false); return; }
     const to  = destination ?? "";
-    const url = `/api/rides?from=${encodeURIComponent(origin)}&to=${encodeURIComponent(to)}&date=${todayISO()}`;
+    const url = `/api/rides?from=${encodeURIComponent(origin)}&to=${encodeURIComponent(to)}&date=${date}`;
 
+    setLoading(true);
     fetch(url)
       .then((r) => r.json())
       .then((j) => setRides(j.data ?? []))
+      .catch(() => { toast.error("Failed to load rides"); setRides([]); })
       .finally(() => setLoading(false));
-  }, [origin, destination]);
+  }, [origin, destination, date]);
 
   return (
     <div className="green-container min-h-screen bg-cream pb-24">
       <header className="bg-forest px-4 pt-safe-top pb-5">
-        <div className="pt-4">
-          <h1 className="font-display text-2xl text-white">Available Cabs</h1>
-          {origin && (
-            <div className="flex items-center gap-2 text-lime/70 text-sm mt-1">
-              <span>{origin}</span>
-              {destination && (
-                <>
-                  <ArrowRight className="w-3 h-3" />
-                  <span>{destination}</span>
-                </>
+        <div className="pt-4 flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <Link href="/" className="mt-1 w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+              <ArrowLeft className="w-4 h-4 text-white" />
+            </Link>
+            <div>
+              <h1 className="font-display text-2xl text-white">Available Cabs</h1>
+              {origin && (
+                <div className="flex items-center gap-2 text-lime/70 text-sm mt-1">
+                  <span>{origin}</span>
+                  {destination && (
+                    <>
+                      <ArrowRight className="w-3 h-3" />
+                      <span>{destination}</span>
+                    </>
+                  )}
+                </div>
               )}
             </div>
-          )}
+          </div>
+          <label className="flex items-center gap-1.5 bg-forest-mid rounded-xl px-3 py-2 cursor-pointer flex-shrink-0">
+            <Calendar className="w-4 h-4 text-lime/70" />
+            <input
+              type="date"
+              value={date}
+              min={todayISO()}
+              onChange={(e) => setDate(e.target.value || todayISO())}
+              className="bg-transparent text-lime text-xs font-semibold outline-none w-28"
+            />
+          </label>
         </div>
       </header>
 
@@ -48,7 +70,7 @@ export default function RidesPage() {
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4">
           <p className="text-xs font-bold text-amber-700 mb-1.5">Two ways to book</p>
           <div className="space-y-1.5 text-xs text-amber-700">
-            <p>🚗 <strong>Cab seat</strong> — Choose from rides posted below. Pay online, instant confirmation.</p>
+            <p>🚗 <strong>Cab seat</strong> — Choose from rides posted below. Pay cash to driver, instant confirmation.</p>
             <p>📋 <strong>Private request</strong> — Request a full cab for your date. We find you a driver (can take a few minutes).</p>
           </div>
         </div>
@@ -62,10 +84,10 @@ export default function RidesPage() {
         {!loading && !rides.length && (
           <div className="flex flex-col items-center py-16 text-center">
             <AlertCircle className="w-10 h-10 text-sub mb-3" />
-            <p className="font-semibold text-text">No cabs today</p>
+            <p className="font-semibold text-text">No cabs on this date</p>
             <p className="text-sm text-sub mt-1">
               {origin
-                ? `No drivers have posted cabs from ${origin} today.`
+                ? `No drivers have posted cabs from ${origin} on ${new Date(date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })}.`
                 : "Select your origin on the home screen first."}
             </p>
             <a
@@ -120,6 +142,7 @@ export default function RidesPage() {
                   hour: "2-digit", minute: "2-digit",
                 })}
               </span>
+              <span>{ride.available_seats} seat{ride.available_seats !== 1 ? "s" : ""} left</span>
             </div>
 
             {/* Fare + book */}
@@ -150,6 +173,7 @@ export default function RidesPage() {
           from={bookingRide.from_city}
           to={bookingRide.to_city}
           fareRupees={Math.round(bookingRide.fare_paise / 100)}
+          date={date}
         />
       )}
 

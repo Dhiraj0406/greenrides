@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Phone, Loader2, AlertCircle, Users, MapPin } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { supabase } from "@/lib/supabase";
 
 interface BookingItem {
   id:           string;
@@ -23,10 +24,16 @@ export function BookingsList({ rideId }: Props) {
   const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
-    fetch(`/api/rides/${rideId}`)
-      .then((r) => r.json())
-      .then((j) => setBookings(j.data?.bookings ?? []))
-      .finally(() => setLoading(false));
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const token = session?.access_token ?? "";
+      fetch(`/api/rides/${rideId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+        .then((r) => r.json())
+        .then((j) => { if (j.data) setBookings(j.data.bookings ?? []); })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    }).catch(() => setLoading(false));
   }, [rideId]);
 
   if (loading) {

@@ -1,6 +1,4 @@
-// src/app/api/admin/drivers/[id]/route.ts
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { getAdminClient } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
@@ -28,33 +26,45 @@ export async function PATCH(
   if (!result.success) return Response.json({ data: null, error: result.error.issues[0].message }, { status: 400 });
   const input = result.data;
 
-  const updated = await prisma.driverProfile.update({
-    where: { id },
-    data:  {
-      is_approved: input.is_approved,
-      approved_at: input.is_approved ? new Date() : null,
-    },
-    include: { user: { select: { name: true } } },
-  });
-
-  // Send Telegram notification when approving
-  if (input.is_approved && updated.telegram_chat_id) {
-    await sendTelegramMessage(
-      updated.telegram_chat_id,
-      `✅ <b>You're approved on Green Rides!</b>\n\nWelcome, ${updated.user?.name ?? "Driver"}! Open the app to set your schedule and go online.\n\nhttps://green-rides.vercel.app/drivers/dashboard`
-    );
-  }
-
   try {
     const db = getAdminClient();
-    await db.from("AdminLog").insert({
-      admin_id:  "admin",
-      action:    `driver_${input.is_approved === true ? "approved" : input.is_approved === false ? "rejected" : "updated"}`,
-      entity:    "driver",
-      entity_id: id,
-      details:   input,
-    });
-  } catch {}
 
-  return Response.json({ data: updated, error: null });
+    const { data: updated, error } = await db
+      .from("DriverProfile")
+      .update({
+        is_approved: input.is_approved,
+        approved_at: input.is_approved ? new Date().toISOString() : null,
+      })
+      .eq("id", id)
+      .select("*, user:user_id(name), telegram_chat_id")
+      .single();
+
+    if (error || !updated) {
+      console.error("[admin/drivers/:id PATCH]", error);
+      return Response.json({ data: null, error: "Driver not found or update failed" }, { status: 404 });
+    }
+
+    if (input.is_approved && updated.telegram_chat_id) {
+      const userName = (updated.user as { name?: string } | null)?.name ?? "Driver";
+      await sendTelegramMessage(
+        updated.telegram_chat_id,
+        `✅ <b>You're approved on Green Rides!</b>\n\nWelcome, ${userName}! Open the app to set your schedule and go online.\n\nhttps://green-rides.vercel.app/drivers/dashboard`
+      );
+    }
+
+    try {
+      await db.from("AdminLog").insert({
+        admin_id:  "admin",
+        action:    `driver_${input.is_approved ? "approved" : "rejected"}`,
+        entity:    "driver",
+        entity_id: id,
+        details:   input,
+      });
+    } catch {}
+
+    return Response.json({ data: updated, error: null });
+  } catch (err) {
+    console.error("[admin/drivers/:id PATCH]", err);
+    return Response.json({ data: null, error: "Driver not found or update failed" }, { status: 404 });
+  }
 }

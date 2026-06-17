@@ -10,6 +10,16 @@ export function GlobalDiscount() {
   const [success, setSuccess] = useState(false);
   const [error, setError]     = useState("");
 
+  async function getAdminToken() {
+    return sessionStorage.getItem("green_admin_token") ?? "";
+  }
+
+  async function fetchRouteIds(): Promise<string[]> {
+    const res = await fetch("/api/fares");
+    const json = await res.json();
+    return (json.data ?? []).map((r: { id: string }) => r.id);
+  }
+
   async function handleApply() {
     const discount = parseInt(pct);
     if (isNaN(discount) || discount < 0 || discount > 100) {
@@ -21,17 +31,21 @@ export function GlobalDiscount() {
     setError("");
 
     try {
-      const res = await fetch("/api/fares", {
-        method:  "PUT",
-        headers: {
-          "Content-Type":  "application/json",
-          "x-admin-token": sessionStorage.getItem("green_admin_token") ?? "",
-        },
-        body: JSON.stringify({
+      const [adminToken, routeIds] = await Promise.all([getAdminToken(), fetchRouteIds()]);
+      const routes = routeIds.map((id) => ({
+        id,
+        fare_rule: {
           global_offer:   true,
+          discount_on:    true,
           discount_pct:   discount,
           discount_label: label || null,
-        }),
+        },
+      }));
+
+      const res = await fetch("/api/fares", {
+        method:  "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ routes }),
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error);
@@ -49,13 +63,16 @@ export function GlobalDiscount() {
     setLoading(true);
     setError("");
     try {
+      const [adminToken, routeIds] = await Promise.all([getAdminToken(), fetchRouteIds()]);
+      const routes = routeIds.map((id) => ({
+        id,
+        fare_rule: { global_offer: false, discount_on: false, discount_pct: 0 },
+      }));
+
       const res = await fetch("/api/fares", {
         method:  "PUT",
-        headers: {
-          "Content-Type":  "application/json",
-          "x-admin-token": sessionStorage.getItem("green_admin_token") ?? "",
-        },
-        body: JSON.stringify({ global_offer: false, discount_pct: 0 }),
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ routes }),
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error);

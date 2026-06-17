@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import { prisma } from "@/lib/prisma";
 import { getAdminClient } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +13,7 @@ const schema = z.object({
   make:         z.string().min(1).max(60),
   model:        z.string().min(1).max(60),
   year:         z.coerce.number().int().min(1990).max(new Date().getFullYear() + 1),
-  price_paise:  z.coerce.bigint().positive(),
+  price_paise:  z.coerce.number().int().positive(),
   mileage_km:   z.coerce.number().int().positive().optional(),
   fuel_type:    z.enum(["PETROL", "DIESEL", "CNG", "ELECTRIC", "HYBRID"]),
   transmission: z.enum(["MANUAL", "AUTOMATIC"]),
@@ -36,7 +35,6 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Invalid form data" }, { status: 400 });
   }
 
-  // Extract text fields
   const raw: Record<string, string> = {};
   for (const key of TEXT_FIELDS) {
     const val = formData.get(key);
@@ -48,7 +46,6 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
   }
 
-  // Validate photo files
   const files = formData.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0);
   if (files.length > MAX_PHOTOS) {
     return Response.json({ error: "Maximum 6 photos allowed" }, { status: 400 });
@@ -62,12 +59,10 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Generate listing ID upfront so storage paths include it
   const listingId     = randomUUID();
   const photoUrls:     string[] = [];
   const uploadedPaths: string[] = [];
 
-  // Only instantiate the admin client when there are photos to upload
   if (files.length > 0) {
     const db = getAdminClient();
     for (const file of files) {
@@ -94,28 +89,29 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Create listing row (status defaults to PENDING)
-  try {
-    const listing = await prisma.carListing.create({
-      data: {
-        id:           listingId,
-        make:         parsed.data.make,
-        model:        parsed.data.model,
-        year:         parsed.data.year,
-        price_paise:  parsed.data.price_paise,
-        mileage_km:   parsed.data.mileage_km ?? null,
-        fuel_type:    parsed.data.fuel_type,
-        transmission: parsed.data.transmission,
-        location:     parsed.data.location,
-        description:  parsed.data.description ?? null,
-        seller_name:  parsed.data.seller_name,
-        seller_phone: parsed.data.seller_phone,
-        photos:       photoUrls,
-      },
-    });
-    return Response.json({ id: listing.id, ok: true });
-  } catch (err) {
-    console.error("[used-cars/listings POST] db error:", err);
+  const db = getAdminClient();
+  const { data: listing, error: insertErr } = await db
+    .from("CarListing")
+    .insert({
+      id:           listingId,
+      make:         parsed.data.make,
+      model:        parsed.data.model,
+      year:         parsed.data.year,
+      price_paise:  parsed.data.price_paise,
+      mileage_km:   parsed.data.mileage_km ?? null,
+      fuel_type:    parsed.data.fuel_type,
+      transmission: parsed.data.transmission,
+      location:     parsed.data.location,
+      description:  parsed.data.description ?? null,
+      seller_name:  parsed.data.seller_name,
+      seller_phone: parsed.data.seller_phone,
+      photos:       photoUrls,
+    })
+    .select("id")
+    .single();
+
+  if (insertErr || !listing) {
+    console.error("[used-cars/listings POST] db error:", insertErr);
     if (uploadedPaths.length > 0) {
       try {
         await getAdminClient().storage.from(BUCKET).remove(uploadedPaths);
@@ -125,11 +121,13 @@ export async function POST(request: NextRequest) {
     }
     return Response.json({ error: "Failed to create listing" }, { status: 500 });
   }
+
+  return Response.json({ id: listing.id, ok: true });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function serialize(l: any) {
-  return { ...l, price_paise: l.price_paise.toString() };
+  return { ...l, price_paise: String(l.price_paise) };
 }
 
 export async function GET(request: NextRequest) {
@@ -142,33 +140,63 @@ export async function GET(request: NextRequest) {
   const minPrice = searchParams.get("min_price") || undefined;
   const maxPrice = searchParams.get("max_price") || undefined;
 
-  // Validate BigInt price params
-  let minPriceBigInt: bigint | undefined;
-  let maxPriceBigInt: bigint | undefined;
-  try {
-    if (minPrice) minPriceBigInt = BigInt(minPrice);
-    if (maxPrice) maxPriceBigInt = BigInt(maxPrice);
-  } catch {
-    return Response.json({ error: "Invalid price filter" }, { status: 400 });
+  let minPriceNum: number | undefined;
+  let maxPriceNum: number | undefined;
+  if (minPrice) {
+    minPriceNum = Number(minPrice);
+    if (!Number.isFinite(minPriceNum)) {
+      return Response.json({ error: "Invalid price filter" }, { status: 400 });
+    }
+  }
+  if (maxPrice) {
+    maxPriceNum = Number(maxPrice);
+    if (!Number.isFinite(maxPriceNum)) {
+      return Response.json({ error: "Invalid price filter" }, { status: 400 });
+    }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = {
-    status: "APPROVED",
-    ...(make     ? { make: { contains: make, mode: "insensitive" } } : {}),
-    ...(fuelType ? { fuel_type: fuelType }                           : {}),
-    ...(minPriceBigInt || maxPriceBigInt ? {
-      price_paise: {
-        ...(minPriceBigInt ? { gte: minPriceBigInt } : {}),
-        ...(maxPriceBigInt ? { lte: maxPriceBigInt } : {}),
-      },
-    } : {}),
-  };
+  try {
+    const db = getAdminClient();
 
-  const [listings, total] = await Promise.all([
-    prisma.carListing.findMany({ where, orderBy: { created_at: "desc" }, skip, take: limit }),
-    prisma.carListing.count({ where }),
-  ]);
+    let dataQ = db
+      .from("CarListing")
+      .select("*")
+      .eq("status", "APPROVED")
+      .order("created_at", { ascending: false })
+      .range(skip, skip + limit - 1);
 
-  return Response.json({ data: listings.map(serialize), total, page, error: null });
+    let countQ = db
+      .from("CarListing")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "APPROVED");
+
+    if (make) {
+      dataQ  = dataQ.ilike("make", `%${make}%`);
+      countQ = countQ.ilike("make", `%${make}%`);
+    }
+    if (fuelType) {
+      dataQ  = dataQ.eq("fuel_type", fuelType);
+      countQ = countQ.eq("fuel_type", fuelType);
+    }
+    if (minPriceNum !== undefined) {
+      dataQ  = dataQ.gte("price_paise", minPriceNum);
+      countQ = countQ.gte("price_paise", minPriceNum);
+    }
+    if (maxPriceNum !== undefined) {
+      dataQ  = dataQ.lte("price_paise", maxPriceNum);
+      countQ = countQ.lte("price_paise", maxPriceNum);
+    }
+
+    const [{ data: listings, error: listErr }, { count, error: countErr }] = await Promise.all([dataQ, countQ]);
+
+    if (listErr || countErr) {
+      console.error("[used-cars/listings GET]", listErr ?? countErr);
+      return Response.json({ error: "Failed to fetch listings" }, { status: 500 });
+    }
+
+    return Response.json({ data: (listings ?? []).map(serialize), total: count ?? 0, page, error: null });
+  } catch (err) {
+    console.error("[used-cars/listings GET]", err);
+    return Response.json({ error: "Failed to fetch listings" }, { status: 500 });
+  }
 }

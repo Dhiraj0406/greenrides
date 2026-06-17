@@ -36,6 +36,8 @@ export async function PATCH(
   const { action, dispatch_id, eta_min } = parsed.data;
   const now = new Date().toISOString();
 
+  try {
+
   // Verify this dispatch belongs to the authed driver and is currently PENDING
   const { data: dispatch } = await db
     .from("DriverDispatch")
@@ -160,7 +162,7 @@ export async function PATCH(
     }
 
     return Response.json({ data: { ok: true, action: "accepted" }, error: null });
-  }
+  } // end accept
 
   // Reject: mark REJECTED (guard: only if still PENDING — prevents cron double-fire race)
   await db.from("DriverDispatch").update({ status: "REJECTED", responded_at: now }).eq("id", dispatch_id).eq("status", "PENDING");
@@ -175,7 +177,7 @@ export async function PATCH(
     .maybeSingle();
 
   if (nextDispatch) {
-    const nextExpiry = new Date(Date.now() + 60_000).toISOString();
+    const nextExpiry = new Date(Date.now() + 300_000).toISOString(); // 5-minute window
     await db
       .from("DriverDispatch")
       .update({ status: "PENDING", dispatched_at: now, expires_at: nextExpiry })
@@ -228,4 +230,9 @@ export async function PATCH(
   }
 
   return Response.json({ data: { ok: true, action: "rejected" }, error: null });
+
+  } catch (err) {
+    console.error("[requests/:id/respond]", err);
+    return Response.json({ error: "An error occurred processing this request" }, { status: 500 });
+  }
 }

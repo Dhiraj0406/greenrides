@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   if (fetchErr) {
     console.error("[fleet/dispatches GET]", fetchErr);
-    return Response.json({ data: [], error: null });
+    return Response.json({ data: null, error: fetchErr.message }, { status: 500 });
   }
 
   if (!dispatches || dispatches.length === 0) {

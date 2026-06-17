@@ -24,7 +24,7 @@ export function formatPhone(phone: string): string {
 }
 
 export function todayISO(): string {
-  return new Date().toISOString().split("T")[0];
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
 
 export function getInitials(name: string): string {

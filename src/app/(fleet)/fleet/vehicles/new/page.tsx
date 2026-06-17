@@ -1,38 +1,170 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, Camera, X, CheckCircle, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
+type Step = "details" | "photos";
+
 export default function NewVehiclePage() {
-  const router  = useRouter();
-  const [form, setForm]       = useState({ make: "", model_name: "", number: "", seats: "4" });
-  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  async function handleSubmit() {
-    setLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { toast.error("Not authenticated"); setLoading(false); return; }
-
-    const res = await fetch("/api/fleet/vehicles", {
-      method:  "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body:    JSON.stringify({ ...form, seats: parseInt(form.seats, 10) }),
-    });
-    const j = await res.json();
-    setLoading(false);
-    if (j.error) { toast.error(j.error); return; }
-    toast.success("Vehicle added");
-    router.replace("/fleet/vehicles");
-  }
+  const [step,      setStep]      = useState<Step>("details");
+  const [form,      setForm]      = useState({ make: "", model_name: "", number: "", seats: "4" });
+  const [vehicleId, setVehicleId] = useState<string | null>(null);
+  const [token,     setToken]     = useState<string | null>(null);
+  const [photos,    setPhotos]    = useState<string[]>([]);
+  const [previews,  setPreviews]  = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [saving,    setSaving]    = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const inputClass = "w-full border border-border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 ring-leaf/30";
 
+  async function handleCreate() {
+    setSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setSaving(false); toast.error("Not authenticated"); return; }
+      setToken(session.access_token);
+
+      const res = await fetch("/api/fleet/vehicles", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body:    JSON.stringify({ ...form, seats: parseInt(form.seats, 10) }),
+      });
+      const j = await res.json();
+      if (j.error) { toast.error(j.error); return; }
+      setVehicleId(j.data.id);
+      setStep("photos");
+    } catch {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length || !vehicleId || !token) return;
+
+    const remaining = 5 - photos.length;
+    const toUpload  = files.slice(0, remaining);
+
+    setUploading(true);
+    try {
+      for (const file of toUpload) {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch(`/api/fleet/vehicles/${vehicleId}/photos`, {
+          method:  "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body:    fd,
+        });
+        const j = await res.json();
+        if (j.error) { toast.error(j.error); continue; }
+        setPhotos(j.data.photos);
+        setPreviews((prev) => [...prev, URL.createObjectURL(file)]);
+      }
+    } catch {
+      toast.error("Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function handleRemovePhoto(index: number) {
+    if (!vehicleId || !token) return;
+    try {
+      const res = await fetch(`/api/fleet/vehicles/${vehicleId}/photos`, {
+        method:  "DELETE",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body:    JSON.stringify({ path: photos[index] }),
+      });
+      const j = await res.json();
+      if (j.error) { toast.error(j.error); return; }
+      setPhotos(j.data.photos);
+      setPreviews((prev) => prev.filter((_, i) => i !== index));
+    } catch {
+      toast.error("Failed to remove photo. Please try again.");
+    }
+  }
+
+  if (step === "photos") {
+    return (
+      <div className="px-4 py-6">
+        <div className="flex items-center gap-2 mb-1">
+          <CheckCircle className="w-5 h-5 text-leaf" />
+          <h2 className="font-display text-xl text-forest">Vehicle Added</h2>
+        </div>
+        <p className="text-sm text-sub mb-6">Add up to 5 photos for admin reference (optional)</p>
+
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {previews.map((src, i) => (
+            <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-border">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+              <button
+                onClick={() => handleRemovePhoto(i)}
+                className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5"
+              >
+                <X className="w-3.5 h-3.5 text-white" />
+              </button>
+            </div>
+          ))}
+
+          {photos.length < 5 && (
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="aspect-square rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 text-sub hover:border-leaf hover:text-leaf transition-colors"
+            >
+              {uploading
+                ? <Loader2 className="w-5 h-5 animate-spin" />
+                : <><Camera className="w-5 h-5" /><span className="text-xs">Add</span></>}
+            </button>
+          )}
+        </div>
+
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          className="hidden"
+          onChange={handlePhotoSelect}
+        />
+
+        <p className="text-xs text-sub mb-6 text-center">{photos.length}/5 photos · JPEG, PNG, WebP · max 10 MB each</p>
+
+        <button onClick={() => router.replace("/fleet/vehicles")}
+          className="w-full bg-leaf text-white font-semibold py-3 rounded-xl">
+          Done →
+        </button>
+        <button onClick={() => router.replace("/fleet/vehicles")}
+          className="w-full mt-2 text-sm text-sub py-2">
+          Skip for now
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="px-4 py-6">
-      <h2 className="font-display text-xl text-forest mb-6">Add Vehicle</h2>
+      <div className="flex items-center gap-2 mb-5">
+        <Link href="/fleet/vehicles" className="text-sub hover:text-text">
+          <ChevronLeft className="w-5 h-5" />
+        </Link>
+        <div>
+          <h2 className="font-display text-xl text-forest">Add Vehicle</h2>
+          <p className="text-xs text-sub">Step 1 of 2 · Vehicle details</p>
+        </div>
+      </div>
+
       <div className="space-y-3">
         <input type="text" placeholder="Make (e.g. Toyota)"
           value={form.make} onChange={(e) => setForm({ ...form, make: e.target.value })}
@@ -40,7 +172,7 @@ export default function NewVehiclePage() {
         <input type="text" placeholder="Model (e.g. Innova Crysta)"
           value={form.model_name} onChange={(e) => setForm({ ...form, model_name: e.target.value })}
           className={inputClass} />
-        <input type="text" placeholder="Number plate (e.g. KA01AB1234)"
+        <input type="text" placeholder="Number plate (e.g. OD13AB1234)"
           value={form.number} onChange={(e) => setForm({ ...form, number: e.target.value.toUpperCase() })}
           className={inputClass} />
         <div>
@@ -52,10 +184,13 @@ export default function NewVehiclePage() {
             ))}
           </select>
         </div>
-        <button onClick={handleSubmit}
-          disabled={loading || !form.make || !form.model_name || !form.number}
-          className="w-full bg-leaf text-white font-semibold py-3 rounded-xl disabled:opacity-60 flex items-center justify-center gap-2">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add Vehicle"}
+
+        <button
+          onClick={handleCreate}
+          disabled={saving || !form.make.trim() || !form.model_name.trim() || !form.number.trim()}
+          className="w-full bg-leaf text-white font-semibold py-3 rounded-xl disabled:opacity-60 flex items-center justify-center gap-2"
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Next: Add Photos →"}
         </button>
       </div>
     </div>

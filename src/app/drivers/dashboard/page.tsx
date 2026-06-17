@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Leaf, Loader2, Plus, Star, ArrowRight } from "lucide-react";
+import { Leaf, Loader2, Plus, Star, ArrowRight, LogOut } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { OnlineToggle } from "@/components/drivers/OnlineToggle";
 import { DispatchCard } from "@/components/drivers/DispatchCard";
@@ -9,7 +9,7 @@ import { AvailabilityCalendar } from "@/components/drivers/AvailabilityCalendar"
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-type Tab = "home" | "requests" | "earnings" | "schedule" | "rides";
+type Tab = "home" | "requests" | "earnings" | "schedule" | "rides" | "profile";
 
 interface DriverData {
   id:              string;
@@ -27,6 +27,17 @@ interface DriverData {
   };
 }
 
+interface ProfileData {
+  name:           string | null;
+  phone:          string | null;
+  vehicle_type:   string | null;
+  vehicle_number: string | null;
+  vehicle_model:  string | null;
+  license_number: string | null;
+  avg_rating:     number;
+  total_trips:    number;
+}
+
 export default function DriverDashboardPage() {
   const [tab, setTab]         = useState<Tab>("home");
   const [driver, setDriver]   = useState<DriverData | null>(null);
@@ -40,53 +51,95 @@ export default function DriverDashboardPage() {
   const [earnings, setEarnings] = useState<{ rides: unknown[]; requests: unknown[] }>({ rides: [], requests: [] });
   const [earningsLoaded, setEarningsLoaded] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      setUserId(session.user.id);
+  // Per-tab loading states
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [loadingRides, setLoadingRides]       = useState(false);
 
-      const res  = await fetch("/api/drivers/me", {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
+  // Profile tab
+  const [profile, setProfile]             = useState<ProfileData | null>(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileForm, setProfileForm]     = useState({
+    name: "", license_number: "", vehicle_number: "", vehicle_model: "", vehicle_type: "",
+  });
+
+  async function reloadDriver(token: string) {
+    try {
+      const res  = await fetch("/api/drivers/me", { headers: { Authorization: `Bearer ${token}` } });
       const json = await res.json();
       if (json.data) {
         setDriver(json.data);
         setLocalAvail(json.data.availability ?? {});
       }
-      setLoading(false);
+    } catch { /* non-fatal — driver data remains stale */ }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let token = "";
+
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { setLoading(false); return; }
+        token = session.access_token;
+        setUserId(session.user.id);
+        await reloadDriver(token);
+
+        // Realtime: auto-show DispatchCard when a PENDING dispatch arrives
+        channel = supabase
+          .channel(`driver-dispatch-${session.user.id}`)
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "DriverDispatch", filter: `driver_id=eq.${session.user.id}` },
+            () => { reloadDriver(token); }
+          )
+          .subscribe();
+      } catch { setLoading(false); }
     })();
+
+    return () => { channel?.unsubscribe(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load requests tab data
   useEffect(() => {
     if (tab !== "requests" || !userId) return;
+    setLoadingRequests(true);
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) return;
-      const { data } = await supabase
-        .from("DriverDispatch")
-        .select("id, status, dispatched_at, responded_at, request:RideRequest(from_city, to_city, fare_paise, travel_date)")
-        .eq("driver_id", session.user.id)
-        .neq("status", "WAITING")
-        .order("created_at", { ascending: false })
-        .limit(30);
-      setDispatches(data ?? []);
-    });
+      if (!session) { setLoadingRequests(false); return; }
+      try {
+        const { data } = await supabase
+          .from("DriverDispatch")
+          .select("id, status, dispatched_at, responded_at, request:RideRequest(from_city, to_city, fare_paise, travel_date)")
+          .eq("driver_id", session.user.id)
+          .neq("status", "WAITING")
+          .order("created_at", { ascending: false })
+          .limit(30);
+        setDispatches(data ?? []);
+      } catch { toast.error("Failed to load dispatch history"); }
+      setLoadingRequests(false);
+    }).catch(() => setLoadingRequests(false));
   }, [tab, userId]);
 
   // Load rides tab data
   useEffect(() => {
     if (tab !== "rides" || !userId) return;
+    setLoadingRides(true);
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) return;
-      const { data } = await supabase
-        .from("Ride")
-        .select("id, from_city, to_city, departure_time, fare_paise, status, available_seats, total_seats")
-        .eq("driver_id", session.user.id)
-        .order("departure_time", { ascending: false })
-        .limit(20);
-      setRides(data ?? []);
-    });
+      if (!session) { setLoadingRides(false); return; }
+      try {
+        const { data } = await supabase
+          .from("Ride")
+          .select("id, from_city, to_city, departure_time, fare_paise, status, available_seats, total_seats")
+          .eq("driver_id", session.user.id)
+          .order("departure_time", { ascending: false })
+          .limit(20);
+        setRides(data ?? []);
+      } catch { toast.error("Failed to load rides"); }
+      setLoadingRides(false);
+    }).catch(() => setLoadingRides(false));
   }, [tab, userId]);
 
   useEffect(() => {
@@ -120,11 +173,36 @@ export default function DriverDashboardPage() {
     });
   }, [tab, userId, earningsLoaded]);
 
+  // Load profile tab data
+  useEffect(() => {
+    if (tab !== "profile" || profileLoaded) return;
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) { setProfileLoaded(true); return; }
+      try {
+        const res = await fetch("/api/fleet/driver/profile", {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        const j = await res.json();
+        if (j.data) {
+          setProfile(j.data);
+          setProfileForm({
+            name:           j.data.name           ?? "",
+            license_number: j.data.license_number ?? "",
+            vehicle_number: j.data.vehicle_number ?? "",
+            vehicle_model:  j.data.vehicle_model  ?? "",
+            vehicle_type:   j.data.vehicle_type   ?? "",
+          });
+        }
+      } catch { toast.error("Failed to load profile"); }
+      setProfileLoaded(true);
+    }).catch(() => setProfileLoaded(true));
+  }, [tab, profileLoaded]);
+
   async function saveAvailability() {
     setSavingAvail(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) { setSavingAvail(false); return; }
       const res = await fetch("/api/drivers/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
@@ -137,6 +215,24 @@ export default function DriverDashboardPage() {
     } finally {
       setSavingAvail(false);
     }
+  }
+
+  async function saveProfile() {
+    setSavingProfile(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setSavingProfile(false); return; }
+      const res = await fetch("/api/fleet/driver/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify(profileForm),
+      });
+      const j = await res.json();
+      if (!res.ok) { toast.error(j.error ?? "Save failed"); return; }
+      setProfile(p => p ? { ...p, ...profileForm } : p);
+      toast.success("Profile saved");
+    } catch { toast.error("Network error"); }
+    finally { setSavingProfile(false); }
   }
 
   async function updateRideStatus(rideId: string, newStatus: "IN_PROGRESS" | "COMPLETED") {
@@ -176,7 +272,10 @@ export default function DriverDashboardPage() {
     { key: "earnings", label: "Earnings" },
     { key: "schedule", label: "Schedule" },
     { key: "rides",    label: "Rides"    },
+    { key: "profile",  label: "Me"       },
   ];
+
+  const inputClass = "w-full border border-border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 ring-leaf/30";
 
   return (
     <div className="green-container min-h-screen bg-cream pb-8">
@@ -191,14 +290,21 @@ export default function DriverDashboardPage() {
               {driver.avg_rating.toFixed(1)} · {driver.total_trips} trips
             </div>
           )}
+          <button
+            onClick={async () => { await supabase.auth.signOut(); window.location.href = "/drivers"; }}
+            className="p-1.5 rounded-lg text-lime/50 hover:text-lime transition-colors"
+            title="Sign out"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
-        <div className="flex gap-1 pb-3">
+        <div className="flex gap-1 pb-3 overflow-x-auto">
           {TABS.map(t => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
               className={cn(
-                "flex-1 py-2 text-[11px] font-bold rounded-t-lg transition-all",
+                "flex-shrink-0 flex-1 py-2 text-[11px] font-bold rounded-t-lg transition-all",
                 tab === t.key
                   ? "bg-cream text-forest"
                   : "text-lime/60 hover:text-lime"
@@ -238,7 +344,11 @@ export default function DriverDashboardPage() {
         {tab === "requests" && (
           <>
             <h2 className="text-sm font-semibold text-text">Dispatch History</h2>
-            {(dispatches as Array<Record<string, unknown>>).length === 0 ? (
+            {loadingRequests ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-leaf" />
+              </div>
+            ) : (dispatches as Array<Record<string, unknown>>).length === 0 ? (
               <div className="bg-white border border-border rounded-2xl p-8 text-center text-sm text-sub">
                 No dispatch history yet.
               </div>
@@ -383,7 +493,11 @@ export default function DriverDashboardPage() {
                 <Plus className="w-3.5 h-3.5" /> Post Ride
               </a>
             </div>
-            {(rides as Array<Record<string, unknown>>).length === 0 ? (
+            {loadingRides ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-leaf" />
+              </div>
+            ) : (rides as Array<Record<string, unknown>>).length === 0 ? (
               <div className="bg-white border border-border rounded-2xl p-8 text-center text-sm text-sub">
                 No rides posted yet.
               </div>
@@ -433,6 +547,71 @@ export default function DriverDashboardPage() {
             )}
           </>
         )}
+
+        {/* PROFILE TAB */}
+        {tab === "profile" && (
+          <>
+            {!profileLoaded ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-leaf" />
+              </div>
+            ) : (
+              <>
+                <div className="bg-forest rounded-2xl p-5 text-white">
+                  <p className="text-lime/60 text-xs mb-1">
+                    ★ {profile?.avg_rating?.toFixed(1) ?? "—"} · {profile?.total_trips ?? 0} trips
+                  </p>
+                  <p className="font-display text-2xl text-lime">{profile?.name ?? "—"}</p>
+                  <p className="text-lime/60 text-sm">{profile?.phone ?? "—"}</p>
+                </div>
+
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Full name"
+                    value={profileForm.name}
+                    onChange={(e) => setProfileForm(f => ({ ...f, name: e.target.value }))}
+                    className={inputClass}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Licence number"
+                    value={profileForm.license_number}
+                    onChange={(e) => setProfileForm(f => ({ ...f, license_number: e.target.value.toUpperCase() }))}
+                    className={`${inputClass} font-mono`}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Vehicle number"
+                    value={profileForm.vehicle_number}
+                    onChange={(e) => setProfileForm(f => ({ ...f, vehicle_number: e.target.value.toUpperCase() }))}
+                    className={`${inputClass} font-mono`}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Vehicle model"
+                    value={profileForm.vehicle_model}
+                    onChange={(e) => setProfileForm(f => ({ ...f, vehicle_model: e.target.value }))}
+                    className={inputClass}
+                  />
+                  <button
+                    onClick={saveProfile}
+                    disabled={savingProfile}
+                    className="w-full flex items-center justify-center gap-2 bg-leaf text-white font-bold py-4 rounded-2xl text-sm disabled:opacity-60"
+                  >
+                    {savingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Profile"}
+                  </button>
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        <div className="text-center pt-4 pb-2">
+          <a href="/driver-agreement" className="text-[11px] text-sub underline mr-3">Driver Agreement</a>
+          <a href="/privacy" className="text-[11px] text-sub underline mr-3">Privacy</a>
+          <a href="/terms" className="text-[11px] text-sub underline">Terms</a>
+        </div>
       </div>
     </div>
   );

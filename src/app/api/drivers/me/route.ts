@@ -36,9 +36,9 @@ export async function GET(req: NextRequest) {
   if (activeDispatch) {
     const { data: req_ } = await db
       .from("RideRequest")
-      .select("id, from_city, to_city, fare_paise, travel_date, notes")
+      .select("id, from_city, to_city, fare_paise, travel_date, notes, rider_phone")
       .eq("id", activeDispatch.request_id)
-      .single();
+      .maybeSingle();
     requestDetails = req_;
   }
 
@@ -92,11 +92,10 @@ export async function PATCH(req: NextRequest) {
     }
 
     const avail = (profile.availability as Record<string, unknown>) ?? {};
-    const today = new Date();
     for (let i = 0; i < 7; i++) {
-      const d = new Date(today);
+      const d = new Date();
       d.setDate(d.getDate() + i);
-      const key = d.toISOString().split("T")[0];
+      const key = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
       if (!avail[key]) {
         return Response.json(
           { error: `Fill availability for all 7 required days before going online (missing: ${key})` },

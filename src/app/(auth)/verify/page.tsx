@@ -2,7 +2,8 @@
 
 import { Suspense, useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronLeft } from "lucide-react";
+import { toast } from "sonner";
 
 function VerifyForm() {
   const router       = useRouter();
@@ -92,11 +93,20 @@ function VerifyForm() {
       display: "flex", flexDirection: "column",
       maxWidth: 420, margin: "0 auto",
     }}>
+      {/* ── Back button ───────────────────────────────────────── */}
+      <div style={{ padding: "16px 20px 0" }}>
+        <button
+          onClick={() => router.back()}
+          style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--ink-3)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14 }}
+        >
+          <ChevronLeft size={16} /> Back
+        </button>
+      </div>
       {/* ── Top: logo + heading ───────────────────────────────── */}
       <div style={{
         flex: 1, display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
-        padding: "60px 28px 32px",
+        padding: "20px 28px 32px",
       }}>
         <div style={{
           width: 56, height: 56, borderRadius: 16,
@@ -178,10 +188,16 @@ function VerifyForm() {
             <>
               Didn&apos;t get it?{" "}
               <button
-                onClick={() => {
+                onClick={async () => {
                   setCode(["", "", "", "", "", ""]);
                   setCountdown(30);
-                  router.replace(`/login?next=${encodeURIComponent(next)}`);
+                  inputs.current[0]?.focus();
+                  try {
+                    const { sendOtp } = await import("@/lib/phone-auth");
+                    await sendOtp(phone.replace("+91", ""));
+                  } catch {
+                    toast.error("Failed to resend OTP. Please try again.");
+                  }
                 }}
                 style={{ color: "var(--green)", fontWeight: 600, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}
               >

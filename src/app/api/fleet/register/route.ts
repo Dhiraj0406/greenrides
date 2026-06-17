@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { getAdminClient } from "@/lib/supabase";
 
 const schema = z.object({
@@ -37,40 +36,49 @@ export async function POST(req: NextRequest) {
     const isDriver = d.type === "driver" || d.type === "both";
     const isOwner  = d.type === "owner"  || d.type === "both";
 
-    await prisma.user.update({
-      where: { id: userId },
-      data:  { name: d.name, phone: d.phone },
-    });
+    const db = getAdminClient();
+
+    const { error: userErr } = await db.from("User").update({ name: d.name, phone: d.phone }).eq("id", userId);
+    if (userErr) throw userErr;
 
     if (isDriver) {
       if (!d.license_number || !d.vehicle_type || !d.vehicle_number || !d.vehicle_model) {
         return Response.json({ data: null, error: "Driver fields required" }, { status: 400 });
       }
-      await prisma.driverProfile.upsert({
-        where:  { user_id: userId },
-        create: {
+
+      const { data: existingDriver } = await db
+        .from("DriverProfile")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (existingDriver) {
+        const { error: dpUpdateErr } = await db.from("DriverProfile").update({
+          license_number: d.license_number,
+          vehicle_type:   d.vehicle_type,
+          vehicle_number: d.vehicle_number,
+          vehicle_model:  d.vehicle_model,
+        }).eq("user_id", userId);
+        if (dpUpdateErr) throw dpUpdateErr;
+      } else {
+        const { error: dpInsertErr } = await db.from("DriverProfile").insert({
           user_id:        userId,
           license_number: d.license_number,
           vehicle_type:   d.vehicle_type,
           vehicle_number: d.vehicle_number,
           vehicle_model:  d.vehicle_model,
           is_approved:    false,
-        },
-        update: {
-          license_number: d.license_number,
-          vehicle_type:   d.vehicle_type,
-          vehicle_number: d.vehicle_number,
-          vehicle_model:  d.vehicle_model,
-        },
-      });
+        });
+        if (dpInsertErr) throw dpInsertErr;
+      }
     }
 
     if (isOwner) {
-      await prisma.owner.upsert({
-        where:  { user_id: userId },
-        create: { user_id: userId, name: d.name, phone: d.phone, email: d.email ?? null },
-        update: { name: d.name, phone: d.phone, email: d.email ?? null },
-      });
+      const { error: ownerErr } = await db.from("Owner").upsert(
+        { user_id: userId, name: d.name, phone: d.phone, email: d.email ?? null },
+        { onConflict: "user_id" }
+      );
+      if (ownerErr) throw ownerErr;
     }
 
     await adminClient.auth.admin.updateUserById(userId, {

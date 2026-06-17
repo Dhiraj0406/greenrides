@@ -1,7 +1,20 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { Car, Clock, TrendingUp, Shield, Leaf, ChevronRight } from "lucide-react";
 
 export default function DriversLandingPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) router.replace("/drivers/dashboard");
+    });
+  }, [router]);
+
   return (
     <div className="green-container min-h-screen bg-cream">
       {/* Hero */}
@@ -17,7 +30,7 @@ export default function DriversLandingPage() {
           Join Odisha&apos;s trusted cab network. Set your own schedule, choose your routes, get paid fairly.
         </p>
         <Link
-          href="/login?next=/drivers"
+          href="/login?next=/drivers/dashboard"
           className="inline-flex items-center gap-2 bg-leaf text-white font-bold px-8 py-4 rounded-2xl text-base shadow-lg"
         >
           Become a Driver <ChevronRight className="w-5 h-5" />
@@ -66,7 +79,7 @@ export default function DriversLandingPage() {
           ))}
         </div>
         <Link
-          href="/login?next=/drivers"
+          href="/login?next=/drivers/dashboard"
           className="mt-8 w-full flex items-center justify-center gap-2 bg-leaf text-white font-bold px-6 py-4 rounded-2xl text-base"
         >
           Get started <ChevronRight className="w-5 h-5" />

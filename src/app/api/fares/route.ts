@@ -1,21 +1,21 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { getAdminClient } from "@/lib/supabase";
 
 export async function GET() {
   try {
-    const routes = await prisma.routeConfig.findMany({
-      include: { fare_rule: true },
-      orderBy: [{ from_city: "asc" }, { to_city: "asc" }],
-    });
-    return Response.json({ data: routes, error: null });
+    const db = getAdminClient();
+    const { data: routes, error } = await db
+      .from("RouteConfig")
+      .select("id, from_city, to_city, base_fare, is_active, distance_km, duration_min, FareRule(*)")
+      .order("from_city", { ascending: true })
+      .order("to_city",   { ascending: true });
+
+    if (error) throw error;
+    return Response.json({ data: routes ?? [], error: null });
   } catch (err) {
     console.error("[fares GET]", err);
-    return Response.json(
-      { data: null, error: "Failed to fetch fares" },
-      { status: 500 }
-    );
+    return Response.json({ data: null, error: "Failed to fetch fares" }, { status: 500 });
   }
 }
 
@@ -38,80 +38,59 @@ const putSchema = z.object({
 });
 
 export async function PUT(req: NextRequest) {
-  // Admin only — check via header or session (simplified for MVP)
   const adminToken = req.headers.get("x-admin-token");
   if (adminToken !== process.env.ADMIN_SECRET) {
-    return Response.json(
-      { data: null, error: "Unauthorized" },
-      { status: 401 }
-    );
+    return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
   }
 
   let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
+  try { body = await req.json(); } catch {
     return Response.json({ data: null, error: "Invalid JSON" }, { status: 400 });
   }
 
   const parsed = putSchema.safeParse(body);
   if (!parsed.success) {
-    return Response.json(
-      { data: null, error: parsed.error.issues[0].message },
-      { status: 400 }
-    );
+    return Response.json({ data: null, error: parsed.error.issues[0].message }, { status: 400 });
   }
 
   try {
-    const updates = await prisma.$transaction(
-      parsed.data.routes.map((r) =>
-        prisma.routeConfig.update({
-          where: { id: r.id },
-          data: {
-            ...(r.base_fare !== undefined ? { base_fare: r.base_fare } : {}),
-            ...(r.is_active !== undefined ? { is_active: r.is_active } : {}),
-            ...(r.fare_rule
-              ? {
-                  fare_rule: {
-                    upsert: {
-                      create: {
-                        discount_pct:   r.fare_rule.discount_pct   ?? 0,
-                        discount_on:    r.fare_rule.discount_on    ?? false,
-                        discount_label: r.fare_rule.discount_label ?? null,
-                        global_offer:   r.fare_rule.global_offer   ?? false,
-                      },
-                      update: {
-                        ...(r.fare_rule.discount_pct   !== undefined ? { discount_pct: r.fare_rule.discount_pct } : {}),
-                        ...(r.fare_rule.discount_on    !== undefined ? { discount_on:  r.fare_rule.discount_on  } : {}),
-                        ...(r.fare_rule.discount_label !== undefined ? { discount_label: r.fare_rule.discount_label } : {}),
-                        ...(r.fare_rule.global_offer   !== undefined ? { global_offer: r.fare_rule.global_offer } : {}),
-                      },
-                    },
-                  },
-                }
-              : {}),
-          },
-        })
-      )
-    );
+    const db = getAdminClient();
+    const now = new Date().toISOString();
+
+    for (const r of parsed.data.routes) {
+      const routeData: Record<string, unknown> = {};
+      if (r.base_fare !== undefined) routeData.base_fare = r.base_fare;
+      if (r.is_active !== undefined) routeData.is_active = r.is_active;
+
+      if (Object.keys(routeData).length > 0) {
+        const { error } = await db.from("RouteConfig").update(routeData).eq("id", r.id);
+        if (error) throw error;
+      }
+
+      if (r.fare_rule) {
+        const { error } = await db.from("FareRule").upsert({
+          id:             crypto.randomUUID(),
+          route_id:       r.id,
+          discount_pct:   r.fare_rule.discount_pct   ?? 0,
+          discount_on:    r.fare_rule.discount_on    ?? false,
+          discount_label: r.fare_rule.discount_label ?? null,
+          global_offer:   r.fare_rule.global_offer   ?? false,
+          updated_at:     now,
+        }, { onConflict: "route_id" });
+        if (error) throw error;
+      }
+    }
 
     try {
-      const db = getAdminClient();
       await db.from("AdminLog").insert({
-        admin_id:  "admin",
-        action:    "fares_updated",
-        entity:    "fare",
-        entity_id: "batch",
-        details:   { routes: parsed.data.routes },
+        admin_id: "admin", action: "fares_updated", entity: "fare",
+        entity_id: "batch", details: { routes: parsed.data.routes },
       });
     } catch {}
 
-    return Response.json({ data: { updated: updates.length }, error: null });
+    return Response.json({ data: { updated: parsed.data.routes.length }, error: null });
   } catch (err) {
     console.error("[fares PUT]", err);
-    return Response.json(
-      { data: null, error: "Failed to update fares" },
-      { status: 500 }
-    );
+    return Response.json({ data: null, error: "Failed to update fares" }, { status: 500 });
   }
 }

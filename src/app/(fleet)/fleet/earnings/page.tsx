@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, TrendingUp, CreditCard } from "lucide-react";
+import { Loader2, TrendingUp, CreditCard, ChevronLeft } from "lucide-react";
+import Link from "next/link";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
 interface Payout {
@@ -19,21 +21,34 @@ export default function EarningsPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) return;
+      if (!session) { setLoading(false); return; }
       fetch("/api/fleet/earnings", {
         headers: { Authorization: `Bearer ${session.access_token}` },
       })
         .then((r) => r.json())
-        .then((j) => { setData(j.data ?? null); setLoading(false); });
-    });
+        .then((j) => { if (j.error) { toast.error(j.error); } else { setData(j.data ?? null); } })
+        .catch(() => toast.error("Failed to load earnings"))
+        .finally(() => setLoading(false));
+    }).catch(() => setLoading(false));
   }, []);
 
   const fmt = (d: string) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
   return (
     <div className="px-4 py-6">
-      <h2 className="font-display text-xl text-forest mb-4">Earnings</h2>
+      <div className="flex items-center gap-2 mb-4">
+        <Link href="/fleet/dashboard" className="text-sub hover:text-text">
+          <ChevronLeft className="w-5 h-5" />
+        </Link>
+        <h2 className="font-display text-xl text-forest">Earnings</h2>
+      </div>
       {loading && <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-leaf" /></div>}
+      {!loading && !data && (
+        <div className="flex flex-col items-center py-12 gap-2">
+          <TrendingUp className="w-8 h-8 text-sub" />
+          <p className="text-center text-sub text-sm">No earnings data yet.</p>
+        </div>
+      )}
       {!loading && data && (
         <>
           <div className="bg-forest rounded-2xl p-5 mb-5 flex items-center gap-4">

@@ -1,245 +1,242 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Loader2, User, Phone, Car, Hash, Upload, CheckCircle, XCircle, Clock } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Loader2, Car, Star, MapPin, LogOut, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-interface DriverProfileData {
-  license_number: string | null;
+interface DriverProfile {
+  name:           string | null;
+  phone:          string;
   vehicle_type:   string | null;
   vehicle_number: string | null;
   vehicle_model:  string | null;
-  is_approved:    boolean;
-  kyc_status:     string | null;
-  user:           { name: string | null; phone: string };
+  license_number: string | null;
+  avg_rating:     number;
+  total_trips:    number;
+  is_online:      boolean;
 }
 
-interface MyDocument {
-  id:          string;
-  doc_type:    string;
-  status:      "PENDING" | "APPROVED" | "REJECTED";
-  updated_at:  string;
-}
-
-const DOC_LABELS: Record<string, string> = {
-  driving_license:   "Driving Licence",
-  vehicle_rc:        "Vehicle Registration (RC)",
-  vehicle_insurance: "Vehicle Insurance",
-  aadhaar:           "Aadhaar Card",
-};
-
-const STATUS_ICON: Record<MyDocument["status"], React.ReactNode> = {
-  PENDING:  <Clock className="w-4 h-4 text-gold" />,
-  APPROVED: <CheckCircle className="w-4 h-4 text-leaf" />,
-  REJECTED: <XCircle className="w-4 h-4 text-red-500" />,
-};
-
-const STATUS_LABEL: Record<MyDocument["status"], string> = {
-  PENDING:  "Under review",
-  APPROVED: "Approved",
-  REJECTED: "Rejected — re-upload",
-};
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function Row({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string | null | undefined }) {
-  return (
-    <div className="flex items-start gap-3 py-3 border-b border-border last:border-0">
-      <div className="w-8 h-8 rounded-full bg-pale flex items-center justify-center flex-shrink-0 mt-0.5">
-        <Icon className="w-4 h-4 text-leaf" />
-      </div>
-      <div>
-        <p className="text-xs text-sub">{label}</p>
-        <p className="text-sm font-semibold text-text">{value || "—"}</p>
-      </div>
-    </div>
-  );
-}
-
-function DocRow({
-  docType, existing, userId, token, onUploaded,
-}: {
-  docType:    string;
-  existing:   MyDocument | undefined;
-  userId:     string;
-  token:      string;
-  onUploaded: () => void;
-}) {
-  const inputRef   = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("file",        file);
-      fd.append("entity_type", "DRIVER");
-      fd.append("entity_id",   userId);
-      fd.append("doc_type",    docType);
-
-      const res  = await fetch("/api/documents/upload", {
-        method:  "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body:    fd,
-      });
-      const json = await res.json();
-      if (!res.ok) { toast.error(json.error ?? "Upload failed"); return; }
-      toast.success("Document uploaded — pending review");
-      onUploaded();
-    } finally {
-      setUploading(false);
-      if (inputRef.current) inputRef.current.value = "";
-    }
-  }
-
-  const canUpload = !existing || existing.status !== "APPROVED";
-
-  return (
-    <div className="flex items-center justify-between py-3 border-b border-border last:border-0">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-text">{DOC_LABELS[docType] ?? docType}</p>
-        {existing ? (
-          <div className="flex items-center gap-1.5 mt-0.5">
-            {STATUS_ICON[existing.status]}
-            <span className={`text-xs ${existing.status === "APPROVED" ? "text-leaf" : existing.status === "REJECTED" ? "text-red-500" : "text-gold"}`}>
-              {STATUS_LABEL[existing.status]}
-            </span>
-          </div>
-        ) : (
-          <p className="text-xs text-sub mt-0.5">Not uploaded</p>
-        )}
-      </div>
-      {canUpload && (
-        <>
-          <input ref={inputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFile} />
-          <button
-            onClick={() => inputRef.current?.click()}
-            disabled={uploading}
-            className="flex items-center gap-1.5 text-xs font-semibold text-leaf border border-leaf/30 px-3 py-1.5 rounded-xl disabled:opacity-50 ml-3 flex-shrink-0"
-          >
-            {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-            {existing ? "Re-upload" : "Upload"}
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
+const VEHICLE_TYPES = ["Sedan", "SUV", "Hatchback", "MUV", "Traveller"];
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<DriverProfileData | null>(null);
-  const [docs, setDocs]       = useState<MyDocument[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [token, setToken]     = useState("");
-  const [userId, setUserId]   = useState("");
-
-  function fetchDocs(accessToken: string) {
-    fetch("/api/documents/my", { headers: { Authorization: `Bearer ${accessToken}` } })
-      .then((r) => r.json())
-      .then((j) => setDocs(j.data ?? []));
-  }
+  const router = useRouter();
+  const [token, setToken]         = useState("");
+  const [profile, setProfile]     = useState<DriverProfile | null>(null);
+  const [loading, setLoading]     = useState(true);
+  const [toggling, setToggling]   = useState(false);
+  const [editing, setEditing]     = useState(false);
+  const [saving, setSaving]       = useState(false);
+  const [form, setForm] = useState({
+    name: "", vehicle_type: "", vehicle_number: "", vehicle_model: "", license_number: "",
+  });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) return;
+      if (!session) { setLoading(false); return; }
       const t = session.access_token;
       setToken(t);
-      setUserId(session.user.id);
-      Promise.all([
-        fetch("/api/fleet/driver/profile", { headers: { Authorization: `Bearer ${t}` } })
-          .then((r) => r.json())
-          .then((j) => setProfile(j.data ?? null)),
-        fetch("/api/documents/my", { headers: { Authorization: `Bearer ${t}` } })
-          .then((r) => r.json())
-          .then((j) => setDocs(j.data ?? [])),
-      ]).finally(() => setLoading(false));
-    });
+      fetch("/api/fleet/driver/profile", { headers: { Authorization: `Bearer ${t}` } })
+        .then((r) => r.json())
+        .then((j) => {
+          if (j.data) {
+            setProfile(j.data);
+            setForm({
+              name:           j.data.name           ?? "",
+              vehicle_type:   j.data.vehicle_type   ?? "",
+              vehicle_number: j.data.vehicle_number ?? "",
+              vehicle_model:  j.data.vehicle_model  ?? "",
+              license_number: j.data.license_number ?? "",
+            });
+          }
+        })
+        .catch(() => toast.error("Failed to load profile"))
+        .finally(() => setLoading(false));
+    }).catch(() => setLoading(false));
   }, []);
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    window.location.href = "/register";
+  async function handleToggle() {
+    if (!profile || !token) return;
+    setToggling(true);
+    const next = !profile.is_online;
+    try {
+      const res = await fetch("/api/fleet/availability", {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body:    JSON.stringify({ is_online: next }),
+      });
+      const j = await res.json();
+      if (!res.ok || j.error) { toast.error(j.error ?? "Failed to update status"); return; }
+      setProfile((p) => p ? { ...p, is_online: next } : p);
+      toast.success(next ? "You are now online" : "You are now offline");
+    } catch { toast.error("Network error"); }
+    finally { setToggling(false); }
   }
 
-  const docMap = new Map(docs.map((d) => [d.doc_type, d]));
+  async function handleSave() {
+    if (!token) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/fleet/driver/profile", {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body:    JSON.stringify(form),
+      });
+      const j = await res.json();
+      if (!res.ok || j.error) { toast.error(j.error ?? "Failed to save"); return; }
+      setProfile((p) => p ? { ...p, ...form } : p);
+      setEditing(false);
+      toast.success("Profile updated");
+    } catch { toast.error("Network error"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.replace("/fleet/login");
+  }
+
+  const initial = profile?.name ? profile.name.charAt(0).toUpperCase() : "D";
 
   return (
     <div className="px-4 py-6">
-      <h2 className="font-display text-xl text-forest mb-4">My Profile</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-display text-xl text-forest">My Profile</h2>
+        <button onClick={handleLogout}
+          className="flex items-center gap-1.5 text-xs text-sub font-medium">
+          <LogOut className="w-4 h-4" /> Sign out
+        </button>
+      </div>
 
-      {loading && <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-leaf" /></div>}
-
-      {!loading && profile && (
-        <>
-          {/* ── Identity card ───────────────────── */}
-          <div className="flex items-center gap-4 bg-white border border-border rounded-2xl p-4 mb-4">
-            <div className="w-14 h-14 rounded-full bg-leaf/10 flex items-center justify-center">
-              <User className="w-7 h-7 text-leaf" />
-            </div>
-            <div>
-              <p className="font-semibold text-text">{profile.user.name ?? "Driver"}</p>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${profile.is_approved ? "bg-leaf/10 text-leaf" : "bg-gold/10 text-gold"}`}>
-                  {profile.is_approved ? "Approved" : "Pending"}
-                </span>
-                {profile.kyc_status && profile.kyc_status !== "NOT_SUBMITTED" && (
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                    profile.kyc_status === "APPROVED" ? "bg-leaf/10 text-leaf" :
-                    profile.kyc_status === "REJECTED" ? "bg-red-50 text-red-500" :
-                    "bg-gold/10 text-gold"
-                  }`}>
-                    KYC {profile.kyc_status.charAt(0) + profile.kyc_status.slice(1).toLowerCase()}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* ── Profile details ─────────────────── */}
-          <div className="bg-white border border-border rounded-2xl px-4 mb-4">
-            <Row icon={Phone} label="Phone"          value={`+91 ${profile.user.phone}`} />
-            <Row icon={Hash}  label="Licence Number" value={profile.license_number} />
-            <Row icon={Car}   label="Vehicle Type"   value={profile.vehicle_type} />
-            <Row icon={Car}   label="Vehicle Number" value={profile.vehicle_number} />
-            <Row icon={Car}   label="Vehicle Model"  value={profile.vehicle_model} />
-          </div>
-
-          {/* ── KYC Documents ───────────────────── */}
-          <div className="bg-white border border-border rounded-2xl px-4 mb-4">
-            <div className="py-3 border-b border-border">
-              <p className="text-xs font-bold text-sub uppercase tracking-wide">KYC Documents</p>
-              <p className="text-xs text-sub mt-0.5">Upload JPEG, PNG, WebP or PDF · max 10 MB each</p>
-            </div>
-            {Object.keys(DOC_LABELS).map((dt) => (
-              <DocRow
-                key={dt}
-                docType={dt}
-                existing={docMap.get(dt)}
-                userId={userId}
-                token={token}
-                onUploaded={() => fetchDocs(token)}
-              />
-            ))}
-          </div>
-
-          <button
-            onClick={signOut}
-            className="w-full py-3 rounded-xl text-sm font-semibold text-red-500 border border-red-200 bg-red-50"
-          >
-            Sign Out
-          </button>
-        </>
+      {loading && (
+        <div className="flex justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-leaf" />
+        </div>
       )}
 
       {!loading && !profile && (
         <p className="text-center text-sub text-sm py-12">Profile not found.</p>
+      )}
+
+      {!loading && profile && (
+        <>
+          {/* ── Avatar + identity ─────────────────────────── */}
+          <div className="flex flex-col items-center mb-6">
+            <div className="w-20 h-20 rounded-full bg-leaf flex items-center justify-center mb-3">
+              <span className="font-display text-3xl text-white">{initial}</span>
+            </div>
+            <p className="font-display text-xl text-forest">{profile.name ?? "Driver"}</p>
+            <p className="text-sm text-sub mt-0.5">+91 {profile.phone}</p>
+          </div>
+
+          {/* ── Stats row ─────────────────────────────────── */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="bg-white border border-border rounded-2xl p-4 flex items-center gap-3">
+              <Star className="w-5 h-5 text-gold flex-shrink-0" />
+              <div>
+                <p className="text-xs text-sub">Rating</p>
+                <p className="text-lg font-bold text-text">
+                  {profile.avg_rating > 0 ? profile.avg_rating.toFixed(1) : "—"}
+                </p>
+              </div>
+            </div>
+            <div className="bg-white border border-border rounded-2xl p-4 flex items-center gap-3">
+              <MapPin className="w-5 h-5 text-leaf flex-shrink-0" />
+              <div>
+                <p className="text-xs text-sub">Trips</p>
+                <p className="text-lg font-bold text-text">{profile.total_trips}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Vehicle / profile info ────────────────────── */}
+          <div className="bg-white border border-border rounded-2xl p-4 mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-text">Vehicle & Licence</p>
+              {!editing ? (
+                <button onClick={() => setEditing(true)}
+                  className="flex items-center gap-1 text-xs text-leaf font-semibold">
+                  <Pencil className="w-3.5 h-3.5" /> Edit
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setEditing(false)}
+                    className="text-xs text-sub font-medium flex items-center gap-1">
+                    <X className="w-3.5 h-3.5" /> Cancel
+                  </button>
+                  <button onClick={handleSave} disabled={saving}
+                    className="flex items-center gap-1 text-xs text-leaf font-semibold disabled:opacity-60">
+                    {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                    Save
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {!editing ? (
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                {[
+                  ["Name",           profile.name],
+                  ["Licence No.",    profile.license_number],
+                  ["Vehicle Type",   profile.vehicle_type],
+                  ["Reg. Number",    profile.vehicle_number],
+                  ["Vehicle Model",  profile.vehicle_model],
+                ].map(([label, value]) => (
+                  <div key={label} className="bg-pale rounded-xl px-3 py-2.5">
+                    <p className="text-[10px] text-sub mb-0.5">{label}</p>
+                    <p className="text-xs font-semibold text-text truncate">{value || "—"}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <input type="text" placeholder="Your name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="w-full border border-border rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 ring-leaf/30" />
+                <input type="text" placeholder="Licence number"
+                  value={form.license_number}
+                  onChange={(e) => setForm({ ...form, license_number: e.target.value.toUpperCase() })}
+                  className="w-full border border-border rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 ring-leaf/30 font-mono" />
+                <select value={form.vehicle_type}
+                  onChange={(e) => setForm({ ...form, vehicle_type: e.target.value })}
+                  className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-white outline-none focus:ring-2 ring-leaf/30">
+                  <option value="">Vehicle type</option>
+                  {VEHICLE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <input type="text" placeholder="Reg. number (e.g. OD05AB1234)"
+                  value={form.vehicle_number}
+                  onChange={(e) => setForm({ ...form, vehicle_number: e.target.value.toUpperCase() })}
+                  className="w-full border border-border rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 ring-leaf/30 font-mono" />
+                <input type="text" placeholder="Vehicle model (e.g. Maruti Swift Dzire)"
+                  value={form.vehicle_model}
+                  onChange={(e) => setForm({ ...form, vehicle_model: e.target.value })}
+                  className="w-full border border-border rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 ring-leaf/30" />
+              </div>
+            )}
+          </div>
+
+          {/* ── Online toggle ─────────────────────────────── */}
+          <button
+            onClick={handleToggle}
+            disabled={toggling}
+            className={`w-full py-4 rounded-2xl font-semibold text-sm flex items-center justify-center gap-3 transition-colors border
+              ${profile.is_online
+                ? "bg-leaf/10 border-leaf text-leaf"
+                : "bg-pale border-border text-sub"}`}
+          >
+            {toggling ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <>
+                <span className={`w-5 h-5 rounded-full flex-shrink-0 transition-colors ${profile.is_online ? "bg-leaf" : "bg-sub/30"}`} />
+                <Car className="w-4 h-4" />
+                {profile.is_online ? "You're Online — tap to go offline" : "You're Offline — tap to go online"}
+              </>
+            )}
+          </button>
+        </>
       )}
     </div>
   );

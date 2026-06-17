@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getAdminClient } from "@/lib/supabase";
 
 function isAdmin(req: NextRequest) {
   return req.headers.get("x-admin-token") === process.env.ADMIN_SECRET;
@@ -19,9 +19,19 @@ export async function PATCH(
     return Response.json({ data: null, error: "status must be ACTIVE or SUSPENDED" }, { status: 400 });
   }
 
-  const owner = await prisma.owner.update({
-    where: { id },
-    data:  { status: status as "ACTIVE" | "SUSPENDED" },
-  });
-  return Response.json({ data: owner, error: null });
+  try {
+    const db = getAdminClient();
+    const { data, error } = await db
+      .from("Owner")
+      .update({ status })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return Response.json({ data, error: null });
+  } catch (err) {
+    console.error("[admin/owners/:id PATCH]", err);
+    return Response.json({ data: null, error: "Failed to update owner" }, { status: 500 });
+  }
 }

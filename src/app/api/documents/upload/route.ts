@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import { getAdminClient } from "@/lib/supabase";
-import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
@@ -46,14 +45,15 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "entity_id must be your own user ID for DRIVER documents" }, { status: 403 });
   }
   if (entity_type === "OWNER") {
-    const owner = await prisma.owner.findFirst({ where: { id: entity_id, user_id: user.id } });
+    const { data: owner } = await db.from("Owner").select("id").eq("id", entity_id).eq("user_id", user.id).maybeSingle();
     if (!owner) return Response.json({ error: "Owner not found or not yours" }, { status: 403 });
   }
   if (entity_type === "VEHICLE") {
-    const vehicle = await prisma.vehicle.findFirst({
-      where: { id: entity_id, owner: { user_id: user.id } },
-    });
-    if (!vehicle) return Response.json({ error: "Vehicle not found or not yours" }, { status: 403 });
+    const { data: vehicle } = await db.from("Vehicle").select("id, owner_id, Owner!owner_id(user_id)").eq("id", entity_id).maybeSingle();
+    const ownerUserId = (vehicle?.Owner as unknown as { user_id: string } | null)?.user_id;
+    if (!vehicle || ownerUserId !== user.id) {
+      return Response.json({ error: "Vehicle not found or not yours" }, { status: 403 });
+    }
   }
 
   // Upload to Supabase Storage
@@ -70,30 +70,48 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "Storage upload failed" }, { status: 500 });
   }
 
-  // Upsert Document record (replace if same entity+doc_type exists)
-  const existing = await prisma.document.findFirst({
-    where: { entity_type: entity_type as "DRIVER" | "VEHICLE" | "OWNER", entity_id, doc_type },
-  });
+  // Upsert Document record
+  const { data: existing } = await db
+    .from("Document")
+    .select("id")
+    .eq("entity_type", entity_type)
+    .eq("entity_id", entity_id)
+    .eq("doc_type", doc_type)
+    .maybeSingle();
 
-  let doc;
+  let docId: string;
+  const now = new Date().toISOString();
+
   if (existing) {
-    doc = await prisma.document.update({
-      where: { id: existing.id },
-      data:  { storage_path: storagePath, status: "PENDING", verified_by: null, verified_at: null, updated_at: new Date() },
-    });
+    await db.from("Document").update({
+      storage_path: storagePath,
+      status:       "PENDING",
+      verified_by:  null,
+      verified_at:  null,
+      updated_at:   now,
+    }).eq("id", existing.id);
+    docId = existing.id;
   } else {
-    doc = await prisma.document.create({
-      data: { entity_type: entity_type as "DRIVER" | "VEHICLE" | "OWNER", entity_id, doc_type, storage_path: storagePath },
-    });
+    const { data: newDoc, error: createErr } = await db.from("Document").insert({
+      entity_type,
+      entity_id,
+      doc_type,
+      storage_path: storagePath,
+    }).select("id").single();
+
+    if (createErr || !newDoc) {
+      return Response.json({ error: "Failed to save document record" }, { status: 500 });
+    }
+    docId = newDoc.id;
   }
 
   // Mark driver KYC as SUBMITTED (if it was NOT_SUBMITTED)
   if (entity_type === "DRIVER") {
-    await prisma.driverProfile.updateMany({
-      where: { user_id: user.id, kyc_status: "NOT_SUBMITTED" },
-      data:  { kyc_status: "SUBMITTED" },
-    });
+    await db.from("DriverProfile")
+      .update({ kyc_status: "SUBMITTED" })
+      .eq("user_id", user.id)
+      .eq("kyc_status", "NOT_SUBMITTED");
   }
 
-  return Response.json({ data: { id: doc.id, storage_path: storagePath }, error: null });
+  return Response.json({ data: { id: docId, storage_path: storagePath }, error: null });
 }

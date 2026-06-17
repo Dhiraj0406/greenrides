@@ -3,22 +3,35 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 const CITIES = [
   "Koraput", "Jeypore", "Sunabeda", "Boipariguda", "Kundra",
   "Narayanpatna", "Malkangiri", "Rayagada", "Jagdalpur",
 ];
 
+const todayIST = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+
+function buildDepartureISO(date: string, hour: string, minute: string, ampm: string): string {
+  let h = parseInt(hour, 10);
+  if (ampm === "PM" && h !== 12) h += 12;
+  if (ampm === "AM" && h === 12) h = 0;
+  return new Date(`${date}T${String(h).padStart(2, "0")}:${minute}:00+05:30`).toISOString();
+}
+
 export function RideForm() {
   const router = useRouter();
   const [form, setForm] = useState({
-    from_city:       "",
-    to_city:         "",
-    departure_time:  "",
-    total_seats:     "4",
-    fare_paise:      "",
-    pickup_points:   "",
-    notes:           "",
+    from_city:     "",
+    to_city:       "",
+    date:          "",
+    hour:          "8",
+    minute:        "00",
+    ampm:          "AM",
+    total_seats:   "4",
+    fare_paise:    "",
+    pickup_points: "",
+    notes:         "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
@@ -30,7 +43,7 @@ export function RideForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.from_city || !form.to_city || !form.departure_time || !form.fare_paise) {
+    if (!form.from_city || !form.to_city || !form.date || !form.fare_paise) {
       setError("Please fill all required fields.");
       return;
     }
@@ -41,13 +54,20 @@ export function RideForm() {
 
     setLoading(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setError("Please log in to post a ride."); return; }
+
       const res = await fetch("/api/rides", {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type":  "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
+          driver_id:      session.user.id,
           from_city:      form.from_city,
           to_city:        form.to_city,
-          departure_time: new Date(form.departure_time).toISOString(),
+          departure_time: buildDepartureISO(form.date, form.hour, form.minute, form.ampm),
           total_seats:    parseInt(form.total_seats),
           fare_paise:     parseInt(form.fare_paise) * 100,
           pickup_points:  form.pickup_points
@@ -55,12 +75,11 @@ export function RideForm() {
             .map((s) => s.trim())
             .filter(Boolean),
           notes: form.notes || null,
-          driver_id: "demo-driver-id", // Replace with auth user id
         }),
       });
       const json = await res.json();
-      if (json.error) throw new Error(json.error);
-      router.push("/driver/dashboard");
+      if (!res.ok || json.error) throw new Error(json.error ?? "Failed to post ride");
+      router.push("/drivers/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to post ride.");
     } finally {
@@ -99,15 +118,37 @@ export function RideForm() {
         </div>
       </div>
 
-      {/* Departure */}
+      {/* Departure Date */}
       <div>
-        <label className="text-xs text-sub font-semibold mb-1.5 block">Departure *</label>
-        <input type="datetime-local" value={form.departure_time}
-          onChange={(e) => set("departure_time", e.target.value)}
+        <label className="text-xs text-sub font-semibold mb-1.5 block">Departure Date *</label>
+        <input type="date" value={form.date}
+          min={todayIST()}
+          onChange={(e) => set("date", e.target.value)}
           className={inputClass} />
       </div>
 
-      {/* Fare — full-cab only; total_seats kept in state as fixed 4 for DB */}
+      {/* Departure Time */}
+      <div>
+        <label className="text-xs text-sub font-semibold mb-1.5 block">Departure Time *</label>
+        <div className="grid grid-cols-3 gap-2">
+          <select value={form.hour} onChange={(e) => set("hour", e.target.value)} className={selectClass}>
+            {[1,2,3,4,5,6,7,8,9,10,11,12].map((h) => (
+              <option key={h} value={String(h)}>{h}</option>
+            ))}
+          </select>
+          <select value={form.minute} onChange={(e) => set("minute", e.target.value)} className={selectClass}>
+            {["00","15","30","45"].map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+          <select value={form.ampm} onChange={(e) => set("ampm", e.target.value)} className={selectClass}>
+            <option value="AM">AM</option>
+            <option value="PM">PM</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Fare */}
       <div>
         <label className="text-xs text-sub font-semibold mb-1.5 block">Full Cab Fare (₹) *</label>
         <input type="number" min="0" value={form.fare_paise}
@@ -138,7 +179,7 @@ export function RideForm() {
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || !form.from_city || !form.to_city || !form.date || !form.fare_paise}
         className="w-full bg-leaf disabled:opacity-50 text-white font-semibold
                    py-4 rounded-xl touch-target flex items-center justify-center
                    gap-2 transition-colors hover:bg-leaf/90"

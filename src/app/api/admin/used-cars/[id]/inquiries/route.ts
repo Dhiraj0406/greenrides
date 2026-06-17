@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getAdminClient } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +15,18 @@ export async function GET(
 
   const { id } = await params;
 
-  const inquiries = await prisma.carInquiry.findMany({
-    where:   { listing_id: id },
-    orderBy: { created_at: "desc" },
-  });
+  try {
+    const db = getAdminClient();
+    const { data, error } = await db
+      .from("CarInquiry")
+      .select("*")
+      .eq("listing_id", id)
+      .order("created_at", { ascending: false });
 
-  return Response.json({ data: inquiries, error: null });
+    if (error) throw error;
+    return Response.json({ data, error: null });
+  } catch (err) {
+    console.error("[admin/used-cars/:id/inquiries GET]", err);
+    return Response.json({ error: "Failed to fetch inquiries" }, { status: 500 });
+  }
 }

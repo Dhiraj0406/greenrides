@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { getAdminClient } from "@/lib/supabase";
 import { invalidateFlag } from "@/modules/platform/db";
 
 function isAdmin(req: NextRequest) {
@@ -25,12 +25,20 @@ export async function PATCH(
   const parsed = schema.safeParse(body);
   if (!parsed.success) return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
 
-  const flag = await prisma.appRemoteConfig.update({
-    where: { key },
-    data:  { enabled: parsed.data.enabled },
-  });
+  try {
+    const db = getAdminClient();
+    const { data, error } = await db
+      .from("app_remote_config")
+      .update({ enabled: parsed.data.enabled })
+      .eq("key", key)
+      .select()
+      .single();
 
-  invalidateFlag(key);
-
-  return Response.json({ data: flag, error: null });
+    if (error) throw error;
+    invalidateFlag(key);
+    return Response.json({ data, error: null });
+  } catch (err) {
+    console.error("[admin/config/:key PATCH]", err);
+    return Response.json({ error: "Failed to update config" }, { status: 500 });
+  }
 }

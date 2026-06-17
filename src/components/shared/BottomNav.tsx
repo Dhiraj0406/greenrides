@@ -16,7 +16,7 @@ export function BottomNav() {
   const [isAuthed, setIsAuthed] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setIsAuthed(!!data.user));
+    supabase.auth.getSession().then(({ data }) => setIsAuthed(!!data.session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setIsAuthed(!!session);
     });

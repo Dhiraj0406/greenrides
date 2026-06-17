@@ -67,7 +67,7 @@ function PayNowButton({ requestId, orderId, amountPaise }: { requestId: string; 
         });
       }
       const { data: { session } } = await (await import("@/lib/supabase")).supabase.auth.getSession();
-      if (!session) return;
+      if (!session) { setPaying(false); return; }
 
       const RazorpayConstructor = (window as unknown as { Razorpay: new (opts: Record<string, unknown>) => { open: () => void } }).Razorpay;
       const rzp = new RazorpayConstructor({
@@ -182,8 +182,25 @@ function ConfirmedHeroCard({ req, token }: { req: MyRequest; token: string }) {
   );
 }
 
-function PendingCard({ req }: { req: MyRequest }) {
+function PendingCard({ req, token, onCancelled }: { req: MyRequest; token: string; onCancelled: (id: string) => void }) {
   const fareRupees = Math.round(req.fare_paise / 100);
+  const [cancelling, setCancelling] = useState(false);
+
+  async function handleCancel() {
+    setCancelling(true);
+    try {
+      const res = await fetch(`/api/requests/${req.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const j = await res.json();
+      if (!res.ok || j.error) { toast.error(j.error ?? "Failed to cancel"); return; }
+      toast.success("Ride cancelled");
+      onCancelled(req.id);
+    } catch { toast.error("Network error"); }
+    finally { setCancelling(false); }
+  }
+
   return (
     <div className="bg-white border border-gold/30 rounded-2xl p-4">
       <div className="flex items-center justify-between mb-2">
@@ -194,7 +211,7 @@ function PendingCard({ req }: { req: MyRequest }) {
         </div>
         <span className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-gold/15 text-gold">
           <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse inline-block" />
-          In Progress
+          Pending
         </span>
       </div>
       <div className="flex items-center gap-1.5 text-sm text-sub mb-3">
@@ -207,13 +224,22 @@ function PendingCard({ req }: { req: MyRequest }) {
         <p className="text-sm font-semibold text-gold">Finding your driver…</p>
         <p className="text-xs text-sub mt-0.5">We&apos;ll call you once a driver is confirmed.</p>
       </div>
-      <a
-        href="tel:+919668021577"
-        className="flex items-center justify-center gap-2 border border-forest/20 text-forest font-semibold text-sm py-2.5 rounded-xl w-full"
-      >
-        <Phone className="w-4 h-4" />
-        Call Green Rides
-      </a>
+      <div className="flex gap-2">
+        <a
+          href="tel:+919668021577"
+          className="flex-1 flex items-center justify-center gap-2 border border-forest/20 text-forest font-semibold text-sm py-2.5 rounded-xl"
+        >
+          <Phone className="w-4 h-4" />
+          Call Green Rides
+        </a>
+        <button
+          onClick={handleCancel}
+          disabled={cancelling}
+          className="px-4 bg-red-50 text-red-500 font-semibold text-sm py-2.5 rounded-xl disabled:opacity-50"
+        >
+          {cancelling ? "…" : "Cancel"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -261,7 +287,7 @@ function RequestCard({ request, onRate }: { request: MyRequest; onRate: (id: str
 
 interface CabBooking {
   id:             string;
-  status:         "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "REFUNDED";
+  status:         "PENDING" | "CONFIRMED" | "IN_PROGRESS" | "CANCELLED" | "COMPLETED" | "REFUNDED";
   amount_paise:   number;
   seats:          number;
   pickup_point:   string;
@@ -279,11 +305,12 @@ function CabBookingCard({ booking, onRate }: { booking: CabBooking; onRate: (id:
   const fareRupees = Math.round(booking.amount_paise / 100);
   const shortId = booking.id.replace(/-/g, "").slice(0, 8).toUpperCase();
   const STATUS_STYLES: Record<CabBooking["status"], string> = {
-    PENDING:   "bg-gold/15 text-gold",
-    CONFIRMED: "bg-leaf/15 text-leaf",
-    COMPLETED: "bg-gray-100 text-gray-500",
-    CANCELLED: "bg-red-50 text-red-500",
-    REFUNDED:  "bg-blue-50 text-blue-500",
+    PENDING:     "bg-gold/15 text-gold",
+    CONFIRMED:   "bg-leaf/15 text-leaf",
+    IN_PROGRESS: "bg-blue-50 text-blue-600",
+    COMPLETED:   "bg-gray-100 text-gray-500",
+    CANCELLED:   "bg-red-50 text-red-500",
+    REFUNDED:    "bg-blue-50 text-blue-500",
   };
   return (
     <div className="bg-white border border-border rounded-2xl p-4">
@@ -370,25 +397,30 @@ export default function MyBookingsPage() {
 
   useEffect(() => {
     async function init() {
-      let { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        // Session may not have hydrated from storage yet — try refreshing
-        const { data } = await supabase.auth.refreshSession();
-        session = data.session;
-      }
-      if (!session) {
-        router.replace("/login?next=/bookings");
-        return;
-      }
-      const accessToken = session.access_token;
-      setToken(accessToken);
-      await fetchRequests(accessToken);
       try {
-        const bRes  = await fetch("/api/bookings", { headers: { Authorization: `Bearer ${accessToken}` } });
-        const bJson = await bRes.json();
-        if (bJson.data) setBookings(bJson.data);
-      } catch { /* silent */ }
-      setLoading(false);
+        let { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          // Session may not have hydrated from storage yet — try refreshing
+          const { data } = await supabase.auth.refreshSession();
+          session = data.session;
+        }
+        if (!session) {
+          router.replace("/login?next=/bookings");
+          return;
+        }
+        const accessToken = session.access_token;
+        setToken(accessToken);
+        await fetchRequests(accessToken);
+        try {
+          const bRes  = await fetch("/api/bookings", { headers: { Authorization: `Bearer ${accessToken}` } });
+          const bJson = await bRes.json();
+          if (bRes.ok && bJson.data) setBookings(bJson.data);
+        } catch { /* cab bookings are non-critical — show ride requests even if this fails */ }
+      } catch {
+        setError("Failed to load your trips.");
+      } finally {
+        setLoading(false);
+      }
     }
     init();
   }, [router, fetchRequests]);
@@ -470,7 +502,12 @@ export default function MyBookingsPage() {
               <ConfirmedHeroCard key={req.id} req={req} token={token} />
             ))}
             {pending.map((req) => (
-              <PendingCard key={req.id} req={req} />
+              <PendingCard
+                key={req.id}
+                req={req}
+                token={token}
+                onCancelled={(id) => setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "CANCELLED" } : r))}
+              />
             ))}
             {otherReqs.map((req) => (
               <RequestCard key={req.id} request={req} onRate={(id) => { setRatingFor({ type: "request", id }); setRatingScore(5); }} />

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Loader2, SkipForward, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +53,7 @@ function DispatchContent({ token }: { token: string }) {
     fetch("/api/admin/dispatch", { headers: { "x-admin-token": token } })
       .then(r => r.json())
       .then(j => setDispatches(j.data ?? []))
+      .catch(() => toast.error("Failed to load dispatches"))
       .finally(() => setLoading(false));
   };
 
@@ -60,6 +62,7 @@ function DispatchContent({ token }: { token: string }) {
     fetch("/api/admin/requests?status=PENDING", { headers: { "x-admin-token": token } })
       .then(r => r.json())
       .then(j => setPendingRequests(j.data ?? []))
+      .catch(() => toast.error("Failed to load pending requests"))
       .finally(() => setLoadingRequests(false));
   };
 
@@ -104,42 +107,49 @@ function DispatchContent({ token }: { token: string }) {
   };
 
   async function assign(dispatchId: string, driverUserId: string) {
-    await fetch(`/api/admin/dispatch/${dispatchId}/override`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ action: "assign", driver_id: driverUserId }),
-    });
-    setAssigningId(null);
-    setDriverQuery("");
-    setDrivers([]);
-    load();
+    try {
+      const res = await fetch(`/api/admin/dispatch/${dispatchId}/override`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({ action: "assign", driver_id: driverUserId }),
+      });
+      if (!res.ok) { const j = await res.json(); toast.error(j.error ?? "Assign failed"); return; }
+      setAssigningId(null);
+      setDriverQuery("");
+      setDrivers([]);
+      load();
+    } catch { toast.error("Network error"); }
   }
 
   async function skip(id: string) {
-    await fetch(`/api/admin/dispatch/${id}/override`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ action: "skip" }),
-    });
-    load();
+    try {
+      const res = await fetch(`/api/admin/dispatch/${id}/override`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({ action: "skip" }),
+      });
+      if (!res.ok) { const j = await res.json(); toast.error(j.error ?? "Skip failed"); return; }
+      load();
+    } catch { toast.error("Network error"); }
   }
 
   async function createDispatch(requestId: string, driverUserId: string) {
     setCreatingDispatch(true);
     try {
-      await fetch("/api/admin/dispatch", {
+      const res = await fetch("/api/admin/dispatch", {
         method:  "POST",
         headers: { "Content-Type": "application/json", "x-admin-token": token },
         body:    JSON.stringify({ request_id: requestId, driver_user_id: driverUserId }),
       });
+      if (!res.ok) { const j = await res.json(); toast.error(j.error ?? "Dispatch failed"); return; }
+      toast.success("Driver dispatched");
       setDispatchingRequestId(null);
       setDispatchQuery("");
       setDispatchDrivers([]);
       load();
       loadRequests();
-    } finally {
-      setCreatingDispatch(false);
-    }
+    } catch { toast.error("Network error"); }
+    finally { setCreatingDispatch(false); }
   }
 
   return (

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Users, Car } from "lucide-react";
+import { Loader2, Users, Car, ChevronLeft } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
@@ -22,45 +23,61 @@ export default function FleetDriversPage() {
   const [drivers, setDrivers]   = useState<FleetDriver[]>([]);
   const [vehicles, setVehicles] = useState<OwnerVehicle[]>([]);
   const [loading, setLoading]   = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [token, setToken]       = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) return;
+      if (!session) { setLoading(false); return; }
       setToken(session.access_token);
-      const headers = { Authorization: `Bearer ${session.access_token}` };
-      const [driversRes, vehiclesRes] = await Promise.all([
-        fetch("/api/fleet/fleet-drivers", { headers }).then((r) => r.json()),
-        fetch("/api/fleet/vehicles",      { headers }).then((r) => r.json()),
-      ]);
-      setDrivers(driversRes.data ?? []);
-      setVehicles(vehiclesRes.data ?? []);
-      setLoading(false);
-    });
+      try {
+        const headers = { Authorization: `Bearer ${session.access_token}` };
+        const [driversRes, vehiclesRes] = await Promise.all([
+          fetch("/api/fleet/fleet-drivers", { headers }).then((r) => r.json()),
+          fetch("/api/fleet/vehicles",      { headers }).then((r) => r.json()),
+        ]);
+        setDrivers(driversRes.data ?? []);
+        setVehicles(vehiclesRes.data ?? []);
+      } catch { setLoadError(true); }
+      finally { setLoading(false); }
+    }).catch(() => setLoading(false));
   }, []);
 
   async function assignVehicle(driverProfileId: string, vehicleId: string) {
     if (!token) return;
-    const res = await fetch("/api/fleet/assign-driver", {
-      method:  "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body:    JSON.stringify({ driver_profile_id: driverProfileId, vehicle_id: vehicleId }),
-    });
-    const j = await res.json();
-    if (j.error) { toast.error(j.error); return; }
-    toast.success("Driver assigned");
-    setVehicles((prev) =>
-      prev.map((v) => v.id === vehicleId ? { ...v, driver_id: driverProfileId } : v)
-    );
+    try {
+      const res = await fetch("/api/fleet/assign-driver", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body:    JSON.stringify({ driver_profile_id: driverProfileId, vehicle_id: vehicleId }),
+      });
+      const j = await res.json();
+      if (!res.ok || j.error) { toast.error(j.error ?? "Failed to assign driver"); return; }
+      toast.success("Driver assigned");
+      setVehicles((prev) =>
+        prev.map((v) => v.id === vehicleId ? { ...v, driver_id: driverProfileId } : v)
+      );
+    } catch { toast.error("Network error"); }
   }
 
   const unassignedVehicles = vehicles.filter((v) => !v.driver_id);
 
   return (
     <div className="px-4 py-6">
-      <h2 className="font-display text-xl text-forest mb-4">Fleet Drivers</h2>
+      <div className="flex items-center gap-2 mb-4">
+        <Link href="/fleet/dashboard" className="text-sub hover:text-text">
+          <ChevronLeft className="w-5 h-5" />
+        </Link>
+        <h2 className="font-display text-xl text-forest">Fleet Drivers</h2>
+      </div>
       {loading && <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-leaf" /></div>}
-      {!loading && drivers.length === 0 && (
+      {!loading && loadError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
+          <p className="text-red-500 text-sm">Failed to load fleet data.</p>
+          <button onClick={() => window.location.reload()} className="mt-2 text-xs text-red-400 underline">Retry</button>
+        </div>
+      )}
+      {!loading && !loadError && drivers.length === 0 && (
         <div className="flex flex-col items-center py-12 gap-3">
           <Users className="w-8 h-8 text-sub" />
           <p className="text-center text-sub text-sm">No drivers in your fleet yet.</p>

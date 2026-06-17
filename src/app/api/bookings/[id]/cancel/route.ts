@@ -1,8 +1,6 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { notifyCancellation } from "@/lib/notifications";
 import { getAdminClient } from "@/lib/supabase";
-import { refundPayment } from "@/lib/razorpay";
 
 export async function POST(
   req: NextRequest,
@@ -15,25 +13,25 @@ export async function POST(
     return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: { user } } = await getAdminClient().auth.getUser(token);
+  const db = getAdminClient();
+  const { data: { user } } = await db.auth.getUser(token);
   if (!user) {
     return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const booking = await prisma.booking.findUnique({
-      where: { id },
-      include: { rider: true, ride: true, payment: true },
-    });
+    const { data: booking } = await db
+      .from("Booking")
+      .select("id, rider_id, ride_id, seats, amount_paise, status, created_at")
+      .eq("id", id)
+      .maybeSingle();
 
     if (!booking) {
       return Response.json({ data: null, error: "Booking not found" }, { status: 404 });
     }
-
     if (booking.rider_id !== user.id) {
       return Response.json({ data: null, error: "Forbidden" }, { status: 403 });
     }
-
     if (!["PENDING", "CONFIRMED"].includes(booking.status)) {
       return Response.json({ data: null, error: "Booking cannot be cancelled" }, { status: 409 });
     }
@@ -42,26 +40,41 @@ export async function POST(
     const minutesSinceCreated = (Date.now() - new Date(booking.created_at).getTime()) / 60_000;
     const cancelFee = minutesSinceCreated > 5 ? CANCEL_FEE_PAISE : 0;
 
-    await prisma.$transaction([
-      prisma.booking.update({ where: { id }, data: { status: "CANCELLED" } }),
-      prisma.ride.update({ where: { id: booking.ride_id }, data: { available_seats: { increment: booking.seats } } }),
-    ]);
+    await db.from("Booking").update({ status: "CANCELLED" }).eq("id", id);
 
-    if (booking.payment?.status === "SUCCESS" && booking.payment?.razorpay_payment_id) {
+    const { data: ride } = await db.from("Ride").select("available_seats").eq("id", booking.ride_id).maybeSingle();
+    if (ride) {
+      await db.from("Ride").update({ available_seats: (ride.available_seats ?? 0) + booking.seats }).eq("id", booking.ride_id);
+    }
+
+    const { data: payment } = await db
+      .from("Payment")
+      .select("id, razorpay_payment_id, status")
+      .eq("booking_id", id)
+      .maybeSingle();
+
+    if (payment?.status === "SUCCESS" && payment?.razorpay_payment_id) {
       try {
+        const { refundPayment } = await import("@/lib/razorpay");
         const refundAmount = Math.max(0, booking.amount_paise - cancelFee);
         if (refundAmount > 0) {
-          await refundPayment(booking.payment.razorpay_payment_id, refundAmount);
+          await refundPayment(payment.razorpay_payment_id, refundAmount);
         }
-        await prisma.payment.update({ where: { id: booking.payment.id }, data: { status: "REFUNDED" } });
-        await prisma.booking.update({ where: { id }, data: { status: "REFUNDED" } });
+        await db.from("Payment").update({ status: "REFUNDED" }).eq("id", payment.id);
+        await db.from("Booking").update({ status: "REFUNDED" }).eq("id", id);
       } catch (refundErr) {
         console.error("[bookings/cancel] refund failed", refundErr);
       }
     }
 
-    if (booking.rider.phone) {
-      await notifyCancellation(booking.rider.phone, booking.rider.name ?? "Rider", booking.id, Math.round(booking.amount_paise / 100));
+    const { data: rider } = await db.from("User").select("name, phone").eq("id", user.id).maybeSingle();
+    if (rider?.phone) {
+      await notifyCancellation(
+        rider.phone,
+        rider.name ?? "Rider",
+        booking.id,
+        Math.round(booking.amount_paise / 100)
+      );
     }
 
     return Response.json({ data: { cancelled: true, cancel_fee_paise: cancelFee }, error: null });

@@ -1,7 +1,7 @@
 import { STATIC_ROUTES } from "@/data/static-routes";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Clock, MapPin, Leaf } from "lucide-react";
+import { ArrowRight, ArrowLeft, Clock, MapPin, Leaf } from "lucide-react";
 
 function toSlug(city: string) {
   return city.toLowerCase().replace(/\s+/g, "-");
@@ -53,11 +53,19 @@ export default async function RoutePage({ params }: { params: Promise<{ slug: st
   return (
     <div className="green-container min-h-screen bg-cream pb-24">
       <header className="bg-forest px-4 pt-safe-top pb-8">
-        <div className="pt-4 flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-xl bg-leaf flex items-center justify-center flex-shrink-0">
-            <Leaf className="w-4 h-4 text-white" />
+        <div className="pt-4 flex items-center gap-3 mb-4">
+          <Link
+            href="/"
+            className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4 text-white" />
+          </Link>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-leaf flex items-center justify-center flex-shrink-0">
+              <Leaf className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-display text-lg text-lime">Green Rides</span>
           </div>
-          <span className="font-display text-lg text-lime">Green Rides</span>
         </div>
         <h1 className="font-display text-3xl text-white mb-2">
           {route.from_city}

@@ -1,12 +1,11 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { RideRequestStatus } from "@/generated/prisma";
+import { getAdminClient } from "@/lib/supabase";
 
 function isAdmin(req: NextRequest) {
   return req.headers.get("x-admin-token") === process.env.ADMIN_SECRET;
 }
 
-const VALID_STATUSES = new Set(Object.values(RideRequestStatus));
+const VALID_STATUSES = new Set(["PENDING", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]);
 
 export async function GET(req: NextRequest) {
   if (!isAdmin(req)) {
@@ -14,20 +13,21 @@ export async function GET(req: NextRequest) {
   }
 
   const rawStatus = req.nextUrl.searchParams.get("status");
-  const status = rawStatus && VALID_STATUSES.has(rawStatus as RideRequestStatus)
-    ? (rawStatus as RideRequestStatus)
-    : null;
+  const status = rawStatus && VALID_STATUSES.has(rawStatus) ? rawStatus : null;
 
   try {
-    const requests = await prisma.rideRequest.findMany({
-      where:   status ? { status } : undefined,
-      include: {
-        rider: { select: { name: true, phone: true } },
-      },
-      orderBy: { created_at: "desc" },
-    });
+    const db = getAdminClient();
+    let query = db
+      .from("RideRequest")
+      .select("*, rider:rider_id(name, phone)")
+      .order("created_at", { ascending: false });
 
-    return Response.json({ data: requests, error: null });
+    if (status) query = query.eq("status", status);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return Response.json({ data, error: null });
   } catch (err) {
     console.error("[admin/requests GET]", err);
     return Response.json({ data: null, error: "Failed to fetch requests" }, { status: 500 });

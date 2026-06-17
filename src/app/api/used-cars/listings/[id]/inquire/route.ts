@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { getAdminClient } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -26,24 +26,29 @@ export async function POST(
     return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
   }
 
-  // Listing must be APPROVED to accept inquiries
-  const listing = await prisma.carListing.findUnique({
-    where:  { id },
-    select: { status: true },
-  });
+  const db = getAdminClient();
+
+  const { data: listing } = await db
+    .from("CarListing")
+    .select("status")
+    .eq("id", id)
+    .maybeSingle();
 
   if (!listing || listing.status !== "APPROVED") {
     return Response.json({ error: "Listing not available" }, { status: 403 });
   }
 
-  await prisma.carInquiry.create({
-    data: {
-      listing_id:  id,
-      buyer_name:  parsed.data.buyer_name,
-      buyer_phone: parsed.data.buyer_phone,
-      message:     parsed.data.message ?? null,
-    },
+  const { error: insertErr } = await db.from("CarInquiry").insert({
+    listing_id:  id,
+    buyer_name:  parsed.data.buyer_name,
+    buyer_phone: parsed.data.buyer_phone,
+    message:     parsed.data.message ?? null,
   });
+
+  if (insertErr) {
+    console.error("[used-cars/inquire POST]", insertErr);
+    return Response.json({ error: "Failed to submit inquiry" }, { status: 500 });
+  }
 
   return Response.json({ ok: true });
 }

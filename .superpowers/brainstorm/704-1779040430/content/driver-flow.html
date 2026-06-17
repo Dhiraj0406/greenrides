@@ -1,0 +1,233 @@
+<h2>Complete Driver Journey</h2>
+<p class="subtitle">Every step from landing page to completing a ride</p>
+
+<style>
+.flow {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 24px 0;
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.flow-phase {
+  margin-bottom: 28px;
+}
+.phase-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin-bottom: 10px;
+  padding-left: 4px;
+}
+.flow-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+.flow-step {
+  flex: 1;
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px 16px;
+  position: relative;
+}
+.flow-step.green {
+  border-color: #4caf50;
+  background: #f0fdf4;
+}
+.flow-step.amber {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+.flow-step.blue {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+.flow-step.red {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+.flow-step h4 {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  color: #111;
+}
+.flow-step p {
+  font-size: 11px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+}
+.flow-step .tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+.tag-page { background: #dcfce7; color: #166534; }
+.tag-api  { background: #dbeafe; color: #1e40af; }
+.tag-db   { background: #fce7f3; color: #9d174d; }
+.tag-ext  { background: #fef3c7; color: #92400e; }
+
+.arrow-down {
+  text-align: center;
+  font-size: 18px;
+  color: #9ca3af;
+  line-height: 1;
+  margin: 4px 0;
+}
+.arrow-right {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 16px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+.steps-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.steps-row .flow-step {
+  flex: 1;
+}
+.note {
+  font-size: 11px;
+  color: #6b7280;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 8px;
+  line-height: 1.6;
+}
+.note strong { color: #374151; }
+</style>
+
+<div class="flow">
+
+  <!-- PHASE 1: DISCOVERY -->
+  <div class="flow-phase">
+    <div class="phase-title">Phase 1 — Discovery</div>
+    <div class="steps-row">
+      <div class="flow-step">
+        <span class="tag tag-page">Page</span>
+        <h4>/drivers (public)</h4>
+        <p>Landing page: hero, benefits, how it works, "Become a Driver" CTA</p>
+      </div>
+      <div class="arrow-right">→</div>
+      <div class="flow-step green">
+        <span class="tag tag-page">Page</span>
+        <h4>Logged in + driver?</h4>
+        <p>Middleware checks session → redirect to /drivers/dashboard instantly</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-down">↓ not logged in</div>
+
+  <!-- PHASE 2: ONBOARDING -->
+  <div class="flow-phase" style="margin-top:8px">
+    <div class="phase-title">Phase 2 — Onboarding</div>
+    <div class="steps-row">
+      <div class="flow-step">
+        <span class="tag tag-page">Existing</span>
+        <h4>/login (OTP)</h4>
+        <p>Same phone OTP as riders. After verify → redirect back to /drivers</p>
+      </div>
+      <div class="arrow-right">→</div>
+      <div class="flow-step amber">
+        <span class="tag tag-page">Page</span>
+        <h4>/drivers/register</h4>
+        <p>Fill: name, vehicle type, model, number, license. Link Telegram bot for notifications</p>
+      </div>
+      <div class="arrow-right">→</div>
+      <div class="flow-step">
+        <span class="tag tag-page">Page</span>
+        <h4>/drivers/pending</h4>
+        <p>Waiting screen. Admin approves at /admin/drivers → Telegram message sent to driver</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-down">↓ admin approves</div>
+
+  <!-- PHASE 3: DAILY WORKFLOW -->
+  <div class="flow-phase" style="margin-top:8px">
+    <div class="phase-title">Phase 3 — Daily Workflow (Driver Portal)</div>
+    <div class="steps-row">
+      <div class="flow-step green">
+        <span class="tag tag-page">Page</span>
+        <h4>/drivers/dashboard</h4>
+        <p>Online/offline toggle, today's schedule, active dispatch popup, ride history</p>
+      </div>
+      <div class="arrow-right">→</div>
+      <div class="flow-step blue">
+        <span class="tag tag-page">Page</span>
+        <h4>/drivers/schedule</h4>
+        <p>Set weekly availability: which days, which hours. Saved to DB</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-down">↓ rider makes a request</div>
+
+  <!-- PHASE 4: DISPATCH -->
+  <div class="flow-phase" style="margin-top:8px">
+    <div class="phase-title">Phase 4 — Dispatch Cascade</div>
+    <div class="steps-row">
+      <div class="flow-step amber">
+        <span class="tag tag-api">API</span>
+        <h4>Fairness Algorithm</h4>
+        <p>Sort online+approved drivers by total_trips ASC → build dispatch queue [D1, D2, D3…]</p>
+      </div>
+      <div class="arrow-right">→</div>
+      <div class="flow-step">
+        <span class="tag tag-ext">Telegram + Realtime</span>
+        <h4>Notify Driver 1</h4>
+        <p>Telegram message + Supabase Realtime fires popup in app. 60s countdown begins</p>
+      </div>
+    </div>
+    <div class="note">
+      <strong>Cascade:</strong> If Driver 1 rejects or 60s expires → Vercel cron (every 60s) marks EXPIRED → notifies Driver 2 → repeat. Rider always gets a driver or is told no drivers available.
+    </div>
+  </div>
+
+  <div class="arrow-down">↓ driver accepts</div>
+
+  <!-- PHASE 5: RIDE -->
+  <div class="flow-phase" style="margin-top:8px">
+    <div class="phase-title">Phase 5 — Ride Completion</div>
+    <div class="steps-row">
+      <div class="flow-step green">
+        <span class="tag tag-ext">Telegram</span>
+        <h4>Rider Notified</h4>
+        <p>Rider gets Telegram message: driver name, phone, ETA</p>
+      </div>
+      <div class="arrow-right">→</div>
+      <div class="flow-step green">
+        <span class="tag tag-page">Dashboard</span>
+        <h4>Ride in Progress</h4>
+        <p>Driver marks ride started → completed. total_trips incremented</p>
+      </div>
+      <div class="arrow-right">→</div>
+      <div class="flow-step blue">
+        <span class="tag tag-page">Rating</span>
+        <h4>Post-Ride</h4>
+        <p>Rider rates driver → avg_rating updated on DriverProfile</p>
+      </div>
+    </div>
+  </div>
+
+</div>

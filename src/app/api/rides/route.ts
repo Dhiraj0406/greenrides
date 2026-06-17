@@ -28,8 +28,8 @@ export async function GET(req: NextRequest) {
 
   const { from, to, date, seats } = parsed.data;
   const targetDate = date ?? todayISO();
-  const startOfDay = new Date(`${targetDate}T00:00:00.000Z`).toISOString();
-  const endOfDay   = new Date(`${targetDate}T23:59:59.999Z`).toISOString();
+  const startOfDay = new Date(`${targetDate}T00:00:00+05:30`).toISOString();
+  const endOfDay   = new Date(`${targetDate}T23:59:59.999+05:30`).toISOString();
 
   try {
     const db = getAdminClient();

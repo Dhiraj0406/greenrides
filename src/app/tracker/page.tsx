@@ -162,12 +162,13 @@ function EmptyState() {
 }
 
 export default function TrackerPage() {
+  const router = useRouter();
   const [trip, setTrip]       = useState<ActiveTrip | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchActiveTrip = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { setLoading(false); return; }
+    if (!session) { setLoading(false); router.replace("/login?next=/tracker"); return; }
 
     const { data } = await supabase
       .from("RideRequest")
@@ -192,7 +193,7 @@ export default function TrackerPage() {
   }, [trip, fetchActiveTrip]);
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: "var(--paper-2)" }}>
+    <div className="green-container min-h-screen pb-24" style={{ background: "var(--paper-2)" }}>
       <AppBar />
 
       <div className="pt-4">

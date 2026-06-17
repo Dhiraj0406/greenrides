@@ -1,0 +1,40 @@
+<h2>Where should drivers & owners manage their car listings?</h2>
+<p class="subtitle">Three approaches — pick the one that fits how your team operates</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Fleet Portal (Recommended)</h3>
+      <p>Add a "Used Cars" tab inside the existing fleet dashboard at <strong>driver.greenrides.co.in</strong>. Drivers and owners are already logged in there. One click to list a car — name/phone pre-filled from their profile. Admin creates listings from the existing admin panel.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>No new login or URL</li><li>Pre-fills all contact info</li><li>Listings tied to their account</li><li>Sellers can see status + inquiries</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Only fleet-registered users can list (public sell form still works for others)</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Main App — Logged-in Seller Dashboard</h3>
+      <p>Any user who logs in at <strong>greenrides.co.in</strong> via OTP gets a "My Listings" section under their profile. Drivers/owners use the same login as riders. Admin creates from their panel.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Works for any seller, not just fleet</li><li>Single app for everything</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Riders and drivers share the same auth space — messy</li><li>More changes to the main rider app</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Keep It Simple — Better Sell Form Only</h3>
+      <p>Keep the existing public form at <strong>/used-cars/sell</strong>, but improve it: detect if the visitor is a logged-in driver/owner and pre-fill their details. Add a status-check page where sellers enter their phone to see their listing status. Admin gets a "Create Listing" button in the admin panel.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Least code change</li><li>Public still works for non-fleet sellers</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>No real account tie — anyone can check any number</li><li>No inquiry notifications to sellers</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

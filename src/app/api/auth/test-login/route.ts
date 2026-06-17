@@ -53,22 +53,20 @@ export async function POST(req: NextRequest) {
       return Response.json({ session: toSession(directSignIn.session) });
     }
 
-    // Step 2: Look up UUID from public.User
-    const { data: pubUser, error: pubErr } = await db
-      .from("User")
-      .select("id")
-      .eq("phone", phone)
-      .single();
+    // Step 2: Look up UUID from public.User (seed stores "+91XXXXXXXXXX", try both formats)
+    let userId: string | null = null;
+    for (const variant of [phone, `+91${phone}`]) {
+      const { data: pu } = await db.from("User").select("id").eq("phone", variant).maybeSingle();
+      if (pu?.id) { userId = pu.id; break; }
+    }
 
-    if (pubErr || !pubUser?.id) {
-      console.error("[test-login] public.User lookup failed:", pubErr?.message);
+    if (!userId) {
+      console.error("[test-login] public.User not found for phone:", phone);
       return Response.json({ error: "Test user not found" }, { status: 404 });
     }
 
-    let userId: string = pubUser.id;
-
     // Step 3: Try to set credentials via admin update (works for normal GoTrue-created users)
-    const { data: updData, error: updErr } = await db.auth.admin.updateUserById(userId, {
+    const { data: updData, error: updErr } = await db.auth.admin.updateUserById(userId!, {
       email: testEmail, email_confirm: true, password: testPass,
     });
 
@@ -85,16 +83,15 @@ export async function POST(req: NextRequest) {
       return Response.json({ session: toSession(signIn.session) });
     }
 
-    // Step 4: updateUserById failed (SQL-created user or corrupted state)
-    // Self-heal: delete the broken auth user and create a fresh GoTrue user,
-    // then update public.User + FK references to use the new UUID.
+    // Step 4: updateUserById failed (SQL-seeded user has no GoTrue record).
+    // Self-heal: delete any broken auth.users row, then recreate with the SAME UUID
+    // as public.User so no FK migration is needed.
     console.warn("[test-login] updateUserById failed, self-healing:", updErr?.message, "userId:", userId);
 
-    // Delete broken auth user (ignore error if already gone)
-    await db.auth.admin.deleteUser(userId).catch(() => {});
+    await db.auth.admin.deleteUser(userId!).catch(() => {});
 
-    // Create fresh user via GoTrue
     const { data: newUser, error: createErr } = await db.auth.admin.createUser({
+      id:            userId!,   // Reuse public.User.id — keeps all FK relations intact
       email:         testEmail,
       email_confirm: true,
       password:      testPass,
@@ -104,26 +101,10 @@ export async function POST(req: NextRequest) {
       user_metadata: { email_verified: true },
     });
 
-    if (createErr || !newUser?.user?.id) {
+    if (createErr || !newUser?.user) {
       console.error("[test-login] createUser failed:", createErr?.message);
       return Response.json({ error: "Could not create test user" }, { status: 500 });
     }
-
-    const newId = newUser.user.id;
-
-    // Migrate public.User.id → new UUID (and all FK children)
-    if (newId !== userId) {
-      // Temporarily disable FK checks is not possible in Postgres, but since FK is
-      // on user_id → User.id, we need to update User first after nullifying children.
-      // Update child tables that reference this user_id
-      for (const [table, col] of [["Owner", "user_id"], ["DriverProfile", "user_id"]] as const) {
-        await db.from(table).update({ [col]: newId }).eq(col, userId).then(() => {});
-      }
-      // Update public.User primary key
-      await db.from("User").update({ id: newId }).eq("id", userId).then(() => {});
-    }
-
-    userId = newId;
 
     // Sign in with the fresh user
     const { data: signIn, error: signInErr } = await anonClient.auth.signInWithPassword({

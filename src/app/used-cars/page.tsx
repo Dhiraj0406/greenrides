@@ -36,15 +36,17 @@ export default function UsedCarsPage() {
 
   async function load(p: number, reset = false) {
     setLoading(true);
-    const qs = new URLSearchParams({ page: String(p), limit: String(LIMIT) });
-    if (make)     qs.set("make", make);
-    if (fuelType) qs.set("fuel_type", fuelType);
-    const res  = await fetch(`/api/used-cars/listings?${qs}`);
-    const json = await res.json();
-    setListings((prev) => reset ? (json.data ?? []) : [...prev, ...(json.data ?? [])]);
-    setTotal(json.total ?? 0);
-    setPage(p);
-    setLoading(false);
+    try {
+      const qs = new URLSearchParams({ page: String(p), limit: String(LIMIT) });
+      if (make)     qs.set("make", make);
+      if (fuelType) qs.set("fuel_type", fuelType);
+      const res  = await fetch(`/api/used-cars/listings?${qs}`);
+      const json = await res.json();
+      setListings((prev) => reset ? (json.data ?? []) : [...prev, ...(json.data ?? [])]);
+      setTotal(json.total ?? 0);
+      setPage(p);
+    } catch { /* silent — listings remain as-is */ }
+    finally { setLoading(false); }
   }
 
   useEffect(() => { load(1, true); }, [make, fuelType]); // eslint-disable-line react-hooks/exhaustive-deps

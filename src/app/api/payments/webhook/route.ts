@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getAdminClient } from "@/lib/supabase";
 import { verifyWebhookSignature } from "@/lib/razorpay";
 import {
   notifyRiderBookingConfirmed,
@@ -35,6 +35,7 @@ async function handleWebhookEvent(event: {
   event: string;
   payload: Record<string, unknown>;
 }) {
+  const db        = getAdminClient();
   const eventType = event.event;
 
   if (eventType === "payment.captured") {
@@ -44,45 +45,47 @@ async function handleWebhookEvent(event: {
     const razorpayPaymentId = paymentEntity?.id as string;
     const method            = paymentEntity?.method as string;
 
-    const payment = await prisma.payment.findUnique({
-      where: { razorpay_order_id: razorpayOrderId },
-      include: {
-        booking: {
-          include: {
-            rider: true,
-            ride:  { include: { driver: true } },
-          },
-        },
-      },
-    });
+    const { data: payment } = await db
+      .from("Payment")
+      .select("id, booking_id")
+      .eq("razorpay_order_id", razorpayOrderId)
+      .maybeSingle();
 
     if (!payment) return;
 
-    await prisma.$transaction([
-      prisma.payment.update({
-        where: { id: payment.id },
-        data:  {
-          status:              "SUCCESS",
-          razorpay_payment_id: razorpayPaymentId,
-          method,
-        },
-      }),
-      prisma.booking.update({
-        where: { id: payment.booking_id },
-        data:  { status: "CONFIRMED" },
-      }),
+    const { data: booking } = await db
+      .from("Booking")
+      .select("id, rider_id, ride_id, seats, amount_paise, pickup_point")
+      .eq("id", payment.booking_id)
+      .maybeSingle();
+
+    if (!booking) return;
+
+    const { data: ride } = await db
+      .from("Ride")
+      .select("id, driver_id, from_city, to_city, departure_time")
+      .eq("id", booking.ride_id)
+      .maybeSingle();
+
+    if (!ride) return;
+
+    const [{ data: rider }, { data: driver }] = await Promise.all([
+      db.from("User").select("id, name, phone").eq("id", booking.rider_id).maybeSingle(),
+      db.from("User").select("id, name, phone").eq("id", ride.driver_id).maybeSingle(),
     ]);
 
-    const booking = payment.booking;
-    const ride    = booking.ride;
-    const rider   = booking.rider;
-    const driver  = ride.driver;
+    await db.from("Payment").update({
+      status:              "SUCCESS",
+      razorpay_payment_id: razorpayPaymentId,
+      method,
+    }).eq("id", payment.id);
 
-    const depDate = format(ride.departure_time, "d MMM yyyy");
-    const depTime = format(ride.departure_time, "h:mm a");
+    await db.from("Booking").update({ status: "CONFIRMED" }).eq("id", payment.booking_id);
 
-    // Notify rider
-    if (rider.phone) {
+    const depDate = format(new Date(ride.departure_time), "d MMM yyyy");
+    const depTime = format(new Date(ride.departure_time), "h:mm a");
+
+    if (rider?.phone) {
       await notifyRiderBookingConfirmed({
         phone:       rider.phone,
         name:        rider.name ?? "Rider",
@@ -90,19 +93,18 @@ async function handleWebhookEvent(event: {
         to:          ride.to_city,
         date:        depDate,
         time:        depTime,
-        driverName:  driver.name ?? "Driver",
-        driverPhone: driver.phone,
+        driverName:  driver?.name ?? "Driver",
+        driverPhone: driver?.phone ?? "",
         seats:       booking.seats,
         amount:      Math.round(booking.amount_paise / 100),
       });
     }
 
-    // Notify driver
-    if (driver.phone) {
+    if (driver?.phone) {
       await notifyDriverNewBooking({
         phone:       driver.phone,
-        riderName:   rider.name ?? "Rider",
-        riderPhone:  rider.phone,
+        riderName:   rider?.name ?? "Rider",
+        riderPhone:  rider?.phone ?? "",
         from:        ride.from_city,
         to:          ride.to_city,
         seats:       booking.seats,
@@ -117,27 +119,37 @@ async function handleWebhookEvent(event: {
       .payment?.entity;
     const razorpayOrderId = paymentEntity?.order_id as string;
 
-    const payment = await prisma.payment.findUnique({
-      where: { razorpay_order_id: razorpayOrderId },
-      include: { booking: { include: { ride: true } } },
-    });
+    const { data: payment } = await db
+      .from("Payment")
+      .select("id, booking_id")
+      .eq("razorpay_order_id", razorpayOrderId)
+      .maybeSingle();
 
     if (!payment) return;
 
-    await prisma.$transaction([
-      prisma.payment.update({
-        where: { id: payment.id },
-        data:  { status: "FAILED" },
-      }),
-      prisma.booking.update({
-        where: { id: payment.booking_id },
-        data:  { status: "CANCELLED" },
-      }),
-      prisma.ride.update({
-        where: { id: payment.booking.ride_id },
-        data:  { available_seats: { increment: payment.booking.seats } },
-      }),
-    ]);
+    const { data: booking } = await db
+      .from("Booking")
+      .select("id, ride_id, seats")
+      .eq("id", payment.booking_id)
+      .maybeSingle();
+
+    if (!booking) return;
+
+    await db.from("Payment").update({ status: "FAILED" }).eq("id", payment.id);
+    await db.from("Booking").update({ status: "CANCELLED" }).eq("id", payment.booking_id);
+
+    // Restore seats: read then write (no atomic increment in PostgREST)
+    const { data: ride } = await db
+      .from("Ride")
+      .select("available_seats")
+      .eq("id", booking.ride_id)
+      .maybeSingle();
+
+    if (ride) {
+      await db.from("Ride")
+        .update({ available_seats: (ride.available_seats ?? 0) + booking.seats })
+        .eq("id", booking.ride_id);
+    }
   }
 
   if (eventType === "refund.processed") {
@@ -145,21 +157,15 @@ async function handleWebhookEvent(event: {
       .refund?.entity;
     const razorpayPaymentId = refundEntity?.payment_id as string;
 
-    const payment = await prisma.payment.findFirst({
-      where: { razorpay_payment_id: razorpayPaymentId },
-    });
+    const { data: payment } = await db
+      .from("Payment")
+      .select("id, booking_id")
+      .eq("razorpay_payment_id", razorpayPaymentId)
+      .maybeSingle();
 
     if (!payment) return;
 
-    await prisma.$transaction([
-      prisma.payment.update({
-        where: { id: payment.id },
-        data:  { status: "REFUNDED" },
-      }),
-      prisma.booking.update({
-        where: { id: payment.booking_id },
-        data:  { status: "REFUNDED" },
-      }),
-    ]);
+    await db.from("Payment").update({ status: "REFUNDED" }).eq("id", payment.id);
+    await db.from("Booking").update({ status: "REFUNDED" }).eq("id", payment.booking_id);
   }
 }

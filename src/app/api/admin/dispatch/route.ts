@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { getAdminClient } from "@/lib/supabase";
 
 function isAdmin(req: NextRequest) {
   return req.headers.get("x-admin-token") === process.env.ADMIN_SECRET;
@@ -10,15 +10,15 @@ export async function GET(req: NextRequest) {
   if (!isAdmin(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const dispatches = await prisma.driverDispatch.findMany({
-      where: { status: "PENDING" },
-      include: {
-        request: { select: { from_city: true, to_city: true, fare_paise: true, travel_date: true, status: true } },
-        driver:  { select: { name: true, phone: true } },
-      },
-      orderBy: { dispatched_at: "asc" },
-    });
-    return Response.json({ data: dispatches, error: null });
+    const db = getAdminClient();
+    const { data, error } = await db
+      .from("DriverDispatch")
+      .select("*, request:request_id(from_city, to_city, fare_paise, travel_date, status), driver:driver_id(name, phone)")
+      .eq("status", "PENDING")
+      .order("dispatched_at", { ascending: true });
+
+    if (error) throw error;
+    return Response.json({ data, error: null });
   } catch (err) {
     console.error("[admin/dispatch GET]", err);
     return Response.json({ error: "Failed to fetch" }, { status: 500 });
@@ -26,14 +26,10 @@ export async function GET(req: NextRequest) {
 }
 
 const postSchema = z.object({
-  request_id:    z.string().uuid(),
+  request_id:     z.string().uuid(),
   driver_user_id: z.string().uuid(),
 });
 
-/** POST /api/admin/dispatch
- *  Create a DriverDispatch record for a pending RideRequest.
- *  driver_user_id must be the User.id (not DriverProfile.id).
- */
 export async function POST(req: NextRequest) {
   if (!isAdmin(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -50,47 +46,50 @@ export async function POST(req: NextRequest) {
   const { request_id, driver_user_id } = parsed.data;
 
   try {
+    const db = getAdminClient();
+
     // Verify the request exists and is dispatchable
-    const request = await prisma.rideRequest.findUnique({
-      where: { id: request_id },
-      select: { id: true, status: true },
-    });
+    const { data: request } = await db
+      .from("RideRequest")
+      .select("id, status")
+      .eq("id", request_id)
+      .single();
+
     if (!request) return Response.json({ error: "RideRequest not found" }, { status: 404 });
-    if (!["PENDING", "IN_PROGRESS"].includes(request.status)) {
+    if (request.status !== "PENDING") {
       return Response.json({ error: `RideRequest is ${request.status}, cannot dispatch` }, { status: 400 });
     }
 
     // Verify driver exists
-    const driver = await prisma.user.findUnique({
-      where: { id: driver_user_id },
-      select: { id: true },
-    });
+    const { data: driver } = await db
+      .from("User")
+      .select("id")
+      .eq("id", driver_user_id)
+      .single();
+
     if (!driver) return Response.json({ error: "Driver not found" }, { status: 404 });
 
     // Determine next order_index for this request
-    const maxOrder = await prisma.driverDispatch.aggregate({
-      where:  { request_id },
-      _max:   { order_index: true },
-    });
-    const order_index = (maxOrder._max.order_index ?? -1) + 1;
+    const { data: existing } = await db
+      .from("DriverDispatch")
+      .select("order_index")
+      .eq("request_id", request_id)
+      .order("order_index", { ascending: false })
+      .limit(1);
 
-    const expires_at = new Date(Date.now() + 5 * 60_000); // 5 minutes
+    const order_index = ((existing?.[0]?.order_index ?? -1) as number) + 1;
+    const expires_at  = new Date(Date.now() + 5 * 60_000).toISOString();
 
-    const dispatch = await prisma.driverDispatch.create({
-      data: {
-        request_id,
-        driver_id:    driver_user_id,
-        order_index,
-        status:       "WAITING",
-        expires_at,
-      },
-    });
+    const { data: dispatch, error: insertErr } = await db
+      .from("DriverDispatch")
+      .insert({ request_id, driver_id: driver_user_id, order_index, status: "PENDING", expires_at })
+      .select()
+      .single();
+
+    if (insertErr) throw insertErr;
 
     // Mark the request as dispatched
-    await prisma.rideRequest.update({
-      where: { id: request_id },
-      data:  { dispatched: true },
-    });
+    await db.from("RideRequest").update({ dispatched: true }).eq("id", request_id);
 
     return Response.json({ data: dispatch, error: null });
   } catch (err) {

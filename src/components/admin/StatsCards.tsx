@@ -17,7 +17,7 @@ export function StatsCards() {
   useEffect(() => {
     // Aggregate from bookings and rides
     Promise.all([
-      fetch("/api/bookings?admin=1").then((r) => r.json()),
+      fetch("/api/bookings?admin=1", { headers: { "x-admin-token": sessionStorage.getItem("green_admin_token") ?? "" } }).then((r) => r.json()),
       fetch("/api/rides?admin=1").then((r) => r.json()),
     ])
       .then(([bookingsRes, ridesRes]) => {

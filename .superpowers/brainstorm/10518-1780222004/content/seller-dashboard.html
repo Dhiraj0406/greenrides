@@ -1,0 +1,40 @@
+<h2>What can a driver/owner do with their listings?</h2>
+<p class="subtitle">This shapes how much we build on the seller side</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>View & Track Only (Recommended)</h3>
+      <p>Sellers can see their listings with status (Pending / Approved / Sold), see how many inquiries came in, and mark a listing as Sold themselves. No editing after submission — if they need changes, they contact admin.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Simple to build</li><li>Admin stays in control of what's published</li><li>No re-approval logic needed</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Sellers can't fix typos without calling admin</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Full Management — Edit, Delete, Mark Sold</h3>
+      <p>Sellers can edit their listing details and photos. Any edit on an approved listing sends it back to Pending for re-approval. They can also delete their own listings.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Sellers are self-sufficient</li><li>Better data quality</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Significantly more code</li><li>Re-approval flow adds complexity</li><li>Delete means losing inquiry history</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>View + Mark Sold + Delete (No Edit)</h3>
+      <p>Sellers see their listings and inquiries, can mark as Sold, and can delete (with confirmation). No editing — new listing required for changes.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Reasonable seller control without edit complexity</li><li>Cleaner than full management</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Delete loses inquiry history</li><li>No fixing mistakes</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
