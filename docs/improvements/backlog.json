@@ -12,7 +12,7 @@
         "src/app/bookings/page.tsx"
       ],
       "prompt_hint": "While loading=true, show animate-pulse skeleton divs using bg-border that mirror the exact layout of the loaded content. Use rounded-xl for card skeletons, rounded-full for avatar/icon placeholders. When loading=false and data arrives, render the real content. Do not add a new component — inline the skeleton JSX in the existing conditional render.",
-      "status": "in_progress",
+      "status": "pending",
       "completed_at": null,
       "deployment_id": null
     },
