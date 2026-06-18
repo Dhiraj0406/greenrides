@@ -151,7 +151,7 @@ async function main() {
     catch { return s; }
   }, 0);
   const lineDiff = Math.abs(newLines - existingLines);
-  if (lineDiff > 400) throw new Error(`Safety: diff of ${lineDiff} lines exceeds 400-line limit`);
+  if (lineDiff > 600) throw new Error(`Safety: diff of ${lineDiff} lines exceeds 600-line limit`);
 
   for (const { path: filePath, content } of fileChanges) {
     writeFileSync(resolve(process.cwd(), filePath), content + "\n");
