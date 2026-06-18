@@ -51,7 +51,9 @@ jobs:
       - name: Deploy to Vercel
         id: vercel_deploy
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN:      ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID:     team_2kOfHI6diUznVNSYCoXLduWL
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           npx vercel --prod --token $VERCEL_TOKEN --yes 2>&1 | tee /tmp/vercel-out.txt
           echo "done=1" >> $GITHUB_OUTPUT

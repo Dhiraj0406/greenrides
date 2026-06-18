@@ -1,6 +1,7 @@
 const BASE       = "https://api.vercel.com";
 const TOKEN      = process.env.VERCEL_TOKEN!;
 const PROJECT_ID = process.env.VERCEL_PROJECT_ID!;
+// No teamId — VERCEL_TOKEN is a personal access token (vcp_), queries personal scope
 
 export interface VercelDeployment {
   uid:        string;
