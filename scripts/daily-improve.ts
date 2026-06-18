@@ -62,39 +62,49 @@ async function main() {
 
   console.log(`🚀 Day ${item.day}: ${item.title}`);
 
-  const db = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-
-  const todayStr = new Date().toISOString().split("T")[0];
-  const { data: existing } = await db
-    .from("ImprovementLog")
-    .select("id")
-    .eq("day", item.day)
-    .gte("created_at", `${todayStr}T00:00:00Z`)
-    .maybeSingle();
-
-  if (existing) {
-    console.log("Already ran today — exiting");
-    process.exit(0);
+  const hasSupabase = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  if (!hasSupabase) {
+    console.log("ℹ️  Supabase credentials not set — skipping log tracking");
   }
 
-  const { data: logRow, error: logErr } = await db
-    .from("ImprovementLog")
-    .insert({
-      day:           item.day,
-      title:         item.title,
-      portal:        item.portal,
-      area:          item.area,
-      status:        "building",
-      files_changed: item.files,
-    })
-    .select("id")
-    .single();
+  let logId = "none";
 
-  if (logErr || !logRow) throw new Error(`Failed to create log row: ${logErr?.message}`);
-  console.log(`Log row created: ${logRow.id}`);
+  if (hasSupabase) {
+    const db = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    const { data: existing } = await db
+      .from("ImprovementLog")
+      .select("id")
+      .eq("day", item.day)
+      .gte("created_at", `${todayStr}T00:00:00Z`)
+      .maybeSingle();
+
+    if (existing) {
+      console.log("Already ran today (Supabase check) — exiting");
+      process.exit(0);
+    }
+
+    const { data: logRow, error: logErr } = await db
+      .from("ImprovementLog")
+      .insert({
+        day:           item.day,
+        title:         item.title,
+        portal:        item.portal,
+        area:          item.area,
+        status:        "building",
+        files_changed: item.files,
+      })
+      .select("id")
+      .single();
+
+    if (logErr || !logRow) throw new Error(`Failed to create log row: ${logErr?.message}`);
+    logId = logRow.id;
+    console.log(`Log row created: ${logId}`);
+  }
 
   const fileContents = item.files.map((filePath) => {
     const absPath = resolve(process.cwd(), filePath);
@@ -152,7 +162,7 @@ async function main() {
 
   writeFileSync("/tmp/gr-day",   String(item.day));
   writeFileSync("/tmp/gr-title", item.title);
-  writeFileSync("/tmp/gr-logid", logRow.id);
+  writeFileSync("/tmp/gr-logid", logId);
 
   console.log(`✅ Phase 1 complete. Workflow will commit + push, then run post-deploy.ts`);
 }
