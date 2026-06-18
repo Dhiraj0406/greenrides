@@ -43,6 +43,7 @@ jobs:
         run: |
           git config user.name "Green Rides Improvement Agent"
           git config user.email "agent@greenrides.co.in"
+          git checkout -- package-lock.json 2>/dev/null || true
           git add -A
           git diff --staged --quiet || git commit -m "improve(day-$(cat /tmp/gr-day)): $(cat /tmp/gr-title)"
           git push
