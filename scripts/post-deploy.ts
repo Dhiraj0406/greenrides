@@ -41,8 +41,10 @@ async function main() {
 
   let deployment;
   if (process.env.DEPLOYMENT_DONE === "1") {
-    // Vercel CLI already deployed — just fetch the latest production deployment
-    console.log("Vercel CLI deploy complete — fetching latest production deployment...");
+    // Vercel CLI already deployed — wait briefly for API indexing then fetch
+    console.log("Vercel CLI deploy complete — waiting 10s for API indexing...");
+    await new Promise((r) => setTimeout(r, 10_000));
+    console.log("Fetching latest production deployment...");
     deployment = await getLatestProductionDeployment();
     if (!deployment) throw new Error("Could not fetch latest Vercel deployment");
     console.log(`Deployment: ${deployment.uid} (${deployment.readyState})`);

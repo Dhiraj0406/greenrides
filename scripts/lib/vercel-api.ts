@@ -22,7 +22,7 @@ function teamQs(extra = "") {
 }
 
 export async function getLatestProductionDeployment(): Promise<VercelDeployment | null> {
-  const res  = await vercelFetch(`/v13/deployments?projectId=${PROJECT_ID}&limit=1&target=production&${teamQs()}`);
+  const res  = await vercelFetch(`/v6/deployments?projectId=${PROJECT_ID}&limit=1&target=production&${teamQs()}`);
   const json = await res.json() as { deployments: VercelDeployment[] };
   return json.deployments?.[0] ?? null;
 }
@@ -44,7 +44,7 @@ export async function pollDeploymentReady(
 }
 
 export async function getPreviousProductionDeployment(): Promise<VercelDeployment | null> {
-  const res  = await vercelFetch(`/v13/deployments?projectId=${PROJECT_ID}&limit=2&target=production&${teamQs()}`);
+  const res  = await vercelFetch(`/v6/deployments?projectId=${PROJECT_ID}&limit=2&target=production&${teamQs()}`);
   const json = await res.json() as { deployments: VercelDeployment[] };
   return json.deployments?.[1] ?? null;
 }
