@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { Suspense } from "react";
 import { getAdminClient } from "@/lib/supabase";
 import { STATIC_ROUTES } from "@/data/static-routes";
 import { LocationDetector } from "@/components/booking/LocationDetector";
@@ -40,6 +41,38 @@ async function getAllRoutes(): Promise<RouteInfo[]> {
   }
 }
 
+/* Skeleton shown while LocationDetector (client) hydrates */
+function LocationDetectorSkeleton() {
+  return (
+    <div className="animate-pulse px-4 pt-4 pb-2">
+      <div className="bg-border rounded-xl h-14 w-full mb-2" />
+    </div>
+  );
+}
+
+/* Skeleton shown while HomeContent (client) hydrates */
+function HomeContentSkeleton() {
+  return (
+    <div className="animate-pulse px-4 space-y-3 mt-2">
+      {/* Section heading placeholder */}
+      <div className="bg-border rounded-full h-4 w-32 mb-1" />
+      {/* Route card skeletons */}
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="bg-border rounded-xl h-20 w-full" />
+      ))}
+    </div>
+  );
+}
+
+/* Skeleton shown while CustomRouteBox (client) hydrates */
+function CustomRouteBoxSkeleton() {
+  return (
+    <div className="animate-pulse px-4 mt-2">
+      <div className="bg-border rounded-xl h-16 w-full" />
+    </div>
+  );
+}
+
 export default async function HomePage() {
   const allRoutes = await getAllRoutes();
 
@@ -51,11 +84,18 @@ export default async function HomePage() {
       <AppBar />
 
       <div style={{ overflowY: "auto", overscrollBehavior: "contain", paddingBottom: 16 }}>
-        <LocationDetector />
-        <HomeContent initialRoutes={allRoutes} />
+        <Suspense fallback={<LocationDetectorSkeleton />}>
+          <LocationDetector />
+        </Suspense>
+
+        <Suspense fallback={<HomeContentSkeleton />}>
+          <HomeContent initialRoutes={allRoutes} />
+        </Suspense>
 
         <div style={{ marginTop: 8 }}>
-          <CustomRouteBox />
+          <Suspense fallback={<CustomRouteBoxSkeleton />}>
+            <CustomRouteBox />
+          </Suspense>
         </div>
 
         <div style={{ height: 20 }} />

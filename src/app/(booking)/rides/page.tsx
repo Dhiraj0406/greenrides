@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowRight, ArrowLeft, Star, Clock, Loader2, AlertCircle, Phone, Calendar } from "lucide-react";
+import { ArrowRight, ArrowLeft, Star, Clock, AlertCircle, Phone, Calendar } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { BottomNav } from "@/components/shared/BottomNav";
@@ -76,8 +76,39 @@ export default function RidesPage() {
         </div>
 
         {loading && (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-6 h-6 animate-spin text-leaf" />
+          <div className="animate-pulse space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white border border-border rounded-2xl p-4 mb-3">
+                {/* Driver row skeleton */}
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-border flex-shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="bg-border rounded-full h-3.5 w-28" />
+                    <div className="bg-border rounded-full h-3 w-40" />
+                  </div>
+                  <div className="bg-border rounded-full h-4 w-10" />
+                </div>
+                {/* Route row skeleton */}
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="bg-border rounded-full h-3.5 w-20" />
+                  <div className="bg-border rounded-full h-3 w-4" />
+                  <div className="bg-border rounded-full h-3.5 w-20" />
+                </div>
+                {/* Meta row skeleton */}
+                <div className="flex items-center gap-4 mb-3">
+                  <div className="bg-border rounded-full h-3 w-14" />
+                  <div className="bg-border rounded-full h-3 w-16" />
+                </div>
+                {/* Fare + book skeleton */}
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="bg-border rounded-full h-6 w-16" />
+                    <div className="bg-border rounded-full h-3 w-12" />
+                  </div>
+                  <div className="bg-border rounded-xl h-10 w-20" />
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
