@@ -1,6 +1,6 @@
 import { readFileSync } from "fs";
 import { createClient } from "@supabase/supabase-js";
-import { pollDeploymentReady } from "./lib/vercel-api.js";
+import { pollDeploymentReady, getLatestProductionDeployment } from "./lib/vercel-api.js";
 import { runSmokeTests } from "./lib/smoke-test.js";
 import { sendTelegramMessage } from "./lib/telegram.js";
 import { rollbackImprovement } from "./lib/rollback.js";
@@ -40,13 +40,21 @@ async function main() {
   if (!process.env.TELEGRAM_BOT_TOKEN) console.log("ℹ️  Telegram not configured — skipping notifications");
 
   let deployment;
-  try {
-    deployment = await pollDeploymentReady(pushedAt);
-  } catch (err) {
-    console.error("Deploy polling timed out:", err);
-    await updateLog(db, logId, { status: "failed", notes: "Deployment timed out" });
-    await notify(`⚠️ <b>Day ${day} — deploy timed out</b>\n\n${title}\n\nNo auto-rollback needed (deploy never completed). Will retry tomorrow.`);
-    process.exit(1);
+  if (process.env.DEPLOYMENT_DONE === "1") {
+    // Vercel CLI already deployed — just fetch the latest production deployment
+    console.log("Vercel CLI deploy complete — fetching latest production deployment...");
+    deployment = await getLatestProductionDeployment();
+    if (!deployment) throw new Error("Could not fetch latest Vercel deployment");
+    console.log(`Deployment: ${deployment.uid} (${deployment.readyState})`);
+  } else {
+    try {
+      deployment = await pollDeploymentReady(pushedAt);
+    } catch (err) {
+      console.error("Deploy polling timed out:", err);
+      await updateLog(db, logId, { status: "failed", notes: "Deployment timed out" });
+      await notify(`⚠️ <b>Day ${day} — deploy timed out</b>\n\n${title}\n\nNo auto-rollback needed (deploy never completed). Will retry tomorrow.`);
+      process.exit(1);
+    }
   }
 
   if (deployment.readyState === "ERROR") {

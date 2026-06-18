@@ -47,9 +47,13 @@ jobs:
           git diff --staged --quiet || git commit -m "improve(day-$(cat /tmp/gr-day)): $(cat /tmp/gr-title)"
           git push
 
-      - name: Record push timestamp
-        id: push_ts
-        run: echo "ts=$(date +%s)000" >> $GITHUB_OUTPUT
+      - name: Deploy to Vercel
+        id: vercel_deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          npx vercel --prod --token $VERCEL_TOKEN --yes 2>&1 | tee /tmp/vercel-out.txt
+          echo "done=1" >> $GITHUB_OUTPUT
 
       - name: Phase 2 — Smoke test and notify
         env:
@@ -59,5 +63,5 @@ jobs:
           VERCEL_PROJECT_ID:         ${{ secrets.VERCEL_PROJECT_ID }}
           TELEGRAM_BOT_TOKEN:        ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID:          ${{ secrets.TELEGRAM_CHAT_ID }}
-          PUSHED_AT:                 ${{ steps.push_ts.outputs.ts }}
+          DEPLOYMENT_DONE:           ${{ steps.vercel_deploy.outputs.done }}
         run: npx tsx scripts/post-deploy.ts
