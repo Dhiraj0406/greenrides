@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { CheckCircle, MapPin, Clock, Phone, Leaf, Loader2 } from "lucide-react";
+import { CheckCircle, Phone, Loader2 } from "lucide-react";
 import { BottomNav } from "@/components/shared/BottomNav";
 import type { BookingConfirmation } from "@/types";
 
