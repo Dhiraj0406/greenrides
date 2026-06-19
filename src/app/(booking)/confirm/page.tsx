@@ -77,7 +77,7 @@ function ConfirmContent() {
             Show this to your driver
           </p>
           <p className="font-mono text-4xl text-lime tracking-[0.3em]">
-            {data.otp}
+            {data.booking_id.slice(0, 6).toUpperCase()}
           </p>
         </div>
 
