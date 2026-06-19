@@ -26,7 +26,7 @@
         "src/app/(booking)/confirm/page.tsx"
       ],
       "prompt_hint": "Show: (1) large green checkmark icon (CheckCircle w-16 h-16 text-leaf), (2) 'Booking Confirmed!' in font-display text-2xl text-forest, (3) an OTP box: bg-forest rounded-2xl p-5, label 'Show this to your driver' in text-lime/60 text-xs uppercase, the OTP digits in font-mono text-4xl text-lime tracking-[0.3em]. Below the OTP box: route (from → to) in text-text font-semibold, departure date in text-sub. Add a 'View My Bookings' button linking to /bookings.",
-      "status": "pending",
+      "status": "in_progress",
       "completed_at": null,
       "deployment_id": null
     },

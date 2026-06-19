@@ -59,19 +59,51 @@ function ConfirmContent() {
 
   return (
     <div className="green-container min-h-screen bg-cream pb-24">
-      <div className="bg-forest px-4 pt-safe-top pb-8">
-        <div className="pt-6 flex flex-col items-center text-center">
-          <div className="w-16 h-16 rounded-full bg-leaf/20 flex items-center justify-center mb-3">
-            <CheckCircle className="w-8 h-8 text-lime" />
-          </div>
-          <h1 className="font-display text-2xl text-white">Booking Confirmed!</h1>
-          <p className="text-lime/70 text-sm mt-1">
+      {/* Hero success state */}
+      <div className="bg-cream px-4 pt-safe-top pb-6">
+        <div className="pt-10 flex flex-col items-center text-center">
+          <CheckCircle className="w-16 h-16 text-leaf mb-4" />
+          <h1 className="font-display text-2xl text-forest">Booking Confirmed!</h1>
+          <p className="text-sub text-sm mt-1">
             Your booking is confirmed. Pay cash to the driver.
           </p>
         </div>
       </div>
 
-      <div className="px-4 mt-6 space-y-4">
+      <div className="px-4 space-y-4">
+        {/* OTP box */}
+        <div className="bg-forest rounded-2xl p-5 flex flex-col items-center text-center">
+          <p className="text-lime/60 text-xs uppercase tracking-widest mb-3">
+            Show this to your driver
+          </p>
+          <p className="font-mono text-4xl text-lime tracking-[0.3em]">
+            {data.otp}
+          </p>
+        </div>
+
+        {/* Route + departure */}
+        <div className="px-1">
+          <p className="text-text font-semibold text-base">
+            {data.from} → {data.to}
+          </p>
+          <p className="text-sub text-sm mt-0.5">
+            {new Date(data.departure_time).toLocaleDateString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              weekday: "short",
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
+            {" · "}
+            {new Date(data.departure_time).toLocaleTimeString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </p>
+        </div>
+
+        {/* Booking ID */}
         <div className="bg-white border border-border rounded-2xl p-4">
           <p className="text-xs text-sub mb-1">Booking ID</p>
           <p className="font-mono-green text-sm text-text font-semibold">
@@ -79,28 +111,15 @@ function ConfirmContent() {
           </p>
         </div>
 
-        <div className="bg-forest rounded-2xl p-5 text-white">
-          <div className="flex items-center gap-2 text-lime/70 text-sm mb-3">
-            <MapPin className="w-4 h-4" />
-            <span>{data.from} → {data.to}</span>
-          </div>
-          <p className="font-display text-4xl text-white mb-4">
+        {/* Fare */}
+        <div className="bg-white border border-border rounded-2xl p-4 flex items-center justify-between">
+          <p className="text-xs text-sub">Fare (pay cash)</p>
+          <p className="font-display text-xl text-forest">
             ₹{Math.round(data.amount_paise / 100)}
           </p>
-          <div className="flex items-center gap-1 text-lime/60 text-xs font-mono-green">
-            <Clock className="w-3 h-3" />
-            <span>
-              {new Date(data.departure_time).toLocaleTimeString("en-IN", {
-                hour: "2-digit", minute: "2-digit",
-              })}
-              {" · "}
-              {new Date(data.departure_time).toLocaleDateString("en-IN", {
-                day: "numeric", month: "short",
-              })}
-            </span>
-          </div>
         </div>
 
+        {/* Driver */}
         <div className="bg-white border border-border rounded-2xl p-4">
           <p className="text-xs text-sub mb-3 font-semibold uppercase tracking-wide">
             Your Driver
@@ -123,25 +142,27 @@ function ConfirmContent() {
           </div>
         </div>
 
+        {/* Pickup point */}
         <div className="bg-white border border-border rounded-2xl p-4">
           <p className="text-xs text-sub mb-1">Pickup Point</p>
           <p className="text-sm font-semibold text-text">{data.pickup_point}</p>
         </div>
 
+        {/* View My Bookings CTA */}
         <button
-          onClick={() => router.replace("/")}
+          onClick={() => router.push("/bookings")}
           className="w-full flex items-center justify-center gap-2 bg-leaf
                      text-white font-semibold py-4 rounded-xl touch-target
                      text-base transition-colors hover:bg-leaf/90"
         >
-          <Leaf className="w-4 h-4" />
-          Back to Home
+          View My Bookings
         </button>
+
         <button
-          onClick={() => router.push("/bookings")}
+          onClick={() => router.replace("/")}
           className="w-full text-center text-sm font-semibold text-leaf py-2"
         >
-          View my trips →
+          Back to Home →
         </button>
       </div>
 
