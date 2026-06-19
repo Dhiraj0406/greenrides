@@ -8,15 +8,17 @@ export default function FleetIndex() {
   const router = useRouter();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) { router.replace("/fleet/register"); return; }
-      const roles: string[] = (session.user.app_metadata?.roles as string[]) ?? [];
-      if (roles.includes("owner") && !roles.includes("driver")) {
-        router.replace("/fleet/dashboard");
-      } else {
-        router.replace("/fleet/today");
-      }
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!session) { router.replace("/fleet/register"); return; }
+        const roles: string[] = (session.user.app_metadata?.roles as string[]) ?? [];
+        if (roles.includes("owner") && !roles.includes("driver")) {
+          router.replace("/fleet/dashboard");
+        } else {
+          router.replace("/fleet/today");
+        }
+      })
+      .catch(() => router.replace("/fleet/register"));
   }, [router]);
 
   return null;

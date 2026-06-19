@@ -49,19 +49,24 @@ export default function NewVehiclePage() {
 
   async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
-    if (!files.length || !vehicleId || !token) return;
+    if (!files.length || !vehicleId) return;
 
     const remaining = 5 - photos.length;
     const toUpload  = files.slice(0, remaining);
 
     setUploading(true);
     try {
+      // Always fetch a fresh token — stored token may have expired
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Session expired. Please refresh."); return; }
+      const freshToken = session.access_token;
+
       for (const file of toUpload) {
         const fd = new FormData();
         fd.append("file", file);
         const res = await fetch(`/api/fleet/vehicles/${vehicleId}/photos`, {
           method:  "POST",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${freshToken}` },
           body:    fd,
         });
         const j = await res.json();
@@ -78,11 +83,13 @@ export default function NewVehiclePage() {
   }
 
   async function handleRemovePhoto(index: number) {
-    if (!vehicleId || !token) return;
+    if (!vehicleId) return;
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Session expired. Please refresh."); return; }
       const res = await fetch(`/api/fleet/vehicles/${vehicleId}/photos`, {
         method:  "DELETE",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body:    JSON.stringify({ path: photos[index] }),
       });
       const j = await res.json();
@@ -110,9 +117,9 @@ export default function NewVehiclePage() {
               <img src={src} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
               <button
                 onClick={() => handleRemovePhoto(i)}
-                className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5"
+                className="absolute top-0 right-0 w-8 h-8 flex items-center justify-center bg-black/60 rounded-bl-xl rounded-tr-xl"
               >
-                <X className="w-3.5 h-3.5 text-white" />
+                <X className="w-4 h-4 text-white" />
               </button>
             </div>
           ))}

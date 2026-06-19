@@ -36,7 +36,19 @@ export async function GET(req: NextRequest) {
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    return Response.json({ data: vehicles ?? [], error: null });
+
+    const list = vehicles ?? [];
+    const withThumbs = await Promise.all(
+      list.map(async (v) => {
+        if (!v.photos?.length) return { ...v, thumbnail_url: null };
+        const { data } = await db.storage
+          .from("kyc-documents")
+          .createSignedUrl(v.photos[0], 3600);
+        return { ...v, thumbnail_url: data?.signedUrl ?? null };
+      }),
+    );
+
+    return Response.json({ data: withThumbs, error: null });
   } catch (err) {
     console.error("[fleet/vehicles GET]", err);
     return Response.json({ data: null, error: "Failed to fetch vehicles" }, { status: 500 });

@@ -5,41 +5,35 @@ import { Loader2, Truck, Plus, ToggleLeft, ToggleRight, ChevronLeft } from "luci
 import Link from "next/link";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+// thumbnail_url is now returned by the API (server-side signed URL via admin client)
 
 interface Vehicle {
   id: string; make: string; model_name: string; number: string;
-  seats: number; active: boolean; driver_id: string | null; photos: string[];
+  seats: number; active: boolean; driver_id: string | null;
+  photos: string[]; thumbnail_url: string | null;
 }
 
 export default function VehiclesPage() {
-  const [vehicles,  setVehicles]  = useState<Vehicle[]>([]);
-  const [thumbs,    setThumbs]    = useState<Record<string, string>>({});
-  const [loading,   setLoading]   = useState(true);
-  const [token,     setToken]     = useState<string | null>(null);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [token,    setToken]    = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) { setLoading(false); return; }
-      setToken(session.access_token);
-      try {
-        const j = await fetch("/api/fleet/vehicles", {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        }).then((r) => r.json());
-        const list: Vehicle[] = j.data ?? [];
-        setVehicles(list);
-        const urls: Record<string, string> = {};
-        await Promise.all(
-          list.filter((v) => v.photos.length > 0).map(async (v) => {
-            const { data } = await supabase.storage.from("kyc-documents").createSignedUrl(v.photos[0], 3600);
-            if (data?.signedUrl) urls[v.id] = data.signedUrl;
-          }),
-        );
-        setThumbs(urls);
-      } catch (err) {
-        console.error("[fleet/vehicles]", err);
-        toast.error("Failed to load vehicles");
-      } finally { setLoading(false); }
-    }).catch(() => setLoading(false));
+    supabase.auth.getSession()
+      .then(async ({ data: { session } }) => {
+        if (!session) { setLoading(false); return; }
+        setToken(session.access_token);
+        try {
+          const j = await fetch("/api/fleet/vehicles", {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          }).then((r) => r.json());
+          setVehicles(j.data ?? []);
+        } catch (err) {
+          console.error("[fleet/vehicles]", err);
+          toast.error("Failed to load vehicles");
+        } finally { setLoading(false); }
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   async function toggleActive(id: string, current: boolean) {
@@ -82,9 +76,9 @@ export default function VehiclesPage() {
       {vehicles.map((v) => (
         <div key={v.id} className="bg-white border border-border rounded-2xl p-4 mb-3">
           <div className="flex items-start gap-3">
-            {thumbs[v.id] ? (
+            {v.thumbnail_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={thumbs[v.id]} alt={v.number}
+              <img src={v.thumbnail_url} alt={v.number}
                 className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-border" />
             ) : (
               <div className="w-16 h-16 rounded-xl bg-pale border border-border flex-shrink-0 flex items-center justify-center">
