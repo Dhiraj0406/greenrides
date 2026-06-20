@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
       const u    = userMap[r.user_id]  ?? {};
       const prof = profMap[r.user_id]  ?? {};
       const monthsActive = prof.created_at
-        ? Math.floor((Date.now() - new Date(prof.created_at).getTime()) / (1000 * 60 * 60 * 24 * 30))
+        ? Math.max(0, Math.floor((Date.now() - new Date(prof.created_at).getTime()) / (1000 * 60 * 60 * 24 * 30)))
         : null;
       return { ...r, name: u.name ?? null, phone: u.phone ?? null, months_active: monthsActive };
     });

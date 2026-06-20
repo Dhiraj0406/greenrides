@@ -66,12 +66,20 @@ export async function PATCH(
     }, { onConflict: "user_id" });
 
     // Add owner role to app_metadata
-    const { data: { user } } = await db.auth.admin.getUserById(ownerReq.user_id);
-    const existingRoles: string[] = (user?.app_metadata?.roles as string[]) ?? [];
+    const { data: authData, error: authFetchErr } = await db.auth.admin.getUserById(ownerReq.user_id);
+    if (authFetchErr || !authData?.user) {
+      console.error("[admin/owner-requests PATCH getUserById]", authFetchErr);
+      return Response.json({ data: null, error: "Failed to update user roles" }, { status: 500 });
+    }
+    const existingRoles: string[] = (authData.user.app_metadata?.roles as string[]) ?? [];
     if (!existingRoles.includes("owner")) {
-      await db.auth.admin.updateUserById(ownerReq.user_id, {
+      const { error: roleErr } = await db.auth.admin.updateUserById(ownerReq.user_id, {
         app_metadata: { roles: [...existingRoles, "owner"] },
       });
+      if (roleErr) {
+        console.error("[admin/owner-requests PATCH updateUserById]", roleErr);
+        return Response.json({ data: null, error: "Failed to update user roles" }, { status: 500 });
+      }
     }
   }
 
