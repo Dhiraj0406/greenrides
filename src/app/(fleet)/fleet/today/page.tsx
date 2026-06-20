@@ -333,10 +333,17 @@ export default function TodayPage() {
       .catch(() => setLoading(false));
   }, [fetchDispatches]);
 
-  // Poll dispatches every 15s while there's an active one
+  // Poll dispatches every 15s while there's an active one; fallback 45s poll when idle
   useEffect(() => {
     if (!token || dispatches.length === 0) return;
     const id = setInterval(() => fetchDispatches(token), 15000);
+    return () => clearInterval(id);
+  }, [token, dispatches, fetchDispatches]);
+
+  // Fallback poll every 45s when no active dispatches so new assignments are caught without refresh
+  useEffect(() => {
+    if (!token || dispatches.length > 0) return;
+    const id = setInterval(() => fetchDispatches(token), 45000);
     return () => clearInterval(id);
   }, [token, dispatches, fetchDispatches]);
 

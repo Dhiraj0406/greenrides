@@ -25,6 +25,7 @@ export default function FleetDriversPage() {
   const [loading, setLoading]   = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [token, setToken]       = useState<string | null>(null);
+  const [assigning, setAssigning] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -44,7 +45,8 @@ export default function FleetDriversPage() {
   }, []);
 
   async function assignVehicle(driverProfileId: string, vehicleId: string) {
-    if (!token) return;
+    if (!token || assigning) return;
+    setAssigning(driverProfileId);
     try {
       const res = await fetch("/api/fleet/assign-driver", {
         method:  "POST",
@@ -58,6 +60,7 @@ export default function FleetDriversPage() {
         prev.map((v) => v.id === vehicleId ? { ...v, driver_id: driverProfileId } : v)
       );
     } catch { toast.error("Network error"); }
+    finally { setAssigning(null); }
   }
 
   const unassignedVehicles = vehicles.filter((v) => !v.driver_id);
@@ -107,8 +110,9 @@ export default function FleetDriversPage() {
               <div>
                 <p className="text-xs text-sub mb-1">Assign vehicle</p>
                 <select
-                  className="w-full border border-border rounded-lg px-3 py-2 text-xs outline-none focus:ring-2 ring-leaf/30"
+                  className="w-full border border-border rounded-lg px-3 py-2 text-xs outline-none focus:ring-2 ring-leaf/30 disabled:opacity-50"
                   defaultValue=""
+                  disabled={assigning === d.id}
                   onChange={(e) => { if (e.target.value) assignVehicle(d.id, e.target.value); }}
                 >
                   <option value="" disabled>Select vehicle…</option>

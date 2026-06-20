@@ -18,8 +18,13 @@ export async function PATCH(
       .from("OwnerPayout")
       .update({ status: "PAID", paid_at: new Date().toISOString() })
       .eq("id", id)
+      .eq("status", "PENDING")
       .select()
-      .single();
+      .maybeSingle();
+
+    if (!data && !error) {
+      return Response.json({ data: null, error: "Payout already paid or not found" }, { status: 409 });
+    }
 
     if (error) throw error;
     return Response.json({ data, error: null });

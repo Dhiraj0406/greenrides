@@ -102,9 +102,14 @@ export async function POST(req: NextRequest) {
     );
     if (profileErr) throw profileErr;
 
-    // 4. Set fleet role + active status in app_metadata
+    // 4. Set fleet role + active status in app_metadata — merge to preserve any existing keys
+    const { data: existingAuth } = await db.auth.admin.getUserById(userId);
+    const existingMeta  = existingAuth?.user?.app_metadata ?? {};
+    const existingRoles = (existingMeta.roles as string[] | undefined) ?? [];
+    const mergedRoles   = [...new Set([...existingRoles, "driver"])];
+
     await db.auth.admin.updateUserById(userId, {
-      app_metadata: { roles: ["driver"], fleet_status: "active" },
+      app_metadata: { ...existingMeta, roles: mergedRoles, fleet_status: "active" },
     });
 
     return Response.json({ data: { id: userId, created: true }, error: null });

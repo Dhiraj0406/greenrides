@@ -86,9 +86,9 @@ function AddDriverModal({ token, onClose, onCreated }: {
             </div>
             <div>
               <label className="text-xs text-sub font-semibold mb-1 block">License No.</label>
-              <input value={form.license_number} onChange={set("license_number")} required
+              <input value={form.license_number} onChange={(e) => setForm((f) => ({ ...f, license_number: e.target.value.toUpperCase() }))} required
                 placeholder="OD0120240001234"
-                className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-white outline-none focus:border-leaf" />
+                className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-white outline-none focus:border-leaf font-mono" />
             </div>
             <div>
               <label className="text-xs text-sub font-semibold mb-1 block">Vehicle Type</label>
@@ -106,9 +106,9 @@ function AddDriverModal({ token, onClose, onCreated }: {
             </div>
             <div>
               <label className="text-xs text-sub font-semibold mb-1 block">Vehicle Number</label>
-              <input value={form.vehicle_number} onChange={set("vehicle_number")} required
+              <input value={form.vehicle_number} onChange={(e) => setForm((f) => ({ ...f, vehicle_number: e.target.value.toUpperCase() }))} required
                 placeholder="OD02AB1234"
-                className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-white outline-none focus:border-leaf uppercase" />
+                className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-white outline-none focus:border-leaf font-mono uppercase" />
             </div>
           </div>
           <p className="text-[11px] text-sub">Driver is auto-approved. They can log in immediately at /fleet/login using their phone number.</p>

@@ -161,7 +161,7 @@ function BookingsContent({ token }: { token: string }) {
               <div className="flex items-center gap-4 text-xs text-sub mb-3 font-mono-green">
                 <span>{fmtDate(req.travel_date)}</span>
                 <span>·</span>
-                <span className="font-semibold text-forest">₹{req.fare_paise / 100}</span>
+                <span className="font-semibold text-forest">₹{Math.round(req.fare_paise / 100)}</span>
               </div>
 
               <div className="flex items-center justify-between">

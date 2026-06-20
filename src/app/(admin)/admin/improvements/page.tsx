@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, CheckCircle, AlertCircle, RotateCcw, SkipForward, ExternalLink, TrendingUp } from "lucide-react";
+import Link from "next/link";
+import { Loader2, CheckCircle, AlertCircle, RotateCcw, SkipForward, ExternalLink, TrendingUp, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { AdminGate } from "@/components/admin/AdminGate";
 
@@ -109,9 +110,14 @@ function ImprovementsDashboard({ token }: { token: string }) {
   return (
     <div className="space-y-6 px-4 py-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl text-forest">Improvement Engine</h1>
-          <p className="text-sm text-sub mt-0.5">30-day autonomous product improvement</p>
+        <div className="flex items-start gap-3">
+          <Link href="/admin" className="text-sub hover:text-text mt-1 flex-shrink-0">
+            <ChevronLeft className="w-5 h-5" />
+          </Link>
+          <div>
+            <h1 className="font-display text-2xl text-forest">Improvement Engine</h1>
+            <p className="text-sm text-sub mt-0.5">30-day autonomous product improvement</p>
+          </div>
         </div>
         <div className="flex items-center gap-2 bg-pale rounded-full px-4 py-2">
           <TrendingUp className="w-4 h-4 text-leaf" />

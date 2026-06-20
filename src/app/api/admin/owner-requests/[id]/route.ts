@@ -73,7 +73,7 @@ export async function PATCH(
     const existingRoles: string[] = (authData.user.app_metadata?.roles as string[]) ?? [];
     if (!existingRoles.includes("owner")) {
       const { error: roleErr } = await db.auth.admin.updateUserById(ownerReq.user_id, {
-        app_metadata: { roles: [...existingRoles, "owner"] },
+        app_metadata: { ...authData.user.app_metadata, roles: [...existingRoles, "owner"] },
       });
       if (roleErr) {
         console.error("[admin/owner-requests PATCH updateUserById]", roleErr);
@@ -82,7 +82,18 @@ export async function PATCH(
     }
   }
 
-  // Step 4 (LAST): Mark the request as reviewed only after all side effects succeed
+  // Step 4: Notify the driver (non-blocking — failure here does not prevent approval)
+  if (action === "approve") {
+    const { data: ownerData } = await db.from("User").select("name").eq("id", ownerReq.user_id).maybeSingle();
+    await db.from("Notification").insert({
+      user_id: ownerReq.user_id,
+      type:    "owner_approved",
+      title:   "Owner Access Granted!",
+      body:    `Congratulations ${ownerData?.name ?? ""}! Log out and back in to activate Owner mode.`,
+    }).catch(() => {});
+  }
+
+  // Step 5 (LAST): Mark the request as reviewed only after all side effects succeed
   const newStatus = action === "approve" ? "APPROVED" : "DECLINED";
   const { error: updateErr } = await db
     .from("OwnerRequest")

@@ -70,8 +70,13 @@ export async function PATCH(req: NextRequest) {
         roles.push("owner");
       }
 
+      const { data: existingAuth } = await db.auth.admin.getUserById(user_id);
+      const existingMeta  = existingAuth?.user?.app_metadata ?? {};
+      const existingRoles = (existingMeta.roles as string[] | undefined) ?? [];
+      const mergedRoles   = [...new Set([...existingRoles, ...roles])];
+
       await db.auth.admin.updateUserById(user_id, {
-        app_metadata: { roles, fleet_status: "active" },
+        app_metadata: { ...existingMeta, roles: mergedRoles, fleet_status: "active" },
       });
 
       const { data: user } = await db.from("User").select("name").eq("id", user_id).single();

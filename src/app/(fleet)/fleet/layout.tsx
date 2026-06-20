@@ -85,7 +85,7 @@ export default function FleetLayout({ children }: { children: React.ReactNode })
           <p className="text-lime/60 text-xs font-mono-green uppercase tracking-widest">Green Rides Fleet</p>
           <h1 className="font-display text-xl text-white capitalize">{mode} Portal</h1>
         </div>
-        {mode === "owner" && (
+        {!isPublicPath && (
           <button
             onClick={() => supabase.auth.signOut().then(() => router.replace("/fleet/login"))}
             className="flex items-center gap-1.5 text-lime/70 hover:text-lime text-xs font-medium"

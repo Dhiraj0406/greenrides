@@ -29,15 +29,21 @@ export async function POST(
 
     const now = new Date().toISOString();
 
-    const { error } = await db
+    const { data: updatedRows, error } = await db
       .from("RideRequest")
       .update({ status: "COMPLETED", completed_at: now, updated_at: now })
       .eq("id", requestId)
-      .eq("status", "IN_PROGRESS");
+      .eq("status", "IN_PROGRESS")
+      .select("id");
 
     if (error) {
       console.error("[requests/complete]", error);
       return Response.json({ error: "Failed to complete request" }, { status: 500 });
+    }
+
+    // If 0 rows were updated, trip was already completed — return success (idempotent)
+    if (!updatedRows || updatedRows.length === 0) {
+      return Response.json({ data: { completed: true }, error: null });
     }
 
     // Clean up location row — no stale pin for completed trips
