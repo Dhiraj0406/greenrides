@@ -40,7 +40,7 @@
         "src/app/(booking)/rides/page.tsx"
       ],
       "prompt_hint": "For each ride card, render a row of circles (max 8 shown). Booked seats = filled circle (w-2.5 h-2.5 rounded-full bg-sub inline-block). Available seats = empty circle (w-2.5 h-2.5 rounded-full border border-leaf inline-block). Space them with gap-1. Cap at 8 circles even for larger vehicles. Keep existing seat count text as a subtitle in text-xs text-sub beneath the circles.",
-      "status": "pending",
+      "status": "in_progress",
       "completed_at": null,
       "deployment_id": null
     },

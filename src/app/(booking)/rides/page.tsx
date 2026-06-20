@@ -10,6 +10,38 @@ import { useBookingStore } from "@/store/booking";
 import { todayISO } from "@/lib/utils";
 import type { RideWithDriver } from "@/types";
 
+const MAX_CIRCLES = 8;
+
+function SeatPills({ totalSeats, availableSeats }: { totalSeats: number; availableSeats: number }) {
+  const bookedSeats = totalSeats - availableSeats;
+  const display     = Math.min(totalSeats, MAX_CIRCLES);
+  // Scale booked count proportionally if capped
+  const bookedDisplay = Math.min(bookedSeats, display);
+
+  return (
+    <div>
+      <div className="flex items-center gap-1">
+        {Array.from({ length: display }).map((_, i) => (
+          i < bookedDisplay ? (
+            <span
+              key={i}
+              className="w-2.5 h-2.5 rounded-full bg-sub inline-block"
+            />
+          ) : (
+            <span
+              key={i}
+              className="w-2.5 h-2.5 rounded-full border border-leaf inline-block"
+            />
+          )
+        ))}
+      </div>
+      <p className="text-xs text-sub mt-1">
+        {availableSeats} seat{availableSeats !== 1 ? "s" : ""} left
+      </p>
+    </div>
+  );
+}
+
 export default function RidesPage() {
   const { origin, destination } = useBookingStore();
   const [rides, setRides]       = useState<RideWithDriver[]>([]);
@@ -173,7 +205,10 @@ export default function RidesPage() {
                   hour: "2-digit", minute: "2-digit",
                 })}
               </span>
-              <span>{ride.available_seats} seat{ride.available_seats !== 1 ? "s" : ""} left</span>
+              <SeatPills
+                totalSeats={ride.total_seats ?? ride.available_seats}
+                availableSeats={ride.available_seats}
+              />
             </div>
 
             {/* Fare + book */}
