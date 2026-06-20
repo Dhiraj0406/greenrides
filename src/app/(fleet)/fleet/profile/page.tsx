@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Car, Star, MapPin, LogOut, Pencil, Check, X } from "lucide-react";
+import { Loader2, Car, Star, MapPin, LogOut, Pencil, Check, X, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 interface DriverProfile {
   name:           string | null;
@@ -28,6 +29,8 @@ export default function ProfilePage() {
   const [toggling, setToggling]   = useState(false);
   const [editing, setEditing]     = useState(false);
   const [saving, setSaving]       = useState(false);
+  const [ownerRequest, setOwnerRequest] = useState<{ status: "PENDING" | "APPROVED" | "DECLINED" } | null | undefined>(undefined);
+  const [isOwner, setIsOwner] = useState(false);
   const [form, setForm] = useState({
     name: "", vehicle_type: "", vehicle_number: "", vehicle_model: "", license_number: "",
   });
@@ -37,6 +40,19 @@ export default function ProfilePage() {
       if (!session) { setLoading(false); return; }
       const t = session.access_token;
       setToken(t);
+
+      // Check if already owner
+      const roles: string[] = (session.user.app_metadata?.roles as string[]) ?? [];
+      setIsOwner(roles.includes("owner"));
+
+      // Fetch owner request status (only needed if not already an owner)
+      if (!roles.includes("owner")) {
+        fetch("/api/fleet/owner-request", { headers: { Authorization: `Bearer ${t}` } })
+          .then((r) => r.json())
+          .then((j) => setOwnerRequest(j.data ?? null))
+          .catch(() => setOwnerRequest(null));
+      }
+
       fetch("/api/fleet/driver/profile", { headers: { Authorization: `Bearer ${t}` } })
         .then((r) => r.json())
         .then((j) => {
@@ -236,6 +252,56 @@ export default function ProfilePage() {
               </>
             )}
           </button>
+
+          {/* ── Owner upgrade card ───────────────────────────── */}
+          {!isOwner && ownerRequest !== undefined && (
+            <div className="mt-4">
+              {ownerRequest === null && (
+                <div className="bg-pale border border-leaf rounded-2xl p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Building2 className="w-4 h-4 text-leaf flex-shrink-0" />
+                    <p className="text-sm font-semibold text-forest">Own a fleet?</p>
+                  </div>
+                  <p className="text-xs text-sub mb-3">
+                    Own 2+ vehicles? Apply to manage them on Green Rides.
+                  </p>
+                  <Link
+                    href="/fleet/owner-request"
+                    className="inline-block bg-leaf text-white text-xs font-semibold px-4 py-2 rounded-xl"
+                  >
+                    Apply for Owner Access →
+                  </Link>
+                </div>
+              )}
+
+              {ownerRequest?.status === "PENDING" && (
+                <div className="bg-amber-50 border border-amber-400 rounded-2xl p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
+                    <p className="text-sm font-semibold text-text">Owner request pending</p>
+                  </div>
+                  <p className="text-xs text-sub">
+                    Your application is under review. We&apos;ll notify you once approved.
+                  </p>
+                </div>
+              )}
+
+              {ownerRequest?.status === "DECLINED" && (
+                <div className="bg-red-50 border border-red-300 rounded-2xl p-4">
+                  <p className="text-sm font-semibold text-text mb-1">Request not approved</p>
+                  <p className="text-xs text-sub mb-3">
+                    You can reapply with updated details.
+                  </p>
+                  <Link
+                    href="/fleet/owner-request"
+                    className="inline-block bg-red-500 text-white text-xs font-semibold px-4 py-2 rounded-xl"
+                  >
+                    Reapply →
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>
