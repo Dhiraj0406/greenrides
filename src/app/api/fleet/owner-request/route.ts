@@ -72,6 +72,10 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) {
+    // Postgres unique constraint violation — race condition double-submit caught by DB
+    if ((error as { code?: string }).code === "23505") {
+      return Response.json({ data: null, error: "Request already pending" }, { status: 409 });
+    }
     console.error("[fleet/owner-request POST]", error);
     return Response.json({ data: null, error: "Failed to submit request" }, { status: 500 });
   }

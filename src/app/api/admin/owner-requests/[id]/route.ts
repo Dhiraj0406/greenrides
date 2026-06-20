@@ -35,37 +35,36 @@ export async function PATCH(
     return Response.json({ data: null, error: "Request is no longer pending" }, { status: 409 });
   }
 
-  const newStatus = action === "approve" ? "APPROVED" : "DECLINED";
-
-  // Update request status
-  const { error: updateErr } = await db
-    .from("OwnerRequest")
-    .update({ status: newStatus, reviewed_at: new Date().toISOString() })
-    .eq("id", id);
-
-  if (updateErr) {
-    console.error("[admin/owner-requests PATCH update]", updateErr);
-    return Response.json({ data: null, error: "Failed to update request" }, { status: 500 });
-  }
-
+  // All side effects run BEFORE updating the request status
+  // so that a partial failure leaves the request in PENDING and admin can retry
   if (action === "approve") {
-    // Fetch user details for Owner row
-    const { data: userData } = await db
+    // Step 1: Fetch user details
+    const { data: userData, error: userFetchErr } = await db
       .from("User")
       .select("id, name, phone, email")
       .eq("id", ownerReq.user_id)
       .single();
 
-    // Create Owner row (upsert in case one already exists)
-    await db.from("Owner").upsert({
+    if (userFetchErr || !userData) {
+      console.error("[admin/owner-requests PATCH fetchUser]", userFetchErr);
+      return Response.json({ data: null, error: "Failed to fetch user details" }, { status: 500 });
+    }
+
+    // Step 2: Upsert Owner row
+    const { error: upsertErr } = await db.from("Owner").upsert({
       user_id: ownerReq.user_id,
-      name:    userData?.name  ?? "",
-      phone:   userData?.phone ?? "",
-      email:   userData?.email ?? null,
+      name:    userData.name  ?? "",
+      phone:   userData.phone ?? "",
+      email:   userData.email ?? null,
       status:  "ACTIVE",
     }, { onConflict: "user_id" });
 
-    // Add owner role to app_metadata
+    if (upsertErr) {
+      console.error("[admin/owner-requests PATCH upsert]", upsertErr);
+      return Response.json({ data: null, error: "Failed to create owner record" }, { status: 500 });
+    }
+
+    // Step 3: Add owner role to app_metadata
     const { data: authData, error: authFetchErr } = await db.auth.admin.getUserById(ownerReq.user_id);
     if (authFetchErr || !authData?.user) {
       console.error("[admin/owner-requests PATCH getUserById]", authFetchErr);
@@ -81,6 +80,18 @@ export async function PATCH(
         return Response.json({ data: null, error: "Failed to update user roles" }, { status: 500 });
       }
     }
+  }
+
+  // Step 4 (LAST): Mark the request as reviewed only after all side effects succeed
+  const newStatus = action === "approve" ? "APPROVED" : "DECLINED";
+  const { error: updateErr } = await db
+    .from("OwnerRequest")
+    .update({ status: newStatus, reviewed_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (updateErr) {
+    console.error("[admin/owner-requests PATCH update]", updateErr);
+    return Response.json({ data: null, error: "Failed to update request" }, { status: 500 });
   }
 
   return Response.json({ data: { status: newStatus }, error: null });

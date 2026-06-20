@@ -300,6 +300,15 @@ export default function ProfilePage() {
                   </Link>
                 </div>
               )}
+
+              {ownerRequest?.status === "APPROVED" && (
+                <div className="bg-pale border border-leaf rounded-2xl p-4">
+                  <p className="text-sm font-semibold text-forest mb-1">Owner access granted!</p>
+                  <p className="text-xs text-sub">
+                    Please log out and back in to activate owner mode.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </>
