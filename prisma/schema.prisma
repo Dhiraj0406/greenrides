@@ -503,12 +503,14 @@ model CarInquiry {
 }
 
 // ─── OWNER UPGRADE REQUESTS ──────────────────────────
+// user_id references auth.users(id) ON DELETE CASCADE — enforced via SQL migration
+// A partial unique index (one PENDING per user) is also enforced at the DB level
 model OwnerRequest {
   id            String    @id @default(uuid())
-  user_id       String
-  vehicle_count Int
-  reason        String
-  status        String    @default("PENDING")
+  user_id       String    // auth.users.id of the requesting driver
+  vehicle_count Int       // must be >= 2, validated at API layer
+  reason        String    // max 200 chars, validated at API layer
+  status        String    @default("PENDING") // PENDING | APPROVED | DECLINED
   created_at    DateTime  @default(now())
   reviewed_at   DateTime?
 
