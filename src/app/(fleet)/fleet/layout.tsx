@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Car, Calendar, User, Bell, LayoutDashboard, Truck, Users, TrendingUp, History, LogOut } from "lucide-react";
+import { Car, Calendar, User, Bell, LayoutDashboard, Truck, Users, TrendingUp, History, LogOut, Building2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type Mode = "driver" | "owner";
@@ -85,25 +85,38 @@ export default function FleetLayout({ children }: { children: React.ReactNode })
           <p className="text-lime/60 text-xs font-mono-green uppercase tracking-widest">Green Rides Fleet</p>
           <h1 className="font-display text-xl text-white capitalize">{mode} Portal</h1>
         </div>
-        <div className="flex items-center gap-2">
-          {canToggle && (
-            <button
-              onClick={() => setMode(mode === "driver" ? "owner" : "driver")}
-              className="bg-leaf/20 text-lime text-xs font-semibold px-3 py-1.5 rounded-full border border-lime/30"
-            >
-              Switch to {mode === "driver" ? "Owner" : "Driver"}
-            </button>
-          )}
-          {mode === "owner" && (
-            <button
-              onClick={() => supabase.auth.signOut().then(() => router.replace("/fleet/login"))}
-              className="flex items-center gap-1.5 text-lime/70 hover:text-lime text-xs font-medium"
-            >
-              <LogOut className="w-4 h-4" /> Sign out
-            </button>
-          )}
-        </div>
+        {mode === "owner" && (
+          <button
+            onClick={() => supabase.auth.signOut().then(() => router.replace("/fleet/login"))}
+            className="flex items-center gap-1.5 text-lime/70 hover:text-lime text-xs font-medium"
+          >
+            <LogOut className="w-4 h-4" /> Sign out
+          </button>
+        )}
       </header>
+
+      {canToggle && !isPublicPath && (
+        <div className="px-4 pt-3 pb-1 bg-cream">
+          <div className="flex bg-white border border-border rounded-full p-1 gap-1">
+            <button
+              onClick={() => setMode("driver")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full text-xs font-semibold transition-colors ${
+                mode === "driver" ? "bg-forest text-white" : "text-sub"
+              }`}
+            >
+              <Car className="w-3.5 h-3.5" /> Driver
+            </button>
+            <button
+              onClick={() => setMode("owner")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full text-xs font-semibold transition-colors ${
+                mode === "owner" ? "bg-forest text-white" : "text-sub"
+              }`}
+            >
+              <Building2 className="w-3.5 h-3.5" /> Owner
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className={isPublicPath ? "flex-1" : "flex-1 pb-20"}>{children}</main>
 
