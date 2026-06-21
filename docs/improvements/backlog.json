@@ -55,7 +55,7 @@
         "src/app/(booking)/rides/page.tsx"
       ],
       "prompt_hint": "For bookings page empty state: Ticket icon (w-12 h-12 text-sub/40), heading 'No bookings yet' (text-lg font-semibold text-text), subtitle 'Your upcoming and past rides will appear here' (text-sm text-sub), CTA button 'Find a ride →' (bg-leaf text-white font-semibold px-5 py-3 rounded-xl) linking to /rides. For rides page with no results: Search icon, heading 'No rides found', subtitle 'Try different dates or cities', CTA 'Clear filters'. Wrap in a flex-col items-center py-16 gap-3 div.",
-      "status": "pending",
+      "status": "in_progress",
       "completed_at": null,
       "deployment_id": null
     },

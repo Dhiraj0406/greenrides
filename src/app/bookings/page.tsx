@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Calendar, Car, Phone } from "lucide-react";
+import { ArrowRight, Calendar, Car, Phone, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { BottomNav } from "@/components/shared/BottomNav";
@@ -350,18 +350,15 @@ function CabBookingCard({ booking, onRate }: { booking: CabBooking; onRate: (id:
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center py-20 text-center px-6">
-      <div className="w-24 h-24 rounded-full bg-leaf/10 flex items-center justify-center mb-5">
-        <Car className="w-10 h-10 text-leaf" />
-      </div>
-      <h2 className="font-display text-xl text-forest mb-2">No trips yet</h2>
-      <p className="text-sub text-sm mb-6">Book your first hill-town ride and it will appear here.</p>
+    <div className="flex flex-col items-center py-16 gap-3">
+      <Ticket className="w-12 h-12 text-sub/40" />
+      <h2 className="text-lg font-semibold text-text">No bookings yet</h2>
+      <p className="text-sm text-sub">Your upcoming and past rides will appear here</p>
       <Link
-        href="/"
-        className="touch-target bg-leaf text-white font-semibold px-6 py-3 rounded-2xl text-sm inline-flex items-center gap-2"
+        href="/rides"
+        className="bg-leaf text-white font-semibold px-5 py-3 rounded-xl text-sm"
       >
-        Book your first ride
-        <ArrowRight className="w-4 h-4" />
+        Find a ride →
       </Link>
     </div>
   );
