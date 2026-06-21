@@ -90,7 +90,7 @@ export async function PATCH(
       type:    "owner_approved",
       title:   "Owner Access Granted!",
       body:    `Congratulations ${ownerData?.name ?? ""}! Log out and back in to activate Owner mode.`,
-    }).catch(() => {});
+    });
   }
 
   // Step 5 (LAST): Mark the request as reviewed only after all side effects succeed
