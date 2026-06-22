@@ -3,6 +3,60 @@ import { z } from "zod";
 import { getAdminClient } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
 
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!isAdmin(req)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
+  const { id } = await params;
+
+  try {
+    const db = getAdminClient();
+
+    const { data: profile, error: fetchErr } = await db
+      .from("DriverProfile")
+      .select("user_id, vehicle_number")
+      .eq("id", id)
+      .single();
+
+    if (fetchErr || !profile) return Response.json({ data: null, error: "Driver not found" }, { status: 404 });
+
+    // Unlink any vehicles assigned to this driver profile
+    await db.from("Vehicle").update({ driver_id: null }).eq("driver_id", id);
+
+    // Delete the DriverProfile row
+    const { error: deleteErr } = await db.from("DriverProfile").delete().eq("id", id);
+    if (deleteErr) throw deleteErr;
+
+    // Remove "driver" role from app_metadata
+    const { data: authData } = await db.auth.admin.getUserById(profile.user_id);
+    if (authData?.user) {
+      const existingMeta  = authData.user.app_metadata ?? {};
+      const existingRoles = (existingMeta.roles as string[] | undefined) ?? [];
+      const newRoles      = existingRoles.filter((r) => r !== "driver");
+      await db.auth.admin.updateUserById(profile.user_id, {
+        app_metadata: { ...existingMeta, roles: newRoles, fleet_status: newRoles.length > 0 ? "active" : "removed" },
+      });
+    }
+
+    // Revert User.role to RIDER
+    await db.from("User").update({ role: "RIDER" }).eq("id", profile.user_id);
+
+    await db.from("AdminLog").insert({
+      admin_id:  "admin",
+      action:    "driver_removed",
+      entity:    "driver",
+      entity_id: id,
+      details:   { user_id: profile.user_id, vehicle_number: profile.vehicle_number },
+    });
+
+    return Response.json({ data: { removed: true }, error: null });
+  } catch (err) {
+    console.error("[admin/drivers/:id DELETE]", err);
+    return Response.json({ data: null, error: "Remove failed" }, { status: 500 });
+  }
+}
+
 function isAdmin(req: NextRequest) {
   return req.headers.get("x-admin-token") === process.env.ADMIN_SECRET;
 }

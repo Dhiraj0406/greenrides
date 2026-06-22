@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, ClipboardList, Users, IndianRupee, TrendingUp, Tag, CheckSquare, Truck, Wallet, ShieldCheck, SlidersHorizontal, Car } from "lucide-react";
+import { Loader2, ClipboardList, Users, IndianRupee, TrendingUp, Tag, CheckSquare, Truck, Wallet, ShieldCheck, SlidersHorizontal, Car, Percent, ScrollText } from "lucide-react";
 import { toast } from "sonner";
 import { AdminGate } from "@/components/admin/AdminGate";
 
@@ -165,6 +165,22 @@ function Dashboard({ token }: { token: string }) {
                 <div className="flex items-center gap-3">
                   <SlidersHorizontal className="w-5 h-5 text-leaf" />
                   <span className="text-sm font-semibold text-text">Remote Config</span>
+                </div>
+                <span className="text-sub text-sm">→</span>
+              </Link>
+              <Link href="/admin/commission"
+                className="flex items-center justify-between bg-white border border-border rounded-2xl px-4 py-4 hover:border-leaf/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Percent className="w-5 h-5 text-leaf" />
+                  <span className="text-sm font-semibold text-text">Commission Rates</span>
+                </div>
+                <span className="text-sub text-sm">→</span>
+              </Link>
+              <Link href="/admin/logs"
+                className="flex items-center justify-between bg-white border border-border rounded-2xl px-4 py-4 hover:border-leaf/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <ScrollText className="w-5 h-5 text-leaf" />
+                  <span className="text-sm font-semibold text-text">Activity Log</span>
                 </div>
                 <span className="text-sub text-sm">→</span>
               </Link>

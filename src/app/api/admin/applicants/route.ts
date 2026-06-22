@@ -87,8 +87,10 @@ export async function PATCH(req: NextRequest) {
         body:  `Welcome to Green Rides fleet, ${user?.name ?? ""}. You can now log in.`,
       });
     } else {
+      const { data: rejAuth } = await db.auth.admin.getUserById(user_id);
+      const rejMeta = rejAuth?.user?.app_metadata ?? {};
       await db.auth.admin.updateUserById(user_id, {
-        app_metadata: { fleet_status: "rejected" },
+        app_metadata: { ...rejMeta, fleet_status: "rejected" },
       });
     }
 

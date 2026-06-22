@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, Star, ChevronLeft, Phone, CheckCircle, XCircle, Plus, X } from "lucide-react";
+import { Loader2, Star, ChevronLeft, Phone, CheckCircle, XCircle, Plus, X, Trash2 } from "lucide-react";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -129,6 +129,7 @@ function DriversContent({ token }: { token: string }) {
   const [tab, setTab]           = useState<"pending" | "all">("pending");
   const [showAdd, setShowAdd]   = useState(false);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<string | null>(null);
 
   function loadDrivers() {
     setLoading(true);
@@ -140,6 +141,22 @@ function DriversContent({ token }: { token: string }) {
   }
 
   useEffect(() => { loadDrivers(); }, [token]);
+
+  async function removeDriver(id: string, name: string | null) {
+    if (!confirm(`Remove driver ${name ?? "this driver"}? Their profile will be deleted and fleet access revoked.`)) return;
+    setRemoving(id);
+    try {
+      const res = await fetch(`/api/admin/drivers/${id}`, {
+        method:  "DELETE",
+        headers: { "x-admin-token": token },
+      });
+      const j = await res.json();
+      if (!res.ok || j.error) { toast.error(j.error ?? "Failed"); return; }
+      setDrivers((prev) => prev.filter((d) => d.id !== id));
+      toast.success("Driver removed");
+    } catch { toast.error("Network error"); }
+    finally { setRemoving(null); }
+  }
 
   async function toggleApproval(id: string, approve: boolean) {
     setToggling(id);
@@ -244,13 +261,16 @@ function DriversContent({ token }: { token: string }) {
                     <XCircle className="w-3.5 h-3.5" /> Revoke
                   </button>
                 )}
+                <button onClick={() => removeDriver(driver.id, driver.user.name)} disabled={removing === driver.id}
+                  className="flex items-center justify-center gap-1 px-3 bg-red-50 text-red-500 text-sm font-semibold py-2.5 rounded-xl disabled:opacity-60">
+                  {removing === driver.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                </button>
               </div>
-              <Link
-                href="/admin/drivers/dispatch"
-                className="text-xs text-leaf font-semibold mt-2 inline-block"
-              >
-                View live dispatch →
-              </Link>
+              {driver.is_approved && (
+                <Link href="/admin/drivers/dispatch" className="text-xs text-leaf font-semibold mt-2 inline-block">
+                  View live dispatch →
+                </Link>
+              )}
             </div>
           ))
         )}

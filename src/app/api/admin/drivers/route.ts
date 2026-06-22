@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     // 2. Upsert User row (same as /api/users/me on first login)
     await db.from("User").upsert(
-      { id: userId, phone: d.phone, name: d.name, role: "RIDER" },
+      { id: userId, phone: d.phone, name: d.name, role: "DRIVER" },
       { onConflict: "id" }
     );
 
@@ -111,6 +111,17 @@ export async function POST(req: NextRequest) {
     await db.auth.admin.updateUserById(userId, {
       app_metadata: { ...existingMeta, roles: mergedRoles, fleet_status: "active" },
     });
+
+    const { data: profile } = await db.from("DriverProfile").select("id").eq("user_id", userId).maybeSingle();
+    if (profile) {
+      await db.from("AdminLog").insert({
+        admin_id:  "admin",
+        action:    "driver_created",
+        entity:    "driver",
+        entity_id: profile.id,
+        details:   { name: d.name, phone: d.phone, vehicle_number: d.vehicle_number },
+      });
+    }
 
     return Response.json({ data: { id: userId, created: true }, error: null });
   } catch (err) {
