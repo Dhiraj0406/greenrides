@@ -3,12 +3,29 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Car, Calendar, User, Bell, LayoutDashboard, Truck, Users, TrendingUp, History, LogOut, Building2 } from "lucide-react";
+import { Car, Calendar, User, Bell, LayoutDashboard, Truck, Users, TrendingUp, History, LogOut, Building2, Lock } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type Mode = "driver" | "owner";
 
 const PUBLIC_PATHS = ["/fleet/login", "/fleet/register", "/fleet/pending"];
+
+function LockedMode({ mode }: { mode: "driver" | "owner" }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] px-8 text-center">
+      <div className="w-14 h-14 rounded-2xl bg-pale flex items-center justify-center mb-4">
+        <Lock className="w-6 h-6 text-sub" />
+      </div>
+      <h2 className="font-display text-xl text-forest mb-2">
+        {mode === "driver" ? "Driver" : "Owner"} Access Not Activated
+      </h2>
+      <p className="text-sub text-sm max-w-xs leading-relaxed">
+        Contact your Green Rides admin to enable{" "}
+        {mode === "driver" ? "driver" : "fleet owner"} access for your account.
+      </p>
+    </div>
+  );
+}
 
 export default function FleetLayout({ children }: { children: React.ReactNode }) {
   const pathname              = usePathname();
@@ -47,9 +64,13 @@ export default function FleetLayout({ children }: { children: React.ReactNode })
       .catch(() => {});
   }, [token]);
 
-  const isOwner   = roles.includes("owner");
-  const isDriver  = roles.includes("driver");
-  const canToggle = isOwner && isDriver;
+  const isOwner  = roles.includes("owner");
+  const isDriver = roles.includes("driver");
+
+  function handleModeSwitch(next: Mode) {
+    setMode(next);
+    router.push(next === "owner" ? "/fleet/dashboard" : "/fleet/today");
+  }
 
   const driverNav = [
     { href: "/fleet/today",         label: "Today",    icon: Calendar },
@@ -95,11 +116,11 @@ export default function FleetLayout({ children }: { children: React.ReactNode })
         )}
       </header>
 
-      {canToggle && !isPublicPath && (
+      {!isPublicPath && (
         <div className="px-4 pt-3 pb-1 bg-cream">
           <div className="flex bg-white border border-border rounded-full p-1 gap-1">
             <button
-              onClick={() => setMode("driver")}
+              onClick={() => handleModeSwitch("driver")}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full text-xs font-semibold transition-colors ${
                 mode === "driver" ? "bg-forest text-white" : "text-sub"
               }`}
@@ -107,7 +128,7 @@ export default function FleetLayout({ children }: { children: React.ReactNode })
               <Car className="w-3.5 h-3.5" /> Driver
             </button>
             <button
-              onClick={() => setMode("owner")}
+              onClick={() => handleModeSwitch("owner")}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full text-xs font-semibold transition-colors ${
                 mode === "owner" ? "bg-forest text-white" : "text-sub"
               }`}
@@ -118,7 +139,13 @@ export default function FleetLayout({ children }: { children: React.ReactNode })
         </div>
       )}
 
-      <main className={isPublicPath ? "flex-1" : "flex-1 pb-20"}>{children}</main>
+      <main className={isPublicPath ? "flex-1" : "flex-1 pb-20"}>
+        {!isPublicPath && mode === "driver" && !isDriver
+          ? <LockedMode mode="driver" />
+          : !isPublicPath && mode === "owner" && !isOwner
+          ? <LockedMode mode="owner" />
+          : children}
+      </main>
 
       {!isPublicPath && (
         <div className="text-center py-3 px-4">
