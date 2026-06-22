@@ -68,6 +68,7 @@ export default function FleetLayout({ children }: { children: React.ReactNode })
   const isDriver = roles.includes("driver");
 
   function handleModeSwitch(next: Mode) {
+    if (next === mode) return;
     setMode(next);
     router.push(next === "owner" ? "/fleet/dashboard" : "/fleet/today");
   }
