@@ -35,7 +35,7 @@ function AddOwnerModal({ token, onClose, onCreated }: {
       });
       const j = await res.json();
       if (!res.ok) { toast.error(j.error ?? "Failed"); return; }
-      toast.success("Owner created — they can log in with their phone at /fleet/login");
+      toast.success("Owner created — they can log in at fleet.greenrides.co.in/login");
       onCreated();
       onClose();
     } catch { toast.error("Network error"); }
