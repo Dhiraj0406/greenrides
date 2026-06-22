@@ -70,7 +70,7 @@ function AddOwnerModal({ token, onClose, onCreated }: {
             <input value={form.email} onChange={set("email")} type="email" placeholder="owner@example.com"
               className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-white outline-none focus:border-leaf" />
           </div>
-          <p className="text-[11px] text-sub">Owner is auto-approved and can log in immediately at /fleet/login using their phone + OTP.</p>
+          <p className="text-[11px] text-sub">Owner is auto-approved. They can log in at <span className="font-semibold">fleet.greenrides.co.in/login</span> using their phone + OTP.</p>
           <button type="submit" disabled={saving}
             className="w-full bg-leaf text-white font-semibold py-3 rounded-xl text-sm disabled:opacity-60 flex items-center justify-center gap-2">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
