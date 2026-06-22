@@ -37,8 +37,15 @@ export async function proxy(req: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  // ── Driver / Owner subdomains ────────────────────────
-  if (host.startsWith("driver.") || host.startsWith("owner.") || host.startsWith("fleet.")) {
+  // ── driver./owner. → redirect to fleet. (301) ───────
+  if (host.startsWith("driver.") || host.startsWith("owner.")) {
+    const target = req.nextUrl.clone();
+    target.hostname = target.hostname.replace(/^(driver|owner)\./, "fleet.");
+    return NextResponse.redirect(target, 301);
+  }
+
+  // ── Fleet subdomain (fleet.greenrides.co.in) ─────────
+  if (host.startsWith("fleet.")) {
     // API routes pass through unmodified
     if (pathname.startsWith("/api/")) {
       return NextResponse.next();
