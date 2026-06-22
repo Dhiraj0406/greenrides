@@ -42,12 +42,29 @@ function SeatPills({ totalSeats, availableSeats }: { totalSeats: number; availab
   );
 }
 
+function FareBreakdown({ farePaise, seats }: { farePaise: number; seats: number }) {
+  const farePerSeat = Math.round(farePaise / 100);
+  const total       = farePerSeat * seats;
+
+  return (
+    <div className="flex items-center justify-between mb-3">
+      <p className="text-sm text-sub">
+        ₹{farePerSeat} × {seats} seat{seats !== 1 ? "s" : ""}
+      </p>
+      <span className="font-display text-lg text-forest font-bold">
+        ₹{total}
+      </span>
+    </div>
+  );
+}
+
 export default function RidesPage() {
   const { origin, destination } = useBookingStore();
   const [rides, setRides]       = useState<RideWithDriver[]>([]);
   const [loading, setLoading]   = useState(true);
   const [date, setDate]         = useState(todayISO());
   const [bookingRide, setBookingRide] = useState<RideWithDriver | null>(null);
+  const [seatCounts, setSeatCounts]   = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!origin) { setLoading(false); return; }
@@ -61,6 +78,14 @@ export default function RidesPage() {
       .catch(() => { toast.error("Failed to load rides"); setRides([]); })
       .finally(() => setLoading(false));
   }, [origin, destination, date]);
+
+  function getSeats(rideId: string) {
+    return seatCounts[rideId] ?? 1;
+  }
+
+  function setSeats(rideId: string, value: number) {
+    setSeatCounts((prev) => ({ ...prev, [rideId]: value }));
+  }
 
   return (
     <div className="green-container min-h-screen bg-cream pb-24">
@@ -165,71 +190,98 @@ export default function RidesPage() {
           </div>
         )}
 
-        {!loading && rides.map((ride) => (
-          <div
-            key={ride.id}
-            className="bg-white border border-border rounded-2xl p-4 mb-3"
-          >
-            {/* Driver row */}
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-forest-mid flex items-center
-                              justify-center text-lime font-display flex-shrink-0">
-                {ride.driver.name.charAt(0)}
+        {!loading && rides.map((ride) => {
+          const seats = getSeats(ride.id);
+
+          return (
+            <div
+              key={ride.id}
+              className="bg-white border border-border rounded-2xl p-4 mb-3"
+            >
+              {/* Driver row */}
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-full bg-forest-mid flex items-center
+                                justify-center text-lime font-display flex-shrink-0">
+                  {ride.driver.name.charAt(0)}
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-text text-sm">{ride.driver.name}</p>
+                  <p className="text-xs text-sub">
+                    {ride.driver.vehicle_model} · {ride.driver.vehicle_number}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Star className="w-3.5 h-3.5 fill-gold text-gold" />
+                  <span className="text-sm font-semibold text-gold">
+                    {ride.driver.avg_rating.toFixed(1)}
+                  </span>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="font-semibold text-text text-sm">{ride.driver.name}</p>
-                <p className="text-xs text-sub">
-                  {ride.driver.vehicle_model} · {ride.driver.vehicle_number}
-                </p>
+
+              {/* Route row */}
+              <div className="flex items-center gap-2 text-sm mb-2">
+                <span className="font-semibold text-text">{ride.from_city}</span>
+                <ArrowRight className="w-3.5 h-3.5 text-sub" />
+                <span className="font-semibold text-text">{ride.to_city}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Star className="w-3.5 h-3.5 fill-gold text-gold" />
-                <span className="text-sm font-semibold text-gold">
-                  {ride.driver.avg_rating.toFixed(1)}
+
+              {/* Meta row */}
+              <div className="flex items-center gap-4 text-xs text-sub font-mono-green mb-3">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {new Date(ride.departure_time).toLocaleTimeString("en-IN", {
+                    hour: "2-digit", minute: "2-digit",
+                  })}
                 </span>
+                <SeatPills
+                  totalSeats={ride.total_seats ?? ride.available_seats}
+                  availableSeats={ride.available_seats}
+                />
               </div>
-            </div>
 
-            {/* Route row */}
-            <div className="flex items-center gap-2 text-sm mb-2">
-              <span className="font-semibold text-text">{ride.from_city}</span>
-              <ArrowRight className="w-3.5 h-3.5 text-sub" />
-              <span className="font-semibold text-text">{ride.to_city}</span>
-            </div>
-
-            {/* Meta row */}
-            <div className="flex items-center gap-4 text-xs text-sub font-mono-green mb-3">
-              <span className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                {new Date(ride.departure_time).toLocaleTimeString("en-IN", {
-                  hour: "2-digit", minute: "2-digit",
-                })}
-              </span>
-              <SeatPills
-                totalSeats={ride.total_seats ?? ride.available_seats}
-                availableSeats={ride.available_seats}
-              />
-            </div>
-
-            {/* Fare + book */}
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="font-display text-2xl text-forest">
-                  ₹{Math.round(ride.fare_paise / 100)}
-                </span>
-                <p className="text-xs text-sub mt-0.5">Full Cab</p>
+              {/* Seat selector */}
+              <div className="flex items-center gap-3 mb-3">
+                <p className="text-xs text-sub">Seats</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSeats(ride.id, Math.max(1, seats - 1))}
+                    className="w-7 h-7 rounded-lg border border-border flex items-center
+                               justify-center text-text font-semibold text-sm
+                               disabled:opacity-40"
+                    disabled={seats <= 1}
+                  >
+                    −
+                  </button>
+                  <span className="w-5 text-center text-sm font-semibold text-text font-mono-green">
+                    {seats}
+                  </span>
+                  <button
+                    onClick={() => setSeats(ride.id, Math.min(ride.available_seats, seats + 1))}
+                    className="w-7 h-7 rounded-lg border border-border flex items-center
+                               justify-center text-text font-semibold text-sm
+                               disabled:opacity-40"
+                    disabled={seats >= ride.available_seats}
+                  >
+                    +
+                  </button>
+                </div>
               </div>
+
+              {/* Fare breakdown */}
+              <FareBreakdown farePaise={ride.fare_paise} seats={seats} />
+
+              {/* Book button */}
               <button
                 onClick={() => setBookingRide(ride)}
-                className="bg-leaf text-white text-sm font-semibold
-                           px-5 py-2.5 rounded-xl touch-target transition-colors
+                className="w-full bg-leaf text-white text-sm font-semibold
+                           py-2.5 rounded-xl touch-target transition-colors
                            hover:bg-leaf/90"
               >
                 Book
               </button>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {bookingRide && (

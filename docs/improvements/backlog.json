@@ -70,7 +70,7 @@
         "src/app/(booking)/confirm/page.tsx"
       ],
       "prompt_hint": "In the booking summary/confirmation step, add a fare breakdown row: '₹{farePerSeat} × {seats} seat{s} = ₹{total}' in text-sm text-sub. The total should be in font-display text-lg text-forest font-bold. Update dynamically when seat count changes. Convert from paise: fare_paise / 100. Place directly above the 'Book Now' / 'Confirm' button.",
-      "status": "pending",
+      "status": "in_progress",
       "completed_at": null,
       "deployment_id": null
     },
