@@ -50,8 +50,10 @@ export default async function RoutePage({ params }: { params: Promise<{ slug: st
     { label: "Seats",       value: "Up to 6" },
   ];
 
+  const minFare = route.fare_rupees ?? null;
+
   return (
-    <div className="green-container min-h-screen bg-cream pb-24">
+    <div className="green-container min-h-screen bg-cream pb-20">
       <header className="bg-forest px-4 pt-safe-top pb-8">
         <div className="pt-4 flex items-center gap-3 mb-4">
           <Link
@@ -116,6 +118,19 @@ export default async function RoutePage({ params }: { params: Promise<{ slug: st
         <p className="text-center text-xs text-sub pb-4">
           Fares are fixed and include fuel. No surge pricing.
         </p>
+      </div>
+
+      {/* Sticky bottom bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-border px-4 py-3 flex items-center justify-between z-10">
+        {minFare != null && (
+          <span className="font-display text-xl text-forest">From ₹{minFare}</span>
+        )}
+        <Link
+          href={`/rides?from=${encodeURIComponent(route.from_city)}&to=${encodeURIComponent(route.to_city)}`}
+          className="bg-leaf text-white font-bold px-6 py-3 rounded-xl ml-auto"
+        >
+          Book Now →
+        </Link>
       </div>
     </div>
   );

@@ -84,7 +84,7 @@
         "src/app/routes/[slug]/page.tsx"
       ],
       "prompt_hint": "Add a sticky bottom bar (fixed bottom-0 left-0 right-0 bg-white border-t border-border px-4 py-3 flex items-center justify-between z-10). Left side: 'From ₹{minFare}' in font-display text-xl text-forest (show only if fare data is available; omit if unknown). Right side: a Link to /rides?from={fromCity}&to={toCity} styled as bg-leaf text-white font-bold px-6 py-3 rounded-xl 'Book Now →'. Add pb-20 to the page content div to avoid content being hidden behind the sticky bar.",
-      "status": "pending",
+      "status": "in_progress",
       "completed_at": null,
       "deployment_id": null
     },
