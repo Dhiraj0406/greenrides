@@ -48,6 +48,7 @@ function DispatchContent({ token }: { token: string }) {
   const [dispatchDrivers, setDispatchDrivers] = useState<DriverOption[]>([]);
   const [loadingDispatchDrivers, setLoadingDispatchDrivers] = useState(false);
   const [creatingDispatch, setCreatingDispatch] = useState(false);
+  const [skippingId, setSkippingId] = useState<string | null>(null);
 
   const load = () => {
     fetch("/api/admin/dispatch", { headers: { "x-admin-token": token } })
@@ -122,6 +123,8 @@ function DispatchContent({ token }: { token: string }) {
   }
 
   async function skip(id: string) {
+    if (skippingId === id) return;
+    setSkippingId(id);
     try {
       const res = await fetch(`/api/admin/dispatch/${id}/override`, {
         method: "PATCH",
@@ -131,6 +134,7 @@ function DispatchContent({ token }: { token: string }) {
       if (!res.ok) { const j = await res.json(); toast.error(j.error ?? "Skip failed"); return; }
       load();
     } catch { toast.error("Network error"); }
+    finally { setSkippingId(null); }
   }
 
   async function createDispatch(requestId: string, driverUserId: string) {
@@ -223,9 +227,10 @@ function DispatchContent({ token }: { token: string }) {
                     <div className="flex gap-2">
                       <button
                         onClick={() => skip(d.id)}
-                        className="flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold px-3 py-2 rounded-xl"
+                        disabled={skippingId === d.id}
+                        className="flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold px-3 py-2 rounded-xl disabled:opacity-50"
                       >
-                        <SkipForward className="w-3.5 h-3.5" /> Skip to next driver
+                        {skippingId === d.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SkipForward className="w-3.5 h-3.5" />} Skip to next driver
                       </button>
                       <button
                         onClick={() => { setAssigningId(d.id); setDriverQuery(""); setDrivers([]); }}

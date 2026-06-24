@@ -13,6 +13,12 @@ const patchSchema = z.object({
   eta_min:      z.number().int().min(1).max(600).optional(),
 });
 
+const VALID_TRANSITIONS: Partial<Record<string, string[]>> = {
+  PENDING:     ["CONFIRMED", "CANCELLED"],
+  CONFIRMED:   ["CANCELLED"],
+  IN_PROGRESS: ["COMPLETED"],
+};
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -47,6 +53,23 @@ export async function PATCH(
 
   try {
     const db = getAdminClient();
+
+    const { data: current } = await db
+      .from("RideRequest")
+      .select("status")
+      .eq("id", id)
+      .single();
+
+    if (!current) {
+      return Response.json({ data: null, error: "Booking not found" }, { status: 404 });
+    }
+    if (!VALID_TRANSITIONS[current.status]?.includes(status)) {
+      return Response.json(
+        { data: null, error: `Cannot move from ${current.status} to ${status}` },
+        { status: 409 }
+      );
+    }
+
     const { data, error } = await db
       .from("RideRequest")
       .update(updateData)

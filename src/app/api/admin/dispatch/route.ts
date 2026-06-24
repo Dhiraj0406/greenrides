@@ -7,7 +7,7 @@ function isAdmin(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  if (!isAdmin(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdmin(req)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   try {
     const db = getAdminClient();
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     return Response.json({ data, error: null });
   } catch (err) {
     console.error("[admin/dispatch GET]", err);
-    return Response.json({ error: "Failed to fetch" }, { status: 500 });
+    return Response.json({ data: null, error: "Failed to fetch" }, { status: 500 });
   }
 }
 
@@ -31,11 +31,11 @@ const postSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  if (!isAdmin(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdmin(req)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   let body: unknown;
   try { body = await req.json(); } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid JSON" }, { status: 400 });
   }
 
   const parsed = postSchema.safeParse(body);
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       .eq("id", request_id)
       .single();
 
-    if (!request) return Response.json({ error: "RideRequest not found" }, { status: 404 });
+    if (!request) return Response.json({ data: null, error: "RideRequest not found" }, { status: 404 });
     if (request.status !== "PENDING") {
       return Response.json({ error: `RideRequest is ${request.status}, cannot dispatch` }, { status: 400 });
     }
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       .eq("id", driver_user_id)
       .single();
 
-    if (!driver) return Response.json({ error: "Driver not found" }, { status: 404 });
+    if (!driver) return Response.json({ data: null, error: "Driver not found" }, { status: 404 });
 
     // Determine next order_index for this request
     const { data: existing } = await db
@@ -94,6 +94,6 @@ export async function POST(req: NextRequest) {
     return Response.json({ data: dispatch, error: null });
   } catch (err) {
     console.error("[admin/dispatch POST]", err);
-    return Response.json({ error: "Failed to create dispatch" }, { status: 500 });
+    return Response.json({ data: null, error: "Failed to create dispatch" }, { status: 500 });
   }
 }

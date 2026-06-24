@@ -8,7 +8,7 @@ function isAdmin(req: NextRequest) {
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  if (!isAdmin(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdmin(req)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const url    = new URL(req.url);
   const status = url.searchParams.get("status") ?? undefined;

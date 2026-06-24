@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Loader2, ChevronLeft, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { AdminGate } from "@/components/admin/AdminGate";
@@ -99,9 +100,9 @@ function DetailContent({ token }: { token: string }) {
     <div className="green-container min-h-screen bg-cream pb-16">
       <header className="bg-forest px-4 pt-safe-top pb-4">
         <div className="pt-4 flex items-center gap-3">
-          <button onClick={() => router.push("/admin/used-cars")} className="text-lime/70">
+          <Link href="/admin/used-cars" className="text-lime/70">
             <ChevronLeft className="w-5 h-5" />
-          </button>
+          </Link>
           <h1 className="font-display text-xl text-white">{listing.make} {listing.model}</h1>
         </div>
       </header>

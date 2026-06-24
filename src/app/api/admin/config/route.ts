@@ -6,7 +6,7 @@ function isAdmin(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  if (!isAdmin(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdmin(req)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   try {
     const db = getAdminClient();

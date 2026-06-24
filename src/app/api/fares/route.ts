@@ -2,7 +2,10 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { getAdminClient } from "@/lib/supabase";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  if (req.headers.get("x-admin-token") !== process.env.ADMIN_SECRET) {
+    return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
+  }
   try {
     const db = getAdminClient();
     const { data: routes, error } = await db

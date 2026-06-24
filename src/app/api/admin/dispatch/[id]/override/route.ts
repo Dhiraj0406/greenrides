@@ -16,12 +16,12 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!isAdmin(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdmin(req)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
   let body: unknown;
   try { body = await req.json(); } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid JSON" }, { status: 400 });
   }
   const parsed = schema.safeParse(body);
   if (!parsed.success) return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
@@ -36,7 +36,7 @@ export async function PATCH(
       .eq("id", id)
       .single();
 
-    if (!dispatch) return Response.json({ error: "Not found" }, { status: 404 });
+    if (!dispatch) return Response.json({ data: null, error: "Not found" }, { status: 404 });
 
     await db.from("DriverDispatch").update({ status: "SKIPPED" }).eq("id", id).eq("status", "PENDING");
 
@@ -71,7 +71,7 @@ export async function PATCH(
 
   // Manual assign
   const { data: dispatch } = await db.from("DriverDispatch").select("request_id").eq("id", id).maybeSingle();
-  if (!dispatch) return Response.json({ error: "Not found" }, { status: 404 });
+  if (!dispatch) return Response.json({ data: null, error: "Not found" }, { status: 404 });
 
   try {
     await db.from("DriverDispatch").update({ status: "SKIPPED" }).eq("request_id", dispatch.request_id).in("status", ["PENDING", "WAITING"]);
@@ -99,6 +99,6 @@ export async function PATCH(
     return Response.json({ data: { ok: true }, error: null });
   } catch (err) {
     console.error("[dispatch/override assign]", err);
-    return Response.json({ error: "Failed to assign driver" }, { status: 500 });
+    return Response.json({ data: null, error: "Failed to assign driver" }, { status: 500 });
   }
 }

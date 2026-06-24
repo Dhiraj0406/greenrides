@@ -35,8 +35,11 @@ function DocumentsContent({ token }: { token: string }) {
   function load() {
     const qs = filter ? `?status=${filter}` : "";
     fetch(`/api/admin/documents${qs}`, { headers: { "x-admin-token": token } })
-      .then((r) => r.json())
-      .then((j) => { setDocs(j.data ?? []); })
+      .then(async (r) => {
+        const j = await r.json();
+        if (!r.ok) { toast.error(j.error ?? "Failed to load documents"); return; }
+        setDocs(j.data ?? []);
+      })
       .catch(() => toast.error("Failed to load documents"))
       .finally(() => setLoading(false));
   }
@@ -55,7 +58,8 @@ function DocumentsContent({ token }: { token: string }) {
       if (!res.ok) { toast.error(json.error ?? "Action failed"); return; }
       toast.success(`Document ${action}d`);
       load();
-    } finally { setActing(null); }
+    } catch { toast.error("Network error"); }
+    finally { setActing(null); }
   }
 
   const STATUS_COLOR: Record<Doc["status"], string> = {

@@ -106,6 +106,18 @@ export async function PATCH(
       );
     }
 
+    // When revoking approval, revoke fleet access in auth metadata so the
+    // driver cannot log in until re-approved (JWT holds fleet_status until expiry).
+    if (!input.is_approved) {
+      const { data: authData } = await db.auth.admin.getUserById(updated.user_id);
+      if (authData?.user) {
+        const existingMeta = authData.user.app_metadata ?? {};
+        await db.auth.admin.updateUserById(updated.user_id, {
+          app_metadata: { ...existingMeta, fleet_status: "pending" },
+        });
+      }
+    }
+
     try {
       await db.from("AdminLog").insert({
         admin_id:  "admin",
@@ -114,7 +126,7 @@ export async function PATCH(
         entity_id: id,
         details:   input,
       });
-    } catch {}
+    } catch (logErr) { console.error("[AdminLog] driver approval log failed:", logErr); }
 
     return Response.json({ data: updated, error: null });
   } catch (err) {

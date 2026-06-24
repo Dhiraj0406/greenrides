@@ -31,7 +31,6 @@ const STATUS_COLORS: Record<ReqStatus, string> = {
 
 const NEXT_STATUS: Partial<Record<ReqStatus, ReqStatus>> = {
   PENDING:     "CONFIRMED",
-  CONFIRMED:   "COMPLETED",
   IN_PROGRESS: "COMPLETED",
 };
 
@@ -178,14 +177,16 @@ function BookingsContent({ token }: { token: string }) {
               </div>
               <p className="text-[10px] text-sub/60 mt-2 font-mono-green">#{req.id.slice(0, 8).toUpperCase()}</p>
 
-              {NEXT_STATUS[req.status] && confirmingId !== req.id && (
+              {(NEXT_STATUS[req.status] || req.status === "CONFIRMED") && confirmingId !== req.id && (
                 <div className="flex gap-2 mt-3 pt-3 border-t border-border">
-                  <button
-                    onClick={() => req.status === "PENDING" ? openConfirmForm(req.id) : updateStatus(req.id, NEXT_STATUS[req.status]!)}
-                    className="flex-1 bg-leaf text-white text-sm font-semibold py-2.5 rounded-xl">
-                    {req.status === "PENDING" ? "Confirm →" : "Mark Done ✓"}
-                  </button>
-                  {req.status === "PENDING" && (
+                  {NEXT_STATUS[req.status] && (
+                    <button
+                      onClick={() => req.status === "PENDING" ? openConfirmForm(req.id) : updateStatus(req.id, NEXT_STATUS[req.status]!)}
+                      className="flex-1 bg-leaf text-white text-sm font-semibold py-2.5 rounded-xl">
+                      {req.status === "PENDING" ? "Confirm →" : "Mark Done ✓"}
+                    </button>
+                  )}
+                  {(req.status === "PENDING" || req.status === "CONFIRMED") && (
                     <button
                       onClick={() => updateStatus(req.id, "CANCELLED")}
                       className="px-4 bg-red-50 text-red-500 text-sm font-semibold py-2.5 rounded-xl">
