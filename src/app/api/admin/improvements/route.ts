@@ -17,39 +17,44 @@ function readBacklogSafe() {
 }
 
 export async function GET(req: NextRequest) {
-  if (!verifyAdmin(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!verifyAdmin(req)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const db = getAdminClient();
 
-  const [{ data: history }, { data: today }] = await Promise.all([
-    db.from("ImprovementLog")
-      .select("id, day, title, portal, area, status, deployment_url, smoke_tests_passed, veto_expires_at, completed_at, rolled_back_at, created_at")
-      .order("created_at", { ascending: false })
-      .limit(30),
-    db.from("ImprovementLog")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
+  try {
+    const [{ data: history }, { data: today }] = await Promise.all([
+      db.from("ImprovementLog")
+        .select("id, day, title, portal, area, status, deployment_url, smoke_tests_passed, veto_expires_at, completed_at, rolled_back_at, created_at")
+        .order("created_at", { ascending: false })
+        .limit(30),
+      db.from("ImprovementLog")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
 
-  const backlog  = readBacklogSafe();
-  const upcoming = backlog.items
-    .filter((i) => i.status === "pending")
-    .slice(0, 7);
+    const backlog  = readBacklogSafe();
+    const upcoming = backlog.items
+      .filter((i) => i.status === "pending")
+      .slice(0, 7);
 
-  const completed = (history ?? []).filter((r) => r.status === "completed" || r.status === "rolled_back").length;
+    const completed = (history ?? []).filter((r) => r.status === "completed" || r.status === "rolled_back").length;
 
-  return Response.json({
-    data: {
-      today:     today ?? null,
-      history:   history ?? [],
-      upcoming,
-      completed,
-      total:     30,
-    },
-    error: null,
-  });
+    return Response.json({
+      data: {
+        today:     today ?? null,
+        history:   history ?? [],
+        upcoming,
+        completed,
+        total:     30,
+      },
+      error: null,
+    });
+  } catch (err) {
+    console.error("[admin/improvements GET]", err);
+    return Response.json({ data: null, error: "Failed to fetch improvements" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {

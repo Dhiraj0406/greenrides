@@ -15,7 +15,9 @@ export function GlobalDiscount() {
   }
 
   async function fetchRouteIds(): Promise<string[]> {
-    const res = await fetch("/api/fares");
+    const adminToken = sessionStorage.getItem("green_admin_token") ?? "";
+    const res = await fetch("/api/fares", { headers: { "x-admin-token": adminToken } });
+    if (!res.ok) throw new Error("Failed to fetch routes");
     const json = await res.json();
     return (json.data ?? []).map((r: { id: string }) => r.id);
   }
@@ -48,7 +50,7 @@ export function GlobalDiscount() {
         body: JSON.stringify({ routes }),
       });
       const json = await res.json();
-      if (json.error) throw new Error(json.error);
+      if (!res.ok) throw new Error(json.error ?? "Failed to apply discount");
       setSuccess(true);
       setPct("");
       setLabel("");
@@ -75,7 +77,7 @@ export function GlobalDiscount() {
         body: JSON.stringify({ routes }),
       });
       const json = await res.json();
-      if (json.error) throw new Error(json.error);
+      if (!res.ok) throw new Error(json.error ?? "Failed to remove discount");
       setSuccess(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed.");

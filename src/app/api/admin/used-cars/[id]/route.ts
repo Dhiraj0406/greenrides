@@ -12,7 +12,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdmin(request)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
   try {
     const db = getAdminClient();
@@ -22,14 +22,15 @@ export async function GET(
       .eq("id", id)
       .single();
 
-    if (error || !listing) return Response.json({ error: "Not found" }, { status: 404 });
+    if (error || !listing) return Response.json({ data: null, error: "Not found" }, { status: 404 });
 
     return Response.json({
       data: { ...listing, price_paise: String(listing.price_paise) },
+      error: null,
     });
   } catch (err) {
     console.error("[admin/used-cars/:id GET]", err);
-    return Response.json({ error: "Failed to fetch listing" }, { status: 500 });
+    return Response.json({ data: null, error: "Failed to fetch listing" }, { status: 500 });
   }
 }
 
@@ -41,23 +42,23 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdmin(request)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
 
   let body: unknown;
   try { body = await request.json(); } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid JSON" }, { status: 400 });
   }
 
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
+  if (!parsed.success) return Response.json({ data: null, error: parsed.error.issues[0].message }, { status: 400 });
 
   try {
     const db = getAdminClient();
 
     const { data: existing } = await db.from("CarListing").select("id").eq("id", id).single();
-    if (!existing) return Response.json({ error: "Not found" }, { status: 404 });
+    if (!existing) return Response.json({ data: null, error: "Not found" }, { status: 404 });
 
     const { error } = await db
       .from("CarListing")
@@ -65,9 +66,9 @@ export async function PATCH(
       .eq("id", id);
 
     if (error) throw error;
-    return Response.json({ ok: true });
+    return Response.json({ data: { updated: true }, error: null });
   } catch (err) {
     console.error("[admin/used-cars/:id PATCH]", err);
-    return Response.json({ error: "Failed to update listing" }, { status: 500 });
+    return Response.json({ data: null, error: "Failed to update listing" }, { status: 500 });
   }
 }

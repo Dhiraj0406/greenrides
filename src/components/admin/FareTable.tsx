@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, Pencil, Check, X } from "lucide-react";
+import { toast } from "sonner";
 
 interface FareRow {
   id:           string;
@@ -22,41 +23,45 @@ export function FareTable() {
   const [saving, setSaving]   = useState(false);
 
   useEffect(() => {
-    fetch("/api/fares")
-      .then((r) => r.json())
-      .then((j) => setRows(j.data ?? []))
+    const token = sessionStorage.getItem("green_admin_token") ?? "";
+    fetch("/api/fares", { headers: { "x-admin-token": token } })
+      .then(async (r) => {
+        const j = await r.json();
+        if (!r.ok) { toast.error(j.error ?? "Failed to load fares"); return; }
+        setRows(j.data ?? []);
+      })
+      .catch(() => toast.error("Failed to load fares"))
       .finally(() => setLoading(false));
   }, []);
 
   async function saveEdit(row: FareRow) {
     setSaving(true);
     try {
+      const token = sessionStorage.getItem("green_admin_token") ?? "";
       const res = await fetch("/api/fares", {
         method:  "PUT",
-        headers: {
-          "Content-Type":  "application/json",
-          "x-admin-token": sessionStorage.getItem("green_admin_token") ?? "",
-        },
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
         body: JSON.stringify({
-          route_id:     row.id,
-          base_fare:    parseInt(editFare) * 100,
-          discount_pct: parseInt(editDisc) || 0,
+          routes: [{
+            id:        row.id,
+            base_fare: parseInt(editFare) * 100,
+            fare_rule: { discount_pct: parseInt(editDisc) || 0 },
+          }],
         }),
       });
       const json = await res.json();
-      if (!json.error) {
-        setRows((prev) =>
-          prev.map((r) =>
-            r.id === row.id
-              ? { ...r, base_fare: parseInt(editFare) * 100, discount_pct: parseInt(editDisc) || 0 }
-              : r
-          )
-        );
-        setEditId(null);
-      }
-    } finally {
-      setSaving(false);
-    }
+      if (!res.ok) { toast.error(json.error ?? "Failed to save fare"); return; }
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === row.id
+            ? { ...r, base_fare: parseInt(editFare) * 100, discount_pct: parseInt(editDisc) || 0 }
+            : r
+        )
+      );
+      setEditId(null);
+      toast.success("Fare updated");
+    } catch { toast.error("Network error"); }
+    finally { setSaving(false); }
   }
 
   if (loading) {

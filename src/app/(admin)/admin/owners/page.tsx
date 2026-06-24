@@ -113,7 +113,7 @@ function OwnersContent({ token }: { token: string }) {
       if (!res.ok || j.error) { toast.error(j.error ?? "Action failed"); return; }
       setOwners((prev) => prev.map((o) => o.id === id ? { ...o, status: newStatus } : o));
       toast.success(`Owner ${newStatus === "ACTIVE" ? "activated" : "suspended"}`);
-    } catch { toast.error("Network error"); }
+    } catch { toast.error("Network error"); loadOwners(); }
     finally { setToggling(null); }
   }
 

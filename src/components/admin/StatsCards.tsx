@@ -15,10 +15,10 @@ export function StatsCards() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Aggregate from bookings and rides
+    const token = sessionStorage.getItem("green_admin_token") ?? "";
     Promise.all([
-      fetch("/api/bookings?admin=1", { headers: { "x-admin-token": sessionStorage.getItem("green_admin_token") ?? "" } }).then((r) => r.json()),
-      fetch("/api/rides?admin=1").then((r) => r.json()),
+      fetch("/api/bookings?admin=1", { headers: { "x-admin-token": token } }).then((r) => r.json()),
+      fetch("/api/rides?admin=1",    { headers: { "x-admin-token": token } }).then((r) => r.json()),
     ])
       .then(([bookingsRes, ridesRes]) => {
         const bookings = bookingsRes.data ?? [];
@@ -37,6 +37,7 @@ export function StatsCards() {
           ).size,
         });
       })
+      .catch(() => { /* stats stay null, loading flips off via finally */ })
       .finally(() => setLoading(false));
   }, []);
 

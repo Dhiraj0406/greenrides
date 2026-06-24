@@ -99,9 +99,20 @@ export async function POST(req: NextRequest) {
   // Upgrade User role to DRIVER
   await db.from("User").update({ role: "DRIVER", updated_at: now }).eq("id", userId);
 
+  // Grant fleet portal access via auth metadata so the driver can log in at fleet.greenrides.co.in
+  const { data: authUser } = await db.auth.admin.getUserById(userId);
+  if (authUser?.user) {
+    const existingMeta  = authUser.user.app_metadata ?? {};
+    const existingRoles = (existingMeta.roles as string[] | undefined) ?? [];
+    if (!existingRoles.includes("driver")) existingRoles.push("driver");
+    await db.auth.admin.updateUserById(userId, {
+      app_metadata: { ...existingMeta, roles: existingRoles, fleet_status: "active" },
+    });
+  }
+
   return Response.json({
-    ok:      true,
-    profile,
-    message: `Demo driver ready. ${phone10} can now log in at /drivers/dashboard and will receive ride dispatches automatically.`,
+    data: { profile, phone: phone10 },
+    error: null,
+    message: `Demo driver ready. ${phone10} can now log in at fleet.greenrides.co.in and will receive ride dispatches automatically.`,
   });
 }

@@ -216,11 +216,11 @@ function BookingsContent({ token }: { token: string }) {
                                outline-none focus:border-leaf focus:ring-1 focus:ring-leaf/30"
                   />
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     placeholder="ETA in minutes (e.g. 30)"
                     value={etaMin}
-                    min={1}
-                    max={600}
                     onChange={(e) => setEtaMin(e.target.value)}
                     className="w-full bg-warm border border-border rounded-xl px-3 py-2.5 text-sm text-text
                                outline-none focus:border-leaf focus:ring-1 focus:ring-leaf/30"

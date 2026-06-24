@@ -16,11 +16,11 @@ const createVehicleSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  if (!isAdmin(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdmin(req)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const body   = await req.json().catch(() => null);
   const parsed = createVehicleSchema.safeParse(body);
-  if (!parsed.success) return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
+  if (!parsed.success) return Response.json({ data: null, error: parsed.error.issues[0].message }, { status: 400 });
 
   try {
     const db = getAdminClient();
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) {
-      if (error.code === "23505") return Response.json({ error: "Vehicle number already registered" }, { status: 409 });
+      if (error.code === "23505") return Response.json({ data: null, error: "Vehicle number already registered" }, { status: 409 });
       throw error;
     }
 
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     return Response.json({ data, error: null });
   } catch (err) {
     console.error("[admin/vehicles POST]", err);
-    return Response.json({ error: "Failed to create vehicle" }, { status: 500 });
+    return Response.json({ data: null, error: "Failed to create vehicle" }, { status: 500 });
   }
 }
 
@@ -62,7 +62,7 @@ const BUCKET = "kyc-documents";
 const SIGNED_URL_TTL = 3600;
 
 export async function GET(req: NextRequest) {
-  if (!isAdmin(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdmin(req)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   try {
     const db = getAdminClient();
