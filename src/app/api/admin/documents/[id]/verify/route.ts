@@ -14,23 +14,23 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!isAdmin(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdmin(req)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
 
   let body: unknown;
   try { body = await req.json(); } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid JSON" }, { status: 400 });
   }
 
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return Response.json({ error: "action must be 'approve' or 'reject'" }, { status: 400 });
+  if (!parsed.success) return Response.json({ data: null, error: "action must be 'approve' or 'reject'" }, { status: 400 });
 
   try {
     const db = getAdminClient();
 
     const { data: doc } = await db.from("Document").select("*").eq("id", id).single();
-    if (!doc) return Response.json({ error: "Document not found" }, { status: 404 });
+    if (!doc) return Response.json({ data: null, error: "Document not found" }, { status: 404 });
 
     const newStatus = parsed.data.action === "approve" ? "APPROVED" : "REJECTED";
     const now = new Date().toISOString();
@@ -64,6 +64,6 @@ export async function POST(
     return Response.json({ data: { ok: true, status: newStatus }, error: null });
   } catch (err) {
     console.error("[admin/documents/:id/verify POST]", err);
-    return Response.json({ error: "Failed to verify document" }, { status: 500 });
+    return Response.json({ data: null, error: "Failed to verify document" }, { status: 500 });
   }
 }

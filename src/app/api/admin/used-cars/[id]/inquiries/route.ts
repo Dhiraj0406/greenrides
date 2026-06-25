@@ -11,7 +11,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdmin(request)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
 
@@ -27,6 +27,6 @@ export async function GET(
     return Response.json({ data, error: null });
   } catch (err) {
     console.error("[admin/used-cars/:id/inquiries GET]", err);
-    return Response.json({ error: "Failed to fetch inquiries" }, { status: 500 });
+    return Response.json({ data: null, error: "Failed to fetch inquiries" }, { status: 500 });
   }
 }

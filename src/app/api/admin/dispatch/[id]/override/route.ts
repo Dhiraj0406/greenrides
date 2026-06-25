@@ -24,7 +24,7 @@ export async function PATCH(
     return Response.json({ data: null, error: "Invalid JSON" }, { status: 400 });
   }
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
+  if (!parsed.success) return Response.json({ data: null, error: parsed.error.issues[0].message }, { status: 400 });
 
   const db  = getAdminClient();
   const now = new Date().toISOString();

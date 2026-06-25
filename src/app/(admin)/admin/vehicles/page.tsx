@@ -135,7 +135,7 @@ function AddVehicleModal({ token, onClose, onCreated }: {
               </div>
               <div>
                 <label className="text-xs text-sub font-semibold mb-1 block">Seats *</label>
-                <input value={form.seats} onChange={set("seats")} required type="number" min="2" max="60"
+                <input value={form.seats} onChange={(e) => setForm((f) => ({ ...f, seats: e.target.value.replace(/\D/g, "") }))} required type="text" inputMode="numeric" pattern="[0-9]*"
                   className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-white outline-none focus:border-leaf" />
               </div>
             </div>

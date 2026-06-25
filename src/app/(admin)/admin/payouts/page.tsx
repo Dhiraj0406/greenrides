@@ -106,8 +106,8 @@ function PayoutsContent({ token }: { token: string }) {
               <option value="" disabled>Select owner…</option>
               {owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
-            <input type="number" placeholder="Amount (₹)" value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })} className={inputClass} />
+            <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="Amount (₹)" value={form.amount}
+              onChange={(e) => setForm({ ...form, amount: e.target.value.replace(/\D/g, "") })} className={inputClass} />
             <div className="flex gap-2">
               <div className="flex-1">
                 <label className="text-xs text-sub">From</label>

@@ -58,7 +58,8 @@ function UsedCarsContent({ token }: { token: string }) {
       if (!res.ok) { toast.error(json.error ?? "Action failed"); return; }
       toast.success(`Listing ${status.toLowerCase()}`);
       load();
-    } finally { setActing(null); }
+    } catch { toast.error("Network error — please try again"); }
+    finally { setActing(null); }
   }
 
   const STATUS_COLOR: Record<Status, string> = {

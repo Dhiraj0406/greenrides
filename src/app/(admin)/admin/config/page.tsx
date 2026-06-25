@@ -40,6 +40,7 @@ function ConfigContent({ token }: { token: string }) {
     try {
       const res = await fetch("/api/admin/config", { headers: { "x-admin-token": token } });
       const j   = await res.json();
+      if (!res.ok) { toast.error(j.error ?? "Failed to load config"); return; }
       setFlags(j.data ?? []);
     } catch {
       toast.error("Failed to load remote config");

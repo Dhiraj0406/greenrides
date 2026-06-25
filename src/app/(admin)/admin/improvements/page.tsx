@@ -82,7 +82,7 @@ function ImprovementsDashboard({ token }: { token: string }) {
         body:    JSON.stringify({ action, log_id: data.today.id }),
       });
       const j = await res.json();
-      if (j.error) { toast.error(j.error); return; }
+      if (!res.ok || j.error) { toast.error(j.error ?? "Action failed"); return; }
       toast.success(action === "rollback" ? "Rolled back successfully" : "Day skipped");
       load();
     } catch { toast.error("Action failed"); }

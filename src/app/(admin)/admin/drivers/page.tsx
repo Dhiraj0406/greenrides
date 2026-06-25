@@ -52,7 +52,8 @@ function AddDriverModal({ token, onClose, onCreated }: {
       toast.success("Driver added and approved");
       onCreated();
       onClose();
-    } finally {
+    } catch { toast.error("Network error — please try again"); }
+    finally {
       setSaving(false);
     }
   }

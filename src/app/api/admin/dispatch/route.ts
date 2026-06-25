@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   const parsed = postSchema.safeParse(body);
   if (!parsed.success) {
-    return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
+    return Response.json({ data: null, error: parsed.error.issues[0].message }, { status: 400 });
   }
 
   const { request_id, driver_user_id } = parsed.data;
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
 
     if (!request) return Response.json({ data: null, error: "RideRequest not found" }, { status: 404 });
     if (request.status !== "PENDING") {
-      return Response.json({ error: `RideRequest is ${request.status}, cannot dispatch` }, { status: 400 });
+      return Response.json({ data: null, error: `RideRequest is ${request.status}, cannot dispatch` }, { status: 400 });
     }
 
     // Verify driver exists
