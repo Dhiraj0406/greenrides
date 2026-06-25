@@ -451,6 +451,7 @@ export default function MyBookingsPage() {
       } else {
         setRequests(prev => prev.map(r => r.id === ratingFor.id ? { ...r, has_rating: true } : r));
       }
+      toast.success("Rating submitted!");
       setRatingFor(null);
     } finally {
       setSubmittingRating(false);

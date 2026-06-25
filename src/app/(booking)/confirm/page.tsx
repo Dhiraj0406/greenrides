@@ -16,7 +16,7 @@ function ConfirmContent() {
   const [error, setError]     = useState("");
 
   useEffect(() => {
-    if (!bookingId) { router.replace("/"); return; }
+    if (!bookingId) { setLoading(false); router.replace("/"); return; }
 
     import("@/lib/supabase").then(({ supabase }) =>
       supabase.auth.getSession()

@@ -50,6 +50,7 @@ export default function ListingDetailPage() {
 
   async function submitInquiry(e: React.FormEvent) {
     e.preventDefault();
+    if (!/^\d{10}$/.test(buyerPhone)) { toast.error("Enter a valid 10-digit phone number"); return; }
     setSubmitting(true);
     try {
       const res  = await fetch(`/api/used-cars/listings/${id}/inquire`, {
@@ -178,9 +179,11 @@ export default function ListingDetailPage() {
                 />
                 <input
                   type="tel"
-                  placeholder="Your phone number"
+                  inputMode="numeric"
+                  placeholder="10-digit mobile number"
                   value={buyerPhone}
                   onChange={(e) => setBuyerPhone(e.target.value)}
+                  maxLength={10}
                   required
                   className="w-full border border-border rounded-xl px-3 py-2.5 text-sm text-text outline-none focus:border-leaf"
                 />

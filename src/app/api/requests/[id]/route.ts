@@ -6,11 +6,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const db = getAdminClient();
   const { data: { user }, error: authErr } = await db.auth.getUser(token);
-  if (authErr || !user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (authErr || !user) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
 
@@ -22,10 +22,10 @@ export async function DELETE(
       .maybeSingle();
 
     if (!request || request.rider_id !== user.id) {
-      return Response.json({ error: "Not found" }, { status: 404 });
+      return Response.json({ data: null, error: "Not found" }, { status: 404 });
     }
     if (request.status !== "PENDING") {
-      return Response.json({ error: "Only PENDING requests can be cancelled" }, { status: 409 });
+      return Response.json({ data: null, error: "Only PENDING requests can be cancelled" }, { status: 409 });
     }
 
     const { error: updateErr } = await db
@@ -34,10 +34,10 @@ export async function DELETE(
       .eq("id", id);
 
     if (updateErr) throw updateErr;
-    return Response.json({ ok: true });
+    return Response.json({ data: { cancelled: true }, error: null });
   } catch (err) {
     console.error("[requests/:id DELETE]", err);
-    return Response.json({ error: "Failed to cancel request" }, { status: 500 });
+    return Response.json({ data: null, error: "Failed to cancel request" }, { status: 500 });
   }
 }
 
@@ -46,11 +46,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const db = getAdminClient();
   const { data: { user }, error: authErr } = await db.auth.getUser(token);
-  if (authErr || !user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (authErr || !user) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
 
@@ -62,7 +62,7 @@ export async function GET(
     .maybeSingle();
 
   if (error || !request) {
-    return Response.json({ error: "Not found" }, { status: 404 });
+    return Response.json({ data: null, error: "Not found" }, { status: 404 });
   }
 
   return Response.json({ data: request, error: null });

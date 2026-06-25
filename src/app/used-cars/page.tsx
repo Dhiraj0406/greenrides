@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Loader2, Car, MapPin, Gauge, Fuel, Search } from "lucide-react";
+import { toast } from "sonner";
 import { BottomNav } from "@/components/shared/BottomNav";
 
 interface Listing {
@@ -45,7 +46,7 @@ export default function UsedCarsPage() {
       setListings((prev) => reset ? (json.data ?? []) : [...prev, ...(json.data ?? [])]);
       setTotal(json.total ?? 0);
       setPage(p);
-    } catch { /* silent — listings remain as-is */ }
+    } catch { toast.error("Failed to load listings. Pull to refresh."); }
     finally { setLoading(false); }
   }
 

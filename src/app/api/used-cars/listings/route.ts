@@ -32,7 +32,7 @@ const TEXT_FIELDS = [
 export async function POST(request: NextRequest) {
   let formData: FormData;
   try { formData = await request.formData(); } catch {
-    return Response.json({ error: "Invalid form data" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid form data" }, { status: 400 });
   }
 
   const raw: Record<string, string> = {};
@@ -43,19 +43,19 @@ export async function POST(request: NextRequest) {
 
   const parsed = schema.safeParse(raw);
   if (!parsed.success) {
-    return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
+    return Response.json({ data: null, error: parsed.error.issues[0].message }, { status: 400 });
   }
 
   const files = formData.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0);
   if (files.length > MAX_PHOTOS) {
-    return Response.json({ error: "Maximum 6 photos allowed" }, { status: 400 });
+    return Response.json({ data: null, error: "Maximum 6 photos allowed" }, { status: 400 });
   }
   for (const file of files) {
     if (file.size > MAX_FILE_SIZE) {
-      return Response.json({ error: `Photo "${file.name}" exceeds 5 MB limit` }, { status: 400 });
+      return Response.json({ data: null, error: `Photo "${file.name}" exceeds 5 MB limit` }, { status: 400 });
     }
     if (!file.type.startsWith("image/")) {
-      return Response.json({ error: "Only image files are allowed" }, { status: 400 });
+      return Response.json({ data: null, error: "Only image files are allowed" }, { status: 400 });
     }
   }
 
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         if (uploadedPaths.length > 0) {
           await db.storage.from(BUCKET).remove(uploadedPaths);
         }
-        return Response.json({ error: "Photo upload failed" }, { status: 500 });
+        return Response.json({ data: null, error: "Photo upload failed" }, { status: 500 });
       }
 
       uploadedPaths.push(path);
@@ -119,10 +119,10 @@ export async function POST(request: NextRequest) {
         console.error("[used-cars/listings POST] storage cleanup error:", cleanupErr);
       }
     }
-    return Response.json({ error: "Failed to create listing" }, { status: 500 });
+    return Response.json({ data: null, error: "Failed to create listing" }, { status: 500 });
   }
 
-  return Response.json({ id: listing.id, ok: true });
+  return Response.json({ data: { id: listing.id }, error: null });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -145,13 +145,13 @@ export async function GET(request: NextRequest) {
   if (minPrice) {
     minPriceNum = Number(minPrice);
     if (!Number.isFinite(minPriceNum)) {
-      return Response.json({ error: "Invalid price filter" }, { status: 400 });
+      return Response.json({ data: null, error: "Invalid price filter" }, { status: 400 });
     }
   }
   if (maxPrice) {
     maxPriceNum = Number(maxPrice);
     if (!Number.isFinite(maxPriceNum)) {
-      return Response.json({ error: "Invalid price filter" }, { status: 400 });
+      return Response.json({ data: null, error: "Invalid price filter" }, { status: 400 });
     }
   }
 
@@ -191,12 +191,12 @@ export async function GET(request: NextRequest) {
 
     if (listErr || countErr) {
       console.error("[used-cars/listings GET]", listErr ?? countErr);
-      return Response.json({ error: "Failed to fetch listings" }, { status: 500 });
+      return Response.json({ data: null, error: "Failed to fetch listings" }, { status: 500 });
     }
 
     return Response.json({ data: (listings ?? []).map(serialize), total: count ?? 0, page, error: null });
   } catch (err) {
     console.error("[used-cars/listings GET]", err);
-    return Response.json({ error: "Failed to fetch listings" }, { status: 500 });
+    return Response.json({ data: null, error: "Failed to fetch listings" }, { status: 500 });
   }
 }

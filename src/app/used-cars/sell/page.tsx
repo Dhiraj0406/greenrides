@@ -40,7 +40,7 @@ export default function SellPage() {
   }
 
   function step2Valid() {
-    return priceRupees && location && sellerName && sellerPhone;
+    return priceRupees && location && sellerName && /^\d{10}$/.test(sellerPhone);
   }
 
   function addPhotos(files: FileList | null) {
@@ -148,12 +148,12 @@ export default function SellPage() {
             <div>
               <label className="text-xs font-semibold text-sub mb-1 block">Year</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
                 placeholder="e.g. 2019"
-                min={1990}
-                max={new Date().getFullYear() + 1}
                 className="w-full border border-border rounded-xl px-3 py-2.5 text-sm text-text outline-none focus:border-leaf"
               />
             </div>
@@ -161,11 +161,12 @@ export default function SellPage() {
             <div>
               <label className="text-xs font-semibold text-sub mb-1 block">Mileage (km) — optional</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={mileage}
                 onChange={(e) => setMileage(e.target.value)}
                 placeholder="e.g. 45000"
-                min={0}
                 className="w-full border border-border rounded-xl px-3 py-2.5 text-sm text-text outline-none focus:border-leaf"
               />
             </div>
@@ -218,11 +219,12 @@ export default function SellPage() {
             <div>
               <label className="text-xs font-semibold text-sub mb-1 block">Asking price (₹)</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={priceRupees}
                 onChange={(e) => setPriceRupees(e.target.value)}
                 placeholder="e.g. 350000"
-                min={1000}
                 className="w-full border border-border rounded-xl px-3 py-2.5 text-sm text-text outline-none focus:border-leaf"
               />
               {priceRupees && (

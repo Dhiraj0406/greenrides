@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 import { BottomNav } from "@/components/shared/BottomNav";
 import { AppBar } from "@/components/shared/AppBar";
 
@@ -167,21 +168,26 @@ export default function TrackerPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchActiveTrip = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { setLoading(false); router.replace("/login?next=/tracker"); return; }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { router.replace("/login?next=/tracker"); return; }
 
-    const { data } = await supabase
-      .from("RideRequest")
-      .select("id, from_city, to_city, fare_paise, travel_date, status, driver_name, driver_phone, eta_min, trip_otp")
-      .eq("rider_id", session.user.id)
-      .in("status", ["CONFIRMED", "IN_PROGRESS"])
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      const { data } = await supabase
+        .from("RideRequest")
+        .select("id, from_city, to_city, fare_paise, travel_date, status, driver_name, driver_phone, eta_min, trip_otp")
+        .eq("rider_id", session.user.id)
+        .in("status", ["CONFIRMED", "IN_PROGRESS"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    setTrip(data as ActiveTrip | null);
-    setLoading(false);
-  }, []);
+      setTrip(data as ActiveTrip | null);
+    } catch {
+      toast.error("Could not load trip status");
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
 
   useEffect(() => { fetchActiveTrip(); }, [fetchActiveTrip]);
 
