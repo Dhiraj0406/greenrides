@@ -5,11 +5,11 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const db = getAdminClient();
   const { data: { user }, error: authErr } = await db.auth.getUser(token);
-  if (authErr || !user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (authErr || !user) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   // Fetch active dispatches (PENDING = awaiting response, ACCEPTED = confirmed trip)
   const { data: dispatches, error: fetchErr } = await db

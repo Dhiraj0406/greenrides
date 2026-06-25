@@ -304,9 +304,15 @@ export default function ProfilePage() {
               {ownerRequest?.status === "APPROVED" && (
                 <div className="bg-pale border border-leaf rounded-2xl p-4">
                   <p className="text-sm font-semibold text-forest mb-1">Owner access granted!</p>
-                  <p className="text-xs text-sub">
+                  <p className="text-xs text-sub mb-3">
                     Please log out and back in to activate owner mode.
                   </p>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 bg-leaf text-white text-xs font-semibold px-4 py-2 rounded-xl"
+                  >
+                    <LogOut className="w-3.5 h-3.5" /> Sign out &amp; activate
+                  </button>
                 </div>
               )}
             </div>

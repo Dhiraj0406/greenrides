@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
@@ -18,6 +18,17 @@ export default function OwnerRequestPage() {
   const [count,     setCount]     = useState<number | null>(null);
   const [reason,    setReason]    = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [existingStatus, setExistingStatus] = useState<"PENDING" | "APPROVED" | "DECLINED" | null | undefined>(undefined);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) { setExistingStatus(null); return; }
+      fetch("/api/fleet/owner-request", { headers: { Authorization: `Bearer ${session.access_token}` } })
+        .then((r) => r.json())
+        .then((j) => setExistingStatus((j.data?.status as "PENDING" | "APPROVED" | "DECLINED") ?? null))
+        .catch(() => setExistingStatus(null));
+    }).catch(() => setExistingStatus(null));
+  }, []);
 
   const isValid = count !== null && reason.trim().length >= 10;
 
@@ -43,6 +54,34 @@ export default function OwnerRequestPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (existingStatus === undefined) {
+    return (
+      <div className="px-4 py-6 flex justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-leaf" />
+      </div>
+    );
+  }
+
+  if (existingStatus === "PENDING") {
+    return (
+      <div className="px-4 py-6">
+        <div className="flex items-center gap-2 mb-6">
+          <button onClick={() => router.back()} className="text-sub hover:text-text">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h2 className="font-display text-xl text-forest">Owner Application</h2>
+        </div>
+        <div className="bg-amber-50 border border-amber-400 rounded-2xl p-5 flex flex-col items-center text-center gap-3">
+          <Clock className="w-8 h-8 text-amber-500" />
+          <p className="text-sm font-semibold text-text">Application under review</p>
+          <p className="text-xs text-sub">
+            Your request has been submitted and is currently being reviewed. We&apos;ll notify you within 24 hours.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

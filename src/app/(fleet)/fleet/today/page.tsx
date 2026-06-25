@@ -333,19 +333,21 @@ export default function TodayPage() {
       .catch(() => setLoading(false));
   }, [fetchDispatches]);
 
+  const hasActiveDispatches = dispatches.length > 0;
+
   // Poll dispatches every 15s while there's an active one; fallback 45s poll when idle
   useEffect(() => {
-    if (!token || dispatches.length === 0) return;
+    if (!token || !hasActiveDispatches) return;
     const id = setInterval(() => fetchDispatches(token), 15000);
     return () => clearInterval(id);
-  }, [token, dispatches, fetchDispatches]);
+  }, [token, hasActiveDispatches, fetchDispatches]);
 
   // Fallback poll every 45s when no active dispatches so new assignments are caught without refresh
   useEffect(() => {
-    if (!token || dispatches.length > 0) return;
+    if (!token || hasActiveDispatches) return;
     const id = setInterval(() => fetchDispatches(token), 45000);
     return () => clearInterval(id);
-  }, [token, dispatches, fetchDispatches]);
+  }, [token, hasActiveDispatches, fetchDispatches]);
 
   // GPS ping loop — active only while a trip is IN_PROGRESS
   useEffect(() => {

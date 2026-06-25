@@ -117,7 +117,7 @@ export default function FleetLayout({ children }: { children: React.ReactNode })
         )}
       </header>
 
-      {!isPublicPath && (
+      {!isPublicPath && isDriver && isOwner && (
         <div className="px-4 pt-3 pb-1 bg-cream">
           <div className="flex bg-white border border-border rounded-full p-1 gap-1">
             <button

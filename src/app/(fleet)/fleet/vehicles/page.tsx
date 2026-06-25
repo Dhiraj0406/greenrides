@@ -17,6 +17,7 @@ export default function VehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [token,    setToken]    = useState<string | null>(null);
+  const [toggling, setToggling] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession()
@@ -37,7 +38,8 @@ export default function VehiclesPage() {
   }, []);
 
   async function toggleActive(id: string, current: boolean) {
-    if (!token) return;
+    if (!token || toggling) return;
+    setToggling(id);
     try {
       const res = await fetch(`/api/fleet/vehicles/${id}`, {
         method:  "PATCH",
@@ -48,6 +50,7 @@ export default function VehiclesPage() {
       if (!res.ok || j.error) { toast.error(j.error ?? "Failed to toggle vehicle"); return; }
       setVehicles((prev) => prev.map((v) => v.id === id ? { ...v, active: !current } : v));
     } catch { toast.error("Network error"); }
+    finally { setToggling(null); }
   }
 
   return (
@@ -94,7 +97,7 @@ export default function VehiclesPage() {
                     {v.driver_id ? "Driver assigned" : "No driver"}
                   </p>
                 </div>
-                <button onClick={() => toggleActive(v.id, v.active)} className="text-sub flex-shrink-0 p-2">
+                <button onClick={() => toggleActive(v.id, v.active)} disabled={!!toggling} className="text-sub flex-shrink-0 p-2 disabled:opacity-50">
                   {v.active
                     ? <ToggleRight className="w-7 h-7 text-leaf" />
                     : <ToggleLeft  className="w-7 h-7" />}
