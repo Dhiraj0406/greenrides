@@ -58,58 +58,63 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!verifyAdmin(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!verifyAdmin(req)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({})) as { action?: string; log_id?: string };
 
-  if (body.action === "skip" && body.log_id) {
-    const db = getAdminClient();
-    const { error } = await db
-      .from("ImprovementLog")
-      .update({ status: "skipped" })
-      .eq("id", body.log_id)
-      .eq("status", "live");
-    if (error) return Response.json({ error: error.message }, { status: 500 });
-    return Response.json({ data: { skipped: true }, error: null });
-  }
-
-  if (body.action === "rollback" && body.log_id) {
-    const db = getAdminClient();
-    const { data: log } = await db
-      .from("ImprovementLog")
-      .select("id, day, title, veto_expires_at")
-      .eq("id", body.log_id)
-      .eq("status", "live")
-      .maybeSingle();
-
-    if (!log) return Response.json({ error: "No live improvement found" }, { status: 404 });
-    if (log.veto_expires_at && new Date(log.veto_expires_at) < new Date()) {
-      return Response.json({ error: "Veto window has closed" }, { status: 400 });
+  try {
+    if (body.action === "skip" && body.log_id) {
+      const db = getAdminClient();
+      const { error } = await db
+        .from("ImprovementLog")
+        .update({ status: "skipped" })
+        .eq("id", body.log_id)
+        .eq("status", "live");
+      if (error) return Response.json({ data: null, error: error.message }, { status: 500 });
+      return Response.json({ data: { skipped: true }, error: null });
     }
 
-    const VERCEL_TOKEN      = process.env.VERCEL_TOKEN!;
-    const VERCEL_PROJECT_ID = process.env.VERCEL_PROJECT_ID!;
+    if (body.action === "rollback" && body.log_id) {
+      const db = getAdminClient();
+      const { data: log } = await db
+        .from("ImprovementLog")
+        .select("id, day, title, veto_expires_at")
+        .eq("id", body.log_id)
+        .eq("status", "live")
+        .maybeSingle();
 
-    const deploysRes = await fetch(
-      `https://api.vercel.com/v13/deployments?projectId=${VERCEL_PROJECT_ID}&limit=2&target=production`,
-      { headers: { Authorization: `Bearer ${VERCEL_TOKEN}` } },
-    );
-    const deploysJson = await deploysRes.json() as { deployments: { uid: string }[] };
-    const previous    = deploysJson.deployments?.[1];
-    if (!previous) return Response.json({ error: "No previous deployment" }, { status: 500 });
+      if (!log) return Response.json({ data: null, error: "No live improvement found" }, { status: 404 });
+      if (log.veto_expires_at && new Date(log.veto_expires_at) < new Date()) {
+        return Response.json({ data: null, error: "Veto window has closed" }, { status: 400 });
+      }
 
-    const rollbackRes = await fetch(
-      `https://api.vercel.com/v9/projects/${VERCEL_PROJECT_ID}/rollback/${previous.uid}`,
-      { method: "POST", headers: { Authorization: `Bearer ${VERCEL_TOKEN}` } },
-    );
-    if (!rollbackRes.ok) return Response.json({ error: "Rollback failed" }, { status: 500 });
+      const VERCEL_TOKEN      = process.env.VERCEL_TOKEN!;
+      const VERCEL_PROJECT_ID = process.env.VERCEL_PROJECT_ID!;
 
-    await db.from("ImprovementLog")
-      .update({ status: "rolled_back", rolled_back_at: new Date().toISOString() })
-      .eq("id", log.id);
+      const deploysRes = await fetch(
+        `https://api.vercel.com/v13/deployments?projectId=${VERCEL_PROJECT_ID}&limit=2&target=production`,
+        { headers: { Authorization: `Bearer ${VERCEL_TOKEN}` } },
+      );
+      const deploysJson = await deploysRes.json() as { deployments: { uid: string }[] };
+      const previous    = deploysJson.deployments?.[1];
+      if (!previous) return Response.json({ data: null, error: "No previous deployment" }, { status: 500 });
 
-    return Response.json({ data: { rolled_back: true }, error: null });
+      const rollbackRes = await fetch(
+        `https://api.vercel.com/v9/projects/${VERCEL_PROJECT_ID}/rollback/${previous.uid}`,
+        { method: "POST", headers: { Authorization: `Bearer ${VERCEL_TOKEN}` } },
+      );
+      if (!rollbackRes.ok) return Response.json({ data: null, error: "Rollback failed" }, { status: 500 });
+
+      await db.from("ImprovementLog")
+        .update({ status: "rolled_back", rolled_back_at: new Date().toISOString() })
+        .eq("id", log.id);
+
+      return Response.json({ data: { rolled_back: true }, error: null });
+    }
+
+    return Response.json({ data: null, error: "Unknown action" }, { status: 400 });
+  } catch (err) {
+    console.error("[admin/improvements POST]", err);
+    return Response.json({ data: null, error: "Internal error" }, { status: 500 });
   }
-
-  return Response.json({ error: "Unknown action" }, { status: 400 });
 }

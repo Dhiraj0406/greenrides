@@ -8,7 +8,7 @@ function isAdmin(req: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  if (!isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdmin(request)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const status = request.nextUrl.searchParams.get("status") || undefined;
 

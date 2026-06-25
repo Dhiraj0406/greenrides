@@ -86,7 +86,8 @@ function DispatchContent({ token }: { token: string }) {
         id: string; user_id: string; user?: { name?: string | null; phone?: string } | null;
       }>;
       setDrivers(raw.map(d => ({ id: d.id, user_id: d.user_id, name: d.user?.name ?? null, phone: d.user?.phone ?? "" })));
-    } finally {
+    } catch { toast.error("Search failed"); }
+    finally {
       setLoadingDrivers(false);
     }
   };
@@ -102,7 +103,8 @@ function DispatchContent({ token }: { token: string }) {
         id: string; user_id: string; user?: { name?: string | null; phone?: string } | null;
       }>;
       setDispatchDrivers(raw.map(d => ({ id: d.id, user_id: d.user_id, name: d.user?.name ?? null, phone: d.user?.phone ?? "" })));
-    } finally {
+    } catch { toast.error("Search failed"); }
+    finally {
       setLoadingDispatchDrivers(false);
     }
   };

@@ -64,6 +64,11 @@ function FaresContent({ token }: { token: string }) {
     setRows((prev) => prev.map((r) => r.id === id ? { ...r, saving: true } : r));
 
     const paise = row.edited * 100;
+    if (isNaN(paise) || paise < 10000) {
+      toast.error("Enter a valid fare (min ₹100)");
+      setRows((prev) => prev.map((r) => r.id === id ? { ...r, saving: false } : r));
+      return;
+    }
     try {
       const res = await fetch("/api/fares", {
         method:  "PUT",
@@ -124,10 +129,10 @@ function FaresContent({ token }: { token: string }) {
               <div className="flex items-center gap-2">
                 <span className="text-sub text-sm">₹</span>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={row.edited}
-                  min={100}
-                  step={50}
                   onChange={(e) => handleChange(row.id, Number(e.target.value))}
                   className="flex-1 bg-warm border border-border rounded-xl px-3 py-2
                              text-sm text-text font-mono-green outline-none

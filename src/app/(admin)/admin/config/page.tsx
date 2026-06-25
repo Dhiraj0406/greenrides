@@ -62,7 +62,8 @@ function ConfigContent({ token }: { token: string }) {
       if (!res.ok) { toast.error(json.error ?? "Update failed"); return; }
       setFlags((prev) => prev.map((f) => f.key === flag.key ? { ...f, enabled: !f.enabled } : f));
       toast.success(`${FLAG_LABELS[flag.key] ?? flag.key} ${!flag.enabled ? "enabled" : "disabled"}`);
-    } finally {
+    } catch { toast.error("Network error"); }
+    finally {
       setToggling(null);
     }
   }

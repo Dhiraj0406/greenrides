@@ -75,7 +75,8 @@ function DetailContent({ token }: { token: string }) {
       if (!res.ok) { toast.error(json.error ?? "Update failed"); return; }
       setListing((prev) => prev ? { ...prev, status: newStatus } : prev);
       toast.success("Status updated");
-    } finally { setSaving(false); }
+    } catch { toast.error("Network error"); }
+    finally { setSaving(false); }
   }
 
   if (loading) return (

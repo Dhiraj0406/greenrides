@@ -98,7 +98,7 @@ function CommissionContent({ token }: { token: string }) {
                 <div className="flex items-center gap-2">
                   <div className="flex items-center border border-border rounded-xl overflow-hidden">
                     <input
-                      type="number" min="0" max="100" step="0.5"
+                      type="text" inputMode="decimal"
                       value={editVal}
                       onChange={(e) => setEditVal(e.target.value)}
                       className="w-16 px-2 py-1.5 text-sm text-center outline-none"

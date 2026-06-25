@@ -55,17 +55,21 @@ export async function PATCH(req: NextRequest) {
       const roles: string[] = [];
 
       if (isDriver) {
-        await db.from("DriverProfile")
+        const { error: dpErr } = await db.from("DriverProfile")
           .update({ is_approved: true, approved_at: new Date().toISOString() })
           .eq("user_id", user_id);
-        await db.from("User").update({ role: "DRIVER" }).eq("id", user_id);
+        if (dpErr) throw dpErr;
+        const { error: uErr } = await db.from("User").update({ role: "DRIVER" }).eq("id", user_id);
+        if (uErr) throw uErr;
         roles.push("driver");
       }
 
       if (isOwner) {
-        await db.from("Owner").update({ status: "ACTIVE" }).eq("user_id", user_id);
+        const { error: oErr } = await db.from("Owner").update({ status: "ACTIVE" }).eq("user_id", user_id);
+        if (oErr) throw oErr;
         if (!roles.includes("driver")) {
-          await db.from("User").update({ role: "OWNER" }).eq("id", user_id);
+          const { error: uErr2 } = await db.from("User").update({ role: "OWNER" }).eq("id", user_id);
+          if (uErr2) throw uErr2;
         }
         roles.push("owner");
       }

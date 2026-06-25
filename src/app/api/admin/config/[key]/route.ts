@@ -13,17 +13,17 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ key: string }> }
 ) {
-  if (!isAdmin(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdmin(req)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const { key } = await params;
 
   let body: unknown;
   try { body = await req.json(); } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid JSON" }, { status: 400 });
   }
 
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
+  if (!parsed.success) return Response.json({ data: null, error: parsed.error.issues[0].message }, { status: 400 });
 
   try {
     const db = getAdminClient();
@@ -35,10 +35,10 @@ export async function PATCH(
       .single();
 
     if (error) throw error;
-    invalidateFlag(key);
+    try { invalidateFlag(key); } catch (cacheErr) { console.error("[config] invalidateFlag failed:", cacheErr); }
     return Response.json({ data, error: null });
   } catch (err) {
     console.error("[admin/config/:key PATCH]", err);
-    return Response.json({ error: "Failed to update config" }, { status: 500 });
+    return Response.json({ data: null, error: "Failed to update config" }, { status: 500 });
   }
 }
