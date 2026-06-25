@@ -145,32 +145,33 @@ export default function DriverDashboardPage() {
   useEffect(() => {
     if (tab !== "earnings" || !userId || earningsLoaded) return;
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) return;
+      if (!session) { setEarningsLoaded(true); return; }
+      try {
+        const { data: completedRides } = await supabase
+          .from("Ride")
+          .select("id, from_city, to_city, departure_time, fare_paise, total_seats, available_seats")
+          .eq("driver_id", session.user.id)
+          .eq("status", "COMPLETED")
+          .order("departure_time", { ascending: false })
+          .limit(50);
 
-      const { data: completedRides } = await supabase
-        .from("Ride")
-        .select("id, from_city, to_city, departure_time, fare_paise, total_seats, available_seats")
-        .eq("driver_id", session.user.id)
-        .eq("status", "COMPLETED")
-        .order("departure_time", { ascending: false })
-        .limit(50);
+        const { data: acceptedDispatches } = await supabase
+          .from("DriverDispatch")
+          .select("id, request:RideRequest(id, from_city, to_city, fare_paise, travel_date, status)")
+          .eq("driver_id", session.user.id)
+          .eq("status", "ACCEPTED")
+          .order("created_at", { ascending: false })
+          .limit(50);
 
-      const { data: acceptedDispatches } = await supabase
-        .from("DriverDispatch")
-        .select("id, request:RideRequest(id, from_city, to_city, fare_paise, travel_date, status)")
-        .eq("driver_id", session.user.id)
-        .eq("status", "ACCEPTED")
-        .order("created_at", { ascending: false })
-        .limit(50);
+        const completedRequests = (acceptedDispatches ?? []).filter((d: unknown) => {
+          const req = (d as Record<string, unknown>).request as Record<string, unknown> | null;
+          return req?.status === "COMPLETED";
+        });
 
-      const completedRequests = (acceptedDispatches ?? []).filter((d: unknown) => {
-        const req = (d as Record<string, unknown>).request as Record<string, unknown> | null;
-        return req?.status === "COMPLETED";
-      });
-
-      setEarnings({ rides: completedRides ?? [], requests: completedRequests });
-      setEarningsLoaded(true);
-    });
+        setEarnings({ rides: completedRides ?? [], requests: completedRequests });
+      } catch { toast.error("Failed to load earnings"); }
+      finally { setEarningsLoaded(true); }
+    }).catch(() => { toast.error("Failed to load earnings"); setEarningsLoaded(true); });
   }, [tab, userId, earningsLoaded]);
 
   // Load profile tab data
@@ -278,7 +279,7 @@ export default function DriverDashboardPage() {
   const inputClass = "w-full border border-border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 ring-leaf/30";
 
   return (
-    <div className="green-container min-h-screen bg-cream pb-8">
+    <div className="green-container min-h-screen bg-cream pb-16">
       {/* Header with tabs */}
       <header className="bg-forest px-4 pt-safe-top pb-0 sticky top-0 z-20">
         <div className="pt-4 flex items-center gap-2 mb-3">

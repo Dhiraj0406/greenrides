@@ -91,7 +91,7 @@ export function DispatchCard({ driverId, initial }: Props) {
     setResponding(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) { toast.error("Session expired. Please refresh."); return; }
 
       const res = await fetch(`/api/requests/${dispatch.request_id}/respond`, {
         method: "PATCH",
@@ -130,7 +130,7 @@ export function DispatchCard({ driverId, initial }: Props) {
     setIsStarting(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) { toast.error("Session expired. Please refresh."); return; }
       const res = await fetch(`/api/requests/${dispatch.request_id}/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
@@ -153,7 +153,7 @@ export function DispatchCard({ driverId, initial }: Props) {
     setIsEnding(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) { toast.error("Session expired. Please refresh."); return; }
       const res = await fetch(`/api/requests/${dispatch.request_id}/complete`, {
         method: "POST",
         headers: { Authorization: `Bearer ${session.access_token}` },
@@ -178,7 +178,7 @@ export function DispatchCard({ driverId, initial }: Props) {
     setUpdatingEta(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) { toast.error("Session expired. Please refresh."); return; }
       const res = await fetch(`/api/requests/${dispatch.request_id}/eta`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
@@ -224,11 +224,11 @@ export function DispatchCard({ driverId, initial }: Props) {
         {showEtaUpdate ? (
           <div className="mb-3 space-y-2">
             <input
-              type="number"
-              min={1}
-              max={300}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={etaUpdateInput}
-              onChange={(e) => setEtaUpdateInput(e.target.value)}
+              onChange={(e) => setEtaUpdateInput(e.target.value.replace(/\D/g, ""))}
               className="w-full bg-gray-50 border border-border rounded-xl px-4 py-2.5 text-sm font-bold text-text outline-none focus:ring-2 ring-leaf/30"
               placeholder="Minutes away"
             />
@@ -347,11 +347,11 @@ export function DispatchCard({ driverId, initial }: Props) {
           <div>
             <label className="text-xs text-sub font-semibold mb-1 block">Your ETA (minutes)</label>
             <input
-              type="number"
-              min={1}
-              max={300}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={etaInput}
-              onChange={(e) => setEtaInput(e.target.value)}
+              onChange={(e) => setEtaInput(e.target.value.replace(/\D/g, ""))}
               className="w-full bg-gray-50 border border-border rounded-xl px-4 py-3 text-sm font-bold text-text outline-none focus:ring-2 ring-leaf/30"
             />
           </div>

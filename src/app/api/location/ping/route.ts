@@ -11,19 +11,19 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const db = getAdminClient();
   const { data: { user }, error: authErr } = await db.auth.getUser(token);
-  if (authErr || !user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (authErr || !user) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   let body: unknown;
   try { body = await req.json(); } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid JSON" }, { status: 400 });
   }
 
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
+  if (!parsed.success) return Response.json({ data: null, error: parsed.error.issues[0].message }, { status: 400 });
 
   const { request_id, lat, lng, heading } = parsed.data;
 
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   if (!dispatch) {
-    return Response.json({ error: "No active dispatch found" }, { status: 403 });
+    return Response.json({ data: null, error: "No active dispatch found" }, { status: 403 });
   }
 
   // Verify request is IN_PROGRESS
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   if (!request) {
-    return Response.json({ error: "Trip not in progress" }, { status: 403 });
+    return Response.json({ data: null, error: "Trip not in progress" }, { status: 403 });
   }
 
   await db.from("DriverLocation").upsert(
@@ -64,5 +64,5 @@ export async function POST(req: NextRequest) {
     { onConflict: "request_id" }
   );
 
-  return Response.json({ ok: true });
+  return Response.json({ data: { ok: true }, error: null });
 }

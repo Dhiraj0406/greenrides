@@ -102,7 +102,6 @@ export async function GET(req: NextRequest) {
 
 // POST /api/rides — driver posts a new ride
 const postSchema = z.object({
-  driver_id:      z.string().uuid(),
   from_city:      z.string().min(2),
   to_city:        z.string().min(2),
   departure_time: z.string().datetime(),
@@ -113,6 +112,17 @@ const postSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const token = req.headers.get("authorization")?.replace("Bearer ", "");
+  if (!token) {
+    return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
+  }
+
+  const db = getAdminClient();
+  const { data: { user } } = await db.auth.getUser(token);
+  if (!user) {
+    return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -131,21 +141,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) {
-    return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
-  }
-
-  const db = getAdminClient();
-  const { data: { user } } = await db.auth.getUser(token);
-  if (!user) {
-    return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
-  }
-
-  if (user.id !== parsed.data.driver_id) {
-    return Response.json({ data: null, error: "Forbidden" }, { status: 403 });
-  }
-
   const now = new Date().toISOString();
 
   try {
@@ -153,7 +148,7 @@ export async function POST(req: NextRequest) {
       .from("Ride")
       .insert({
         id:              crypto.randomUUID(),
-        driver_id:       parsed.data.driver_id,
+        driver_id:       user.id,
         from_city:       parsed.data.from_city,
         to_city:         parsed.data.to_city,
         departure_time:  new Date(parsed.data.departure_time).toISOString(),

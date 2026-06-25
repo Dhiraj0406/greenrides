@@ -17,21 +17,21 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const db = getAdminClient();
   const { data: { user }, error: authErr } = await db.auth.getUser(token);
-  if (authErr || !user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (authErr || !user) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const { id: requestId } = await params;
 
   let body: unknown;
   try { body = await req.json(); } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid JSON" }, { status: 400 });
   }
 
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
+  if (!parsed.success) return Response.json({ data: null, error: parsed.error.issues[0].message }, { status: 400 });
 
   const { action, dispatch_id, eta_min } = parsed.data;
   const now = new Date().toISOString();
@@ -48,7 +48,7 @@ export async function PATCH(
     .single();
 
   if (!dispatch || dispatch.status !== "PENDING") {
-    return Response.json({ error: "Dispatch not found or already resolved" }, { status: 404 });
+    return Response.json({ data: null, error: "Dispatch not found or already resolved" }, { status: 404 });
   }
 
   if (action === "accept") {
@@ -233,6 +233,6 @@ export async function PATCH(
 
   } catch (err) {
     console.error("[requests/:id/respond]", err);
-    return Response.json({ error: "An error occurred processing this request" }, { status: 500 });
+    return Response.json({ data: null, error: "An error occurred processing this request" }, { status: 500 });
   }
 }

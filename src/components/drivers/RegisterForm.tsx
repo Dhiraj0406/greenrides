@@ -83,6 +83,9 @@ export function RegisterForm() {
         <label className={labelClass}>Telegram Code</label>
         <input
           {...register("telegram_code")}
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
           className={inputClass}
           placeholder="6-digit code from bot"
           maxLength={6}

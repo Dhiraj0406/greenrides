@@ -12,15 +12,17 @@ export default function PendingPage() {
 
   useEffect(() => {
     const check = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const { data } = await supabase
-        .from("DriverProfile")
-        .select("is_approved, kyc_status")
-        .eq("user_id", session.user.id)
-        .single();
-      if (data?.is_approved) { router.replace("/drivers/dashboard"); return; }
-      if (data?.kyc_status)  setKycStatus(data.kyc_status);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const { data } = await supabase
+          .from("DriverProfile")
+          .select("is_approved, kyc_status")
+          .eq("user_id", session.user.id)
+          .single();
+        if (data?.is_approved) { router.replace("/drivers/dashboard"); return; }
+        if (data?.kyc_status)  setKycStatus(data.kyc_status);
+      } catch { /* swallow — next poll will retry */ }
     };
     check();
     const id = setInterval(check, 30_000);

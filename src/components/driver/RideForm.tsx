@@ -64,7 +64,6 @@ export function RideForm() {
           "Authorization": `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          driver_id:      session.user.id,
           from_city:      form.from_city,
           to_city:        form.to_city,
           departure_time: buildDepartureISO(form.date, form.hour, form.minute, form.ampm),
@@ -151,9 +150,15 @@ export function RideForm() {
       {/* Fare */}
       <div>
         <label className="text-xs text-sub font-semibold mb-1.5 block">Full Cab Fare (₹) *</label>
-        <input type="number" min="0" value={form.fare_paise}
-          onChange={(e) => set("fare_paise", e.target.value)}
-          placeholder="120" className={inputClass} />
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={form.fare_paise}
+          onChange={(e) => set("fare_paise", e.target.value.replace(/\D/g, ""))}
+          placeholder="120"
+          className={inputClass}
+        />
       </div>
 
       {/* Pickup points */}
