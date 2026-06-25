@@ -15,44 +15,44 @@ const metaSchema = z.object({
 
 export async function POST(req: NextRequest) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const db = getAdminClient();
   const { data: { user }, error: authErr } = await db.auth.getUser(token);
-  if (authErr || !user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (authErr || !user) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   let formData: FormData;
   try { formData = await req.formData(); } catch {
-    return Response.json({ error: "Expected multipart/form-data" }, { status: 400 });
+    return Response.json({ data: null, error: "Expected multipart/form-data" }, { status: 400 });
   }
 
   const file = formData.get("file");
-  if (!(file instanceof File)) return Response.json({ error: "file field required" }, { status: 400 });
-  if (!ALLOWED_TYPES.has(file.type)) return Response.json({ error: "File type not allowed. Use JPEG, PNG, WebP or PDF." }, { status: 400 });
-  if (file.size > MAX_BYTES) return Response.json({ error: "File too large (max 10 MB)" }, { status: 400 });
+  if (!(file instanceof File)) return Response.json({ data: null, error: "file field required" }, { status: 400 });
+  if (!ALLOWED_TYPES.has(file.type)) return Response.json({ data: null, error: "File type not allowed. Use JPEG, PNG, WebP or PDF." }, { status: 400 });
+  if (file.size > MAX_BYTES) return Response.json({ data: null, error: "File too large (max 10 MB)" }, { status: 400 });
 
   const meta = metaSchema.safeParse({
     entity_type: formData.get("entity_type"),
     entity_id:   formData.get("entity_id"),
     doc_type:    formData.get("doc_type"),
   });
-  if (!meta.success) return Response.json({ error: meta.error.issues[0].message }, { status: 400 });
+  if (!meta.success) return Response.json({ data: null, error: meta.error.issues[0].message }, { status: 400 });
 
   const { entity_type, entity_id, doc_type } = meta.data;
 
   // Ownership check
   if (entity_type === "DRIVER" && entity_id !== user.id) {
-    return Response.json({ error: "entity_id must be your own user ID for DRIVER documents" }, { status: 403 });
+    return Response.json({ data: null, error: "entity_id must be your own user ID for DRIVER documents" }, { status: 403 });
   }
   if (entity_type === "OWNER") {
     const { data: owner } = await db.from("Owner").select("id").eq("id", entity_id).eq("user_id", user.id).maybeSingle();
-    if (!owner) return Response.json({ error: "Owner not found or not yours" }, { status: 403 });
+    if (!owner) return Response.json({ data: null, error: "Owner not found or not yours" }, { status: 403 });
   }
   if (entity_type === "VEHICLE") {
     const { data: vehicle } = await db.from("Vehicle").select("id, owner_id, Owner!owner_id(user_id)").eq("id", entity_id).maybeSingle();
     const ownerUserId = (vehicle?.Owner as unknown as { user_id: string } | null)?.user_id;
     if (!vehicle || ownerUserId !== user.id) {
-      return Response.json({ error: "Vehicle not found or not yours" }, { status: 403 });
+      return Response.json({ data: null, error: "Vehicle not found or not yours" }, { status: 403 });
     }
   }
 
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
 
   if (uploadErr) {
     console.error("[documents/upload]", uploadErr);
-    return Response.json({ error: "Storage upload failed" }, { status: 500 });
+    return Response.json({ data: null, error: "Storage upload failed" }, { status: 500 });
   }
 
   // Upsert Document record
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     }).select("id").single();
 
     if (createErr || !newDoc) {
-      return Response.json({ error: "Failed to save document record" }, { status: 500 });
+      return Response.json({ data: null, error: "Failed to save document record" }, { status: 500 });
     }
     docId = newDoc.id;
   }

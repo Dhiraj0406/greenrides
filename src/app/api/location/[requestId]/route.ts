@@ -6,11 +6,11 @@ export async function GET(
   { params }: { params: Promise<{ requestId: string }> }
 ) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const db = getAdminClient();
   const { data: { user }, error: authErr } = await db.auth.getUser(token);
-  if (authErr || !user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (authErr || !user) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const { requestId } = await params;
 
@@ -23,7 +23,7 @@ export async function GET(
     .maybeSingle();
 
   if (!rideRequest) {
-    return Response.json({ error: "Not found" }, { status: 404 });
+    return Response.json({ data: null, error: "Not found" }, { status: 404 });
   }
 
   const { data: location } = await db

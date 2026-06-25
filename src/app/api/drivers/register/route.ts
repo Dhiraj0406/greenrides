@@ -13,20 +13,20 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const db = getAdminClient();
   const { data: { user }, error: authErr } = await db.auth.getUser(token);
-  if (authErr || !user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (authErr || !user) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   let body: unknown;
   try { body = await req.json(); } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid JSON" }, { status: 400 });
   }
 
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
-    return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
+    return Response.json({ data: null, error: parsed.error.issues[0].message }, { status: 400 });
   }
 
   const { vehicle_type, vehicle_model, vehicle_number, license_number, telegram_code } = parsed.data;
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     .select("chat_id");
 
   if (!consumed || consumed.length === 0) {
-    return Response.json({ error: "Invalid or expired Telegram code" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid or expired Telegram code" }, { status: 400 });
   }
 
   const chatId = consumed[0].chat_id;
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   if (existing) {
-    return Response.json({ error: "Driver profile already exists" }, { status: 409 });
+    return Response.json({ data: null, error: "Driver profile already exists" }, { status: 409 });
   }
 
   // Ensure user row exists in User table
@@ -85,10 +85,10 @@ export async function POST(req: NextRequest) {
 
   if (createErr) {
     if (createErr.code === "23505") {
-      return Response.json({ error: "Driver profile already exists" }, { status: 409 });
+      return Response.json({ data: null, error: "Driver profile already exists" }, { status: 409 });
     }
     console.error("[drivers/register POST]", createErr);
-    return Response.json({ error: "Failed to create profile" }, { status: 500 });
+    return Response.json({ data: null, error: "Failed to create profile" }, { status: 500 });
   }
 
   return Response.json({ data: { id: profile!.id }, error: null });

@@ -11,21 +11,21 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const db = getAdminClient();
   const { data: { user }, error: authErr } = await db.auth.getUser(token);
-  if (authErr || !user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (authErr || !user) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const { id: requestId } = await params;
 
   let body: unknown;
   try { body = await req.json(); } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid JSON" }, { status: 400 });
   }
 
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return Response.json({ error: "OTP must be a 6-digit number" }, { status: 400 });
+  if (!parsed.success) return Response.json({ data: null, error: "OTP must be a 6-digit number" }, { status: 400 });
 
   // Verify this driver is the ACCEPTED driver for this request
   const { data: dispatch } = await db
@@ -37,7 +37,7 @@ export async function POST(
     .maybeSingle();
 
   if (!dispatch) {
-    return Response.json({ error: "Not authorized or dispatch not found" }, { status: 403 });
+    return Response.json({ data: null, error: "Not authorized or dispatch not found" }, { status: 403 });
   }
 
   // Fetch the request and validate OTP + status
@@ -48,11 +48,11 @@ export async function POST(
     .single();
 
   if (!request || request.status !== "CONFIRMED") {
-    return Response.json({ error: "Ride is not in CONFIRMED state" }, { status: 400 });
+    return Response.json({ data: null, error: "Ride is not in CONFIRMED state" }, { status: 400 });
   }
 
   if (!request.trip_otp || request.trip_otp !== parsed.data.otp) {
-    return Response.json({ error: "Invalid OTP" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid OTP" }, { status: 400 });
   }
 
   const now = new Date().toISOString();
@@ -64,7 +64,7 @@ export async function POST(
 
   if (updateErr) {
     console.error("[requests/start]", updateErr);
-    return Response.json({ error: "Failed to start trip" }, { status: 500 });
+    return Response.json({ data: null, error: "Failed to start trip" }, { status: 500 });
   }
 
   return Response.json({ data: { started: true }, error: null });

@@ -6,11 +6,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const db = getAdminClient();
   const { data: { user }, error: authErr } = await db.auth.getUser(token);
-  if (authErr || !user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (authErr || !user) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const { id: requestId } = await params;
 
@@ -24,7 +24,7 @@ export async function POST(
       .maybeSingle();
 
     if (!dispatch) {
-      return Response.json({ error: "Not authorized or request not in accepted state" }, { status: 403 });
+      return Response.json({ data: null, error: "Not authorized or request not in accepted state" }, { status: 403 });
     }
 
     const now = new Date().toISOString();
@@ -38,7 +38,7 @@ export async function POST(
 
     if (error) {
       console.error("[requests/complete]", error);
-      return Response.json({ error: "Failed to complete request" }, { status: 500 });
+      return Response.json({ data: null, error: "Failed to complete request" }, { status: 500 });
     }
 
     // If 0 rows were updated, trip was already completed — return success (idempotent)
@@ -65,6 +65,6 @@ export async function POST(
     return Response.json({ data: { completed: true }, error: null });
   } catch (err) {
     console.error("[requests/complete]", err);
-    return Response.json({ error: "Failed to complete trip" }, { status: 500 });
+    return Response.json({ data: null, error: "Failed to complete trip" }, { status: 500 });
   }
 }

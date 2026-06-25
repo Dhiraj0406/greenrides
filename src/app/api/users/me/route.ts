@@ -13,11 +13,11 @@ function normalisePhone(raw: string | null | undefined): string {
 // GET — returns profile and upserts User record on first login
 export async function GET(req: NextRequest) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const db = getAdminClient();
   const { data: { user }, error: authErr } = await db.auth.getUser(token);
-  if (authErr || !user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (authErr || !user) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const phone = normalisePhone(user.phone);
 
@@ -38,20 +38,20 @@ const patchSchema = z.object({
 
 export async function PATCH(req: NextRequest) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const db = getAdminClient();
   const { data: { user }, error: authErr } = await db.auth.getUser(token);
-  if (authErr || !user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (authErr || !user) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   let body: unknown;
   try { body = await req.json(); } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid JSON" }, { status: 400 });
   }
 
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) {
-    return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
+    return Response.json({ data: null, error: parsed.error.issues[0].message }, { status: 400 });
   }
 
   const { error } = await db
@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest) {
 
   if (error) {
     console.error("[users/me PATCH]", error);
-    return Response.json({ error: "Update failed" }, { status: 500 });
+    return Response.json({ data: null, error: "Update failed" }, { status: 500 });
   }
 
   return Response.json({ data: { ok: true }, error: null });

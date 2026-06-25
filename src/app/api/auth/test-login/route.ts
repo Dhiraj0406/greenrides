@@ -21,18 +21,18 @@ function getTestPhones(): Map<string, string> {
 export async function POST(req: NextRequest) {
   const testPhones = getTestPhones();
   if (testPhones.size === 0) {
-    return Response.json({ error: "Test login not enabled" }, { status: 403 });
+    return Response.json({ data: null, error: "Test login not enabled" }, { status: 403 });
   }
 
   const body = schema.safeParse(await req.json().catch(() => null));
   if (!body.success) {
-    return Response.json({ error: "Invalid request" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid request" }, { status: 400 });
   }
 
   const { phone, otp } = body.data;
   const expectedOtp = testPhones.get(phone);
   if (!expectedOtp || expectedOtp !== otp) {
-    return Response.json({ error: "Wrong test OTP" }, { status: 401 });
+    return Response.json({ data: null, error: "Wrong test OTP" }, { status: 401 });
   }
 
   const testEmail = `test.${phone}@green-rides-internal.app`;
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 
     if (!userId) {
       console.error("[test-login] public.User not found for phone:", phone);
-      return Response.json({ error: "Test user not found" }, { status: 404 });
+      return Response.json({ data: null, error: "Test user not found" }, { status: 404 });
     }
 
     // Step 3: Try to set credentials via admin update (works for normal GoTrue-created users)
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       });
       if (signInErr || !signIn.session) {
         console.error("[test-login] signInWithPassword failed:", signInErr?.message);
-        return Response.json({ error: signInErr?.message || "Sign in failed" }, { status: 500 });
+        return Response.json({ data: null, error: signInErr?.message || "Sign in failed" }, { status: 500 });
       }
       return Response.json({ session: toSession(signIn.session) });
     }
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
 
     if (createErr || !newUser?.user) {
       console.error("[test-login] createUser failed:", createErr?.message);
-      return Response.json({ error: "Could not create test user" }, { status: 500 });
+      return Response.json({ data: null, error: "Could not create test user" }, { status: 500 });
     }
 
     // Sign in with the fresh user
@@ -112,13 +112,13 @@ export async function POST(req: NextRequest) {
     });
     if (signInErr || !signIn.session) {
       console.error("[test-login] signInWithPassword (new user) failed:", signInErr?.message);
-      return Response.json({ error: signInErr?.message || "Sign in failed" }, { status: 500 });
+      return Response.json({ data: null, error: signInErr?.message || "Sign in failed" }, { status: 500 });
     }
 
     return Response.json({ session: toSession(signIn.session) });
   } catch (err) {
     console.error("[test-login]", err);
-    return Response.json({ error: "Internal error" }, { status: 500 });
+    return Response.json({ data: null, error: "Internal error" }, { status: 500 });
   }
 }
 

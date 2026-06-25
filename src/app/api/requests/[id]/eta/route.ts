@@ -10,11 +10,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const db = getAdminClient();
   const { data: { user }, error: authErr } = await db.auth.getUser(token);
-  if (authErr || !user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (authErr || !user) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const { id: requestId } = await params;
 
@@ -26,15 +26,15 @@ export async function PATCH(
     .eq("status", "ACCEPTED")
     .maybeSingle();
 
-  if (!dispatch) return Response.json({ error: "Not authorized" }, { status: 403 });
+  if (!dispatch) return Response.json({ data: null, error: "Not authorized" }, { status: 403 });
 
   let body: unknown;
   try { body = await req.json(); } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid JSON" }, { status: 400 });
   }
 
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
+  if (!parsed.success) return Response.json({ data: null, error: parsed.error.issues[0].message }, { status: 400 });
 
   const now = new Date().toISOString();
   await db.from("RideRequest").update({ eta_min: parsed.data.eta_min, updated_at: now }).eq("id", requestId);

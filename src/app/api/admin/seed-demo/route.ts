@@ -18,7 +18,7 @@ function isAdmin(req: NextRequest) {
  * is called automatically after OTP verify) for their User row to exist.
  */
 export async function POST(req: NextRequest) {
-  if (!isAdmin(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdmin(req)) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   let body: { phone?: string } = {};
   try { body = await req.json(); } catch { /* optional */ }
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   const phone10 = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
 
   if (phone10.length !== 10) {
-    return Response.json({ error: "Provide exactly 10 digits (Indian mobile)" }, { status: 400 });
+    return Response.json({ data: null, error: "Provide exactly 10 digits (Indian mobile)" }, { status: 400 });
   }
 
   const db = getAdminClient();
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     .eq("phone", phone10)
     .maybeSingle();
 
-  if (userErr) return Response.json({ error: userErr.message }, { status: 500 });
+  if (userErr) return Response.json({ data: null, error: userErr.message }, { status: 500 });
 
   if (!userRow) {
     return Response.json({
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
       .eq("user_id", userId)
       .select("id, user_id, is_approved, is_online, kyc_status")
       .single();
-    if (error) return Response.json({ error: error.message }, { status: 500 });
+    if (error) return Response.json({ data: null, error: error.message }, { status: 500 });
     profile = data;
   } else {
     const { data, error } = await db
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
       })
       .select("id, user_id, is_approved, is_online, kyc_status")
       .single();
-    if (error) return Response.json({ error: error.message }, { status: 500 });
+    if (error) return Response.json({ data: null, error: error.message }, { status: 500 });
     profile = data;
   }
 

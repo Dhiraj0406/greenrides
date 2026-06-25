@@ -22,7 +22,7 @@ export async function GET(
     .maybeSingle();
 
   if (!listing || listing.status === "PENDING" || listing.status === "REJECTED") {
-    return Response.json({ error: "Not found" }, { status: 404 });
+    return Response.json({ data: null, error: "Not found" }, { status: 404 });
   }
 
   return Response.json({ data: serialize(listing), error: null });

@@ -5,7 +5,7 @@ export async function GET(req: NextRequest) {
   const isVercelCron = req.headers.get("x-vercel-cron") === "1";
   const isInternal   = req.headers.get("authorization") === `Bearer ${process.env.CRON_SECRET}`;
   if (!isVercelCron && !isInternal) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
   }
 
   const db  = getAdminClient();
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 
   if (error) {
     console.error("[confirm-improve]", error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ data: null, error: error.message }, { status: 500 });
   }
 
   if (!expired || expired.length === 0) {
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
   if (updateErr) {
     console.error("[confirm-improve update]", updateErr);
-    return Response.json({ error: updateErr.message }, { status: 500 });
+    return Response.json({ data: null, error: updateErr.message }, { status: 500 });
   }
 
   console.log(`[confirm-improve] Confirmed ${ids.length} improvement(s):`, expired.map((r) => r.day));

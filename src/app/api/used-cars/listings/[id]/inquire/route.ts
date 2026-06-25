@@ -18,12 +18,12 @@ export async function POST(
 
   let body: unknown;
   try { body = await request.json(); } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid JSON" }, { status: 400 });
   }
 
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
-    return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
+    return Response.json({ data: null, error: parsed.error.issues[0].message }, { status: 400 });
   }
 
   const db = getAdminClient();
@@ -35,7 +35,7 @@ export async function POST(
     .maybeSingle();
 
   if (!listing || listing.status !== "APPROVED") {
-    return Response.json({ error: "Listing not available" }, { status: 403 });
+    return Response.json({ data: null, error: "Listing not available" }, { status: 403 });
   }
 
   const { error: insertErr } = await db.from("CarInquiry").insert({
@@ -47,8 +47,8 @@ export async function POST(
 
   if (insertErr) {
     console.error("[used-cars/inquire POST]", insertErr);
-    return Response.json({ error: "Failed to submit inquiry" }, { status: 500 });
+    return Response.json({ data: null, error: "Failed to submit inquiry" }, { status: 500 });
   }
 
-  return Response.json({ ok: true });
+  return Response.json({ data: { ok: true }, error: null });
 }

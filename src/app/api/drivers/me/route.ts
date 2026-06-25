@@ -13,7 +13,7 @@ async function getAuthedDriver(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const user = await getAuthedDriver(req);
-  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const db = getAdminClient();
   const { data: profile } = await db
@@ -61,16 +61,16 @@ const patchSchema = z.object({
 
 export async function PATCH(req: NextRequest) {
   const user = await getAuthedDriver(req);
-  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   let body: unknown;
   try { body = await req.json(); } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid JSON" }, { status: 400 });
   }
 
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) {
-    return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
+    return Response.json({ data: null, error: parsed.error.issues[0].message }, { status: 400 });
   }
 
   const db = getAdminClient();
@@ -84,11 +84,11 @@ export async function PATCH(req: NextRequest) {
       .maybeSingle();
 
     if (!profile) {
-      return Response.json({ error: "Driver profile not found" }, { status: 404 });
+      return Response.json({ data: null, error: "Driver profile not found" }, { status: 404 });
     }
 
     if (!profile.is_approved) {
-      return Response.json({ error: "Account not approved yet" }, { status: 403 });
+      return Response.json({ data: null, error: "Account not approved yet" }, { status: 403 });
     }
 
     const avail = (profile.availability as Record<string, unknown>) ?? {};
@@ -112,7 +112,7 @@ export async function PATCH(req: NextRequest) {
 
   if (error) {
     console.error("[drivers/me PATCH]", error);
-    return Response.json({ error: "Update failed" }, { status: 500 });
+    return Response.json({ data: null, error: "Update failed" }, { status: 500 });
   }
 
   return Response.json({ data: { ok: true }, error: null });

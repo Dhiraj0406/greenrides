@@ -14,26 +14,26 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const db = getAdminClient();
   const { data: { user }, error: authErr } = await db.auth.getUser(token);
-  if (authErr || !user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (authErr || !user) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
   const { id: requestId } = await params;
 
   let body: unknown;
   try { body = await req.json(); } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid JSON" }, { status: 400 });
   }
 
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
+  if (!parsed.success) return Response.json({ data: null, error: parsed.error.issues[0].message }, { status: 400 });
 
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = parsed.data;
 
   const valid = verifyPaymentSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
-  if (!valid) return Response.json({ error: "Invalid payment signature" }, { status: 400 });
+  if (!valid) return Response.json({ data: null, error: "Invalid payment signature" }, { status: 400 });
 
   const now = new Date().toISOString();
 
@@ -44,11 +44,11 @@ export async function POST(
     .single();
 
   if (!rideReq || rideReq.rider_id !== user.id) {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ data: null, error: "Forbidden" }, { status: 403 });
   }
 
   if (rideReq.razorpay_order_id !== razorpay_order_id) {
-    return Response.json({ error: "Order ID mismatch" }, { status: 400 });
+    return Response.json({ data: null, error: "Order ID mismatch" }, { status: 400 });
   }
 
   await db

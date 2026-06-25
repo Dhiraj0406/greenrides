@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   try {
     parsed = body.parse(await req.json());
   } catch {
-    return Response.json({ error: "Invalid request" }, { status: 400 });
+    return Response.json({ data: null, error: "Invalid request" }, { status: 400 });
   }
 
   const phoneMatch = !!adminPhone && parsed.phone === adminPhone && parsed.otp === adminOtp;
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   const pinMatch   = !!pinSecret && parsed.pin === pinSecret;
 
   if (!phoneMatch && !pinMatch) {
-    return Response.json({ error: "Wrong credentials" }, { status: 401 });
+    return Response.json({ data: null, error: "Wrong credentials" }, { status: 401 });
   }
 
   const secret = pinSecret || adminOtp;
@@ -69,11 +69,14 @@ export async function POST(req: NextRequest) {
 
       if (!signInErr && signInData.session) {
         return Response.json({
-          token: secret,
-          session: {
-            access_token:  signInData.session.access_token,
-            refresh_token: signInData.session.refresh_token,
+          data: {
+            token: secret,
+            session: {
+              access_token:  signInData.session.access_token,
+              refresh_token: signInData.session.refresh_token,
+            },
           },
+          error: null,
         });
       }
 
@@ -84,5 +87,5 @@ export async function POST(req: NextRequest) {
   }
 
   // Fallback — proxy cookie bypass still grants dashboard access
-  return Response.json({ token: secret });
+  return Response.json({ data: { token: secret }, error: null });
 }

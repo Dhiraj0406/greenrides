@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   // Protect: Vercel sends Authorization: Bearer <CRON_SECRET>
   const auth = req.headers.get("authorization");
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json({ data: null, error: "Forbidden" }, { status: 403 });
   }
 
   const db = getAdminClient();
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     .lt("expires_at", now);
 
   if (!expired || expired.length === 0) {
-    return Response.json({ ok: true, cascaded: 0 });
+    return Response.json({ data: { cascaded: 0 }, error: null });
   }
 
   const telegramCascade = await getFlag("dispatch.telegram_cascade", true);
@@ -105,5 +105,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return Response.json({ ok: true, cascaded });
+  return Response.json({ data: { cascaded }, error: null });
 }
