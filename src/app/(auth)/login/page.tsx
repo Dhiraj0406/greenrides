@@ -49,14 +49,14 @@ function LoginForm() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Wrong PIN");
 
-      sessionStorage.setItem(STORAGE_KEY, json.token);
-      document.cookie = `green_admin_token=${json.token}; path=/; max-age=86400; SameSite=Strict`;
+      sessionStorage.setItem(STORAGE_KEY, json.data.token);
+      document.cookie = `green_admin_token=${json.data.token}; path=/; max-age=86400; SameSite=Strict`;
 
-      if (json.session) {
+      if (json.data.session) {
         const { supabase: sb } = await import("@/lib/supabase");
         const { error: sessionErr } = await sb.auth.setSession({
-          access_token:  json.session.access_token,
-          refresh_token: json.session.refresh_token,
+          access_token:  json.data.session.access_token,
+          refresh_token: json.data.session.refresh_token,
         });
         if (!sessionErr) {
           const { data: { session: adminSession } } = await sb.auth.getSession();

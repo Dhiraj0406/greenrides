@@ -37,7 +37,7 @@ export function AdminGate({ children }: Props) {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Wrong credentials");
       sessionStorage.setItem(STORAGE_KEY, json.data.token);
-      setToken(json.token);
+      setToken(json.data.token);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Auth failed");
     } finally {

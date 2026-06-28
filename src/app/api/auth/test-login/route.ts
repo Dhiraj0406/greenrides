@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       email: testEmail, password: testPass,
     });
     if (directSignIn.session) {
-      return Response.json({ session: toSession(directSignIn.session) });
+      return Response.json({ data: { session: toSession(directSignIn.session) }, error: null });
     }
 
     // Step 2: Look up UUID from public.User (seed stores "+91XXXXXXXXXX", try both formats)
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
         console.error("[test-login] signInWithPassword failed:", signInErr?.message);
         return Response.json({ data: null, error: signInErr?.message || "Sign in failed" }, { status: 500 });
       }
-      return Response.json({ session: toSession(signIn.session) });
+      return Response.json({ data: { session: toSession(signIn.session) }, error: null });
     }
 
     // Step 4: updateUserById failed (SQL-seeded user has no GoTrue record).
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
       return Response.json({ data: null, error: signInErr?.message || "Sign in failed" }, { status: 500 });
     }
 
-    return Response.json({ session: toSession(signIn.session) });
+    return Response.json({ data: { session: toSession(signIn.session) }, error: null });
   } catch (err) {
     console.error("[test-login]", err);
     return Response.json({ data: null, error: "Internal error" }, { status: 500 });

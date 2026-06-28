@@ -40,10 +40,10 @@ export async function verifyOtp(phone: string, otp: string): Promise<PhoneAuthSe
 
   // Set session in browser cookies so proxy.ts and client getUser() both work
   const { error: sessionErr } = await supabase.auth.setSession({
-    access_token:  json.session.access_token,
-    refresh_token: json.session.refresh_token,
+    access_token:  json.data.session.access_token,
+    refresh_token: json.data.session.refresh_token,
   });
   if (sessionErr) throw sessionErr;
 
-  return json.session as PhoneAuthSession;
+  return json.data.session as PhoneAuthSession;
 }
