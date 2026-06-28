@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
       .order("created_at", { ascending: false });
 
     const totalEarned = (bookings as Array<{ amount_paise: number }>)
-      .reduce((s, b) => s + b.amount_paise, 0);
+      .reduce((s, b) => s + (Number(b.amount_paise) || 0), 0);
 
     return Response.json({ data: { bookings, payouts: payouts ?? [], totalEarned }, error: null });
   } catch (err) {

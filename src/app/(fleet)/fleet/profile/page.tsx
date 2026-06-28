@@ -45,15 +45,7 @@ export default function ProfilePage() {
       const roles: string[] = (session.user.app_metadata?.roles as string[]) ?? [];
       setIsOwner(roles.includes("owner"));
 
-      // Fetch owner request status (only needed if not already an owner)
-      if (!roles.includes("owner")) {
-        fetch("/api/fleet/owner-request", { headers: { Authorization: `Bearer ${t}` } })
-          .then((r) => r.json())
-          .then((j) => setOwnerRequest(j.data ?? null))
-          .catch(() => setOwnerRequest(null));
-      }
-
-      fetch("/api/fleet/driver/profile", { headers: { Authorization: `Bearer ${t}` } })
+      const profileFetch = fetch("/api/fleet/driver/profile", { headers: { Authorization: `Bearer ${t}` } })
         .then((r) => r.json())
         .then((j) => {
           if (j.data) {
@@ -67,8 +59,17 @@ export default function ProfilePage() {
             });
           }
         })
-        .catch(() => toast.error("Failed to load profile"))
-        .finally(() => setLoading(false));
+        .catch(() => toast.error("Failed to load profile"));
+
+      if (!roles.includes("owner")) {
+        const ownerFetch = fetch("/api/fleet/owner-request", { headers: { Authorization: `Bearer ${t}` } })
+          .then((r) => r.json())
+          .then((j) => setOwnerRequest(j.data ?? null))
+          .catch(() => setOwnerRequest(null));
+        Promise.all([ownerFetch, profileFetch]).finally(() => setLoading(false));
+      } else {
+        profileFetch.finally(() => setLoading(false));
+      }
     }).catch(() => setLoading(false));
   }, []);
 

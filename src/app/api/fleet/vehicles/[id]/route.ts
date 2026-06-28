@@ -9,7 +9,7 @@ async function getOwner(req: NextRequest) {
   if (!data.user) return null;
   const { data: owner } = await db
     .from("Owner")
-    .select("id")
+    .select("id, status")
     .eq("user_id", data.user.id)
     .maybeSingle();
   return owner;
@@ -21,6 +21,9 @@ export async function PATCH(
 ) {
   const owner = await getOwner(req);
   if (!owner) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
+  if ((owner as { status?: string }).status !== "ACTIVE") {
+    return Response.json({ data: null, error: "Account not active" }, { status: 403 });
+  }
 
   const { id } = await params;
   const db = getAdminClient();
@@ -39,7 +42,18 @@ export async function PATCH(
 
   const updateData: Record<string, unknown> = {};
   if (active !== undefined) updateData.active = active;
-  if (driver_id !== undefined) updateData.driver_id = driver_id;
+  if (driver_id !== undefined) {
+    if (driver_id !== null) {
+      const { data: dp } = await db
+        .from("DriverProfile")
+        .select("id")
+        .eq("id", driver_id)
+        .eq("owner_id", owner.id)
+        .maybeSingle();
+      if (!dp) return Response.json({ data: null, error: "Driver not in your fleet" }, { status: 403 });
+    }
+    updateData.driver_id = driver_id;
+  }
 
   try {
     const { data: updated, error } = await db

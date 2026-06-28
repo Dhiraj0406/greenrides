@@ -20,6 +20,7 @@ export default function NewVehiclePage() {
   const [previews,  setPreviews]  = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [saving,    setSaving]    = useState(false);
+  const [deleting,  setDeleting]  = useState<Set<number>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
 
   const inputClass = "w-full border border-border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 ring-leaf/30";
@@ -37,7 +38,7 @@ export default function NewVehiclePage() {
         body:    JSON.stringify({ ...form, seats: parseInt(form.seats, 10) }),
       });
       const j = await res.json();
-      if (j.error) { toast.error(j.error); return; }
+      if (!res.ok || j.error) { toast.error(j.error ?? "Failed to create vehicle"); return; }
       setVehicleId(j.data.id);
       setStep("photos");
     } catch {
@@ -83,7 +84,8 @@ export default function NewVehiclePage() {
   }
 
   async function handleRemovePhoto(index: number) {
-    if (!vehicleId) return;
+    if (!vehicleId || deleting.has(index)) return;
+    setDeleting((prev) => { const s = new Set(prev); s.add(index); return s; });
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { toast.error("Session expired. Please refresh."); return; }
@@ -98,6 +100,8 @@ export default function NewVehiclePage() {
       setPreviews((prev) => prev.filter((_, i) => i !== index));
     } catch {
       toast.error("Failed to remove photo. Please try again.");
+    } finally {
+      setDeleting((prev) => { const s = new Set(prev); s.delete(index); return s; });
     }
   }
 
@@ -117,7 +121,8 @@ export default function NewVehiclePage() {
               <img src={src} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
               <button
                 onClick={() => handleRemovePhoto(i)}
-                className="absolute top-0 right-0 w-8 h-8 flex items-center justify-center bg-black/60 rounded-bl-xl rounded-tr-xl"
+                disabled={deleting.has(i)}
+                className="absolute top-0 right-0 w-8 h-8 flex items-center justify-center bg-black/60 rounded-bl-xl rounded-tr-xl disabled:opacity-50"
               >
                 <X className="w-4 h-4 text-white" />
               </button>

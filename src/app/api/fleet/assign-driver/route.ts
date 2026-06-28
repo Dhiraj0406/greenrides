@@ -32,6 +32,29 @@ export async function POST(req: NextRequest) {
 
   if (!vehicle) return Response.json({ data: null, error: "Vehicle not found" }, { status: 404 });
 
+  // Conflict check: prevent silent overwrite of an existing driver assignment
+  const { data: currentVehicle } = await db
+    .from("Vehicle")
+    .select("driver_id")
+    .eq("id", vehicle_id)
+    .eq("owner_id", owner.id)
+    .maybeSingle();
+
+  if (currentVehicle?.driver_id && currentVehicle.driver_id !== driver_profile_id) {
+    return Response.json({ data: null, error: "Vehicle already assigned to another driver" }, { status: 409 });
+  }
+
+  // Validate driver belongs to this owner's fleet
+  if (driver_profile_id) {
+    const { data: dp } = await db
+      .from("DriverProfile")
+      .select("id")
+      .eq("id", driver_profile_id)
+      .eq("owner_id", owner.id)
+      .maybeSingle();
+    if (!dp) return Response.json({ data: null, error: "Driver not in your fleet" }, { status: 403 });
+  }
+
   try {
     const { data: updated, error } = await db
       .from("Vehicle")

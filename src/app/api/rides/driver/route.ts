@@ -7,6 +7,9 @@ export async function GET(req: NextRequest) {
   const { data: { user } } = await db.auth.getUser(token || "");
   if (!user) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
 
+  const roles: string[] = (user.app_metadata?.roles as string[]) ?? [];
+  if (!roles.includes("driver")) return Response.json({ data: null, error: "Forbidden" }, { status: 403 });
+
   const all  = req.nextUrl.searchParams.get("all") === "true";
   const date = req.nextUrl.searchParams.get("date");
 

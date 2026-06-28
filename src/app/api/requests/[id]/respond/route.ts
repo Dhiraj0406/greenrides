@@ -1,5 +1,6 @@
 // src/app/api/requests/[id]/respond/route.ts
 import { NextRequest } from "next/server";
+import { randomInt } from "crypto";
 import { z } from "zod";
 import { getAdminClient } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
@@ -77,7 +78,7 @@ export async function PATCH(
       .single();
 
     // Generate a 6-digit trip OTP the rider shows to the driver at pickup
-    const tripOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const tripOtp = randomInt(100000, 1000000).toString();
 
     // Update the RideRequest with driver info and trip OTP
     await db

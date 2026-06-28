@@ -37,7 +37,8 @@ function ApprovalsContent({ token }: { token: string }) {
   const [upgrades,     setUpgrades]   = useState<OwnerUpgradeRequest[]>([]);
   const [loadingApps,  setLoadingApps]  = useState(true);
   const [loadingUpgr,  setLoadingUpgr]  = useState(true);
-  const [deciding,     setDeciding]   = useState<string | null>(null);
+  const [decidingApp,  setDecidingApp]  = useState<string | null>(null);
+  const [decidingUpgr, setDecidingUpgr] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/applicants", { headers: { "x-admin-token": token } })
@@ -76,7 +77,7 @@ function ApprovalsContent({ token }: { token: string }) {
   }, [token]);
 
   async function decide(applicant: Applicant, action: "approve" | "reject") {
-    setDeciding(applicant.id);
+    setDecidingApp(applicant.id);
     try {
       const res = await fetch("/api/admin/applicants", {
         method: "PATCH",
@@ -88,11 +89,11 @@ function ApprovalsContent({ token }: { token: string }) {
       toast.success(action === "approve" ? "Approved!" : "Rejected");
       setApplicants((prev) => prev.filter((a) => !(a.id === applicant.id && a.kind === applicant.kind)));
     } catch { toast.error("Network error"); }
-    finally { setDeciding(null); }
+    finally { setDecidingApp(null); }
   }
 
   async function decideUpgrade(req: OwnerUpgradeRequest, action: "approve" | "decline") {
-    setDeciding(req.id);
+    setDecidingUpgr(req.id);
     try {
       const res = await fetch(`/api/admin/owner-requests/${req.id}`, {
         method: "PATCH",
@@ -104,7 +105,7 @@ function ApprovalsContent({ token }: { token: string }) {
       toast.success(action === "approve" ? "Owner access granted!" : "Request declined");
       setUpgrades((prev) => prev.filter((u) => u.id !== req.id));
     } catch { toast.error("Network error"); }
-    finally { setDeciding(null); }
+    finally { setDecidingUpgr(null); }
   }
 
   return (
@@ -189,11 +190,11 @@ function ApprovalsContent({ token }: { token: string }) {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => decide(a, "approve")} disabled={deciding === a.id}
+                  <button onClick={() => decide(a, "approve")} disabled={decidingApp === a.id}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-leaf/10 text-leaf text-sm font-semibold disabled:opacity-60">
                     <CheckCircle className="w-4 h-4" /> Approve
                   </button>
-                  <button onClick={() => decide(a, "reject")} disabled={deciding === a.id}
+                  <button onClick={() => decide(a, "reject")} disabled={decidingApp === a.id}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-red-50 text-red-500 text-sm font-semibold disabled:opacity-60">
                     <XCircle className="w-4 h-4" /> Reject
                   </button>
@@ -231,12 +232,12 @@ function ApprovalsContent({ token }: { token: string }) {
                   <p className="text-xs text-sub italic">&ldquo;{u.reason.slice(0, 120)}{u.reason.length > 120 ? "…" : ""}&rdquo;</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => decideUpgrade(u, "approve")} disabled={deciding === u.id}
+                  <button onClick={() => decideUpgrade(u, "approve")} disabled={decidingUpgr === u.id}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-leaf text-white text-sm font-semibold disabled:opacity-60">
-                    {deciding === u.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                    {decidingUpgr === u.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                     Grant Owner Access
                   </button>
-                  <button onClick={() => decideUpgrade(u, "decline")} disabled={deciding === u.id}
+                  <button onClick={() => decideUpgrade(u, "decline")} disabled={decidingUpgr === u.id}
                     className="flex items-center justify-center px-3 py-2.5 rounded-xl bg-red-50 text-red-500 text-sm font-semibold disabled:opacity-60">
                     <XCircle className="w-4 h-4" />
                   </button>

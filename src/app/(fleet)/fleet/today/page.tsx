@@ -301,6 +301,7 @@ export default function TodayPage() {
   const [token, setToken]         = useState("");
   const [dispatches, setDispatches] = useState<ActiveDispatch[]>([]);
   const [rides, setRides]         = useState<TodayRide[]>([]);
+  const [ridesError, setRidesError] = useState(false);
   const [loading, setLoading]     = useState(true);
   const loadedOnce   = useRef(false);
   const prevPending  = useRef(0);
@@ -327,7 +328,7 @@ export default function TodayPage() {
           fetch(`/api/rides/driver?date=${today}`, { headers: { Authorization: `Bearer ${t}` } })
             .then((r) => r.json())
             .then((j) => setRides(j.data ?? []))
-            .catch(() => toast.error("Failed to load today's rides")),
+            .catch(() => { setRidesError(true); toast.error("Failed to load today's rides"); }),
         ]).finally(() => setLoading(false));
       })
       .catch(() => setLoading(false));
@@ -335,19 +336,12 @@ export default function TodayPage() {
 
   const hasActiveDispatches = dispatches.length > 0;
 
-  // Poll dispatches every 15s while there's an active one; fallback 45s poll when idle
+  // Poll dispatches every 15s unconditionally — idle drivers need timely new dispatch notifications
   useEffect(() => {
-    if (!token || !hasActiveDispatches) return;
-    const id = setInterval(() => fetchDispatches(token), 15000);
+    if (!token) return;
+    const id = setInterval(() => fetchDispatches(token), 15_000);
     return () => clearInterval(id);
-  }, [token, hasActiveDispatches, fetchDispatches]);
-
-  // Fallback poll every 45s when no active dispatches so new assignments are caught without refresh
-  useEffect(() => {
-    if (!token || hasActiveDispatches) return;
-    const id = setInterval(() => fetchDispatches(token), 45000);
-    return () => clearInterval(id);
-  }, [token, hasActiveDispatches, fetchDispatches]);
+  }, [token, fetchDispatches]);
 
   // GPS ping loop — active only while a trip is IN_PROGRESS
   useEffect(() => {
@@ -373,7 +367,7 @@ export default function TodayPage() {
           }).catch(() => {});
         },
         () => {},
-        { enableHighAccuracy: false, timeout: 8000 },
+        { enableHighAccuracy: true, timeout: 10000 },
       );
     }
 
@@ -433,7 +427,26 @@ export default function TodayPage() {
           {/* ── Posted rides (existing section) ────────── */}
           <section>
             <h2 className="font-display text-xl text-forest mb-3">Today&apos;s Rides</h2>
-            {rides.length === 0 && pendingDispatches.length === 0 && acceptedDispatches.length === 0 && (
+            {ridesError && (
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-3 text-center">
+                <p className="text-red-500 text-sm">Failed to load today&apos;s rides.</p>
+                <button
+                  onClick={() => {
+                    setRidesError(false);
+                    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+                    supabase.auth.getSession().then(({ data: { session } }) => {
+                      if (!session) return;
+                      fetch(`/api/rides/driver?date=${today}`, { headers: { Authorization: `Bearer ${session.access_token}` } })
+                        .then((r) => r.json())
+                        .then((j) => setRides(j.data ?? []))
+                        .catch(() => { setRidesError(true); toast.error("Still failing — check connection"); });
+                    }).catch(() => {});
+                  }}
+                  className="mt-1 text-xs text-red-400 underline"
+                >Retry</button>
+              </div>
+            )}
+            {!ridesError && rides.length === 0 && pendingDispatches.length === 0 && acceptedDispatches.length === 0 && (
               <p className="text-center text-sub text-sm py-12">No rides or requests for today.</p>
             )}
             {rides.map((ride) => (

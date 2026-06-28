@@ -58,8 +58,27 @@ export default function OwnerRequestPage() {
 
   if (existingStatus === undefined) {
     return (
-      <div className="px-4 py-6 flex justify-center py-12">
+      <div className="px-4 flex justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-leaf" />
+      </div>
+    );
+  }
+
+  if (existingStatus === "APPROVED") {
+    return (
+      <div className="px-4 py-6">
+        <div className="flex items-center gap-2 mb-6">
+          <button onClick={() => router.back()} className="text-sub hover:text-text">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h2 className="font-display text-xl text-forest">Owner Application</h2>
+        </div>
+        <div className="bg-pale border border-leaf rounded-2xl p-5 flex flex-col items-center text-center gap-3">
+          <p className="text-sm font-semibold text-forest">Owner access granted!</p>
+          <p className="text-xs text-sub">
+            Your application was approved. Sign out and back in to activate owner mode.
+          </p>
+        </div>
       </div>
     );
   }
@@ -125,7 +144,7 @@ export default function OwnerRequestPage() {
             rows={4}
             className="w-full border border-border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 ring-leaf/30 resize-none"
           />
-          <p className={`text-xs mt-1 text-right ${reason.length >= 190 ? "text-red-400" : "text-sub"}`}>
+          <p className={`text-xs mt-1 text-right ${reason.length >= 196 ? "text-red-400" : "text-sub"}`}>
             {reason.length}/200
           </p>
         </div>

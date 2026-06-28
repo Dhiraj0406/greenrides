@@ -38,7 +38,7 @@ export default function VehiclesPage() {
   }, []);
 
   async function toggleActive(id: string, current: boolean) {
-    if (!token || toggling) return;
+    if (!token || toggling === id) return;
     setToggling(id);
     try {
       const res = await fetch(`/api/fleet/vehicles/${id}`, {
@@ -97,7 +97,7 @@ export default function VehiclesPage() {
                     {v.driver_id ? "Driver assigned" : "No driver"}
                   </p>
                 </div>
-                <button onClick={() => toggleActive(v.id, v.active)} disabled={!!toggling} className="text-sub flex-shrink-0 p-2 disabled:opacity-50">
+                <button onClick={() => toggleActive(v.id, v.active)} disabled={toggling === v.id} className="text-sub flex-shrink-0 p-2 disabled:opacity-50">
                   {v.active
                     ? <ToggleRight className="w-7 h-7 text-leaf" />
                     : <ToggleLeft  className="w-7 h-7" />}

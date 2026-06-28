@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
     const { data: drivers, error } = await db
       .from("DriverProfile")
-      .select("*, user:user_id(name, phone), Vehicle(*)")
+      .select("*, user:user_id(name, phone)")
       .eq("owner_id", owner.id)
       .eq("is_approved", true)
       .order("created_at", { ascending: false });

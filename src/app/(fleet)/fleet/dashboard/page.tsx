@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, Truck, Users, DollarSign } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
 interface DashboardData {
@@ -43,6 +44,9 @@ export default function OwnerDashboardPage() {
           fetch("/api/fleet/earnings",  { headers }).then((r) => r.json()),
         ]);
         const vehicles = vehiclesRes.data ?? [];
+        if (!earningsRes.data && earningsRes.error) {
+          toast.error("Could not load earnings data");
+        }
         setData({
           vehicles: { total: vehicles.length, active: vehicles.filter((v: { active: boolean }) => v.active).length },
           drivers:  vehicles.filter((v: { driver_id: string | null }) => v.driver_id).length,
