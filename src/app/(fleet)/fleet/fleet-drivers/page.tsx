@@ -45,7 +45,7 @@ export default function FleetDriversPage() {
   }, []);
 
   async function assignVehicle(driverProfileId: string, vehicleId: string) {
-    if (!token || assigning) return;
+    if (!token || assigning === driverProfileId) return;
     setAssigning(driverProfileId);
     try {
       const res = await fetch("/api/fleet/assign-driver", {
@@ -58,6 +58,25 @@ export default function FleetDriversPage() {
       toast.success("Driver assigned");
       setVehicles((prev) =>
         prev.map((v) => v.id === vehicleId ? { ...v, driver_id: driverProfileId } : v)
+      );
+    } catch { toast.error("Network error"); }
+    finally { setAssigning(null); }
+  }
+
+  async function unassignVehicle(driverProfileId: string, vehicleId: string) {
+    if (!token || assigning === driverProfileId) return;
+    setAssigning(driverProfileId);
+    try {
+      const res = await fetch(`/api/fleet/vehicles/${vehicleId}`, {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body:    JSON.stringify({ driver_id: null }),
+      });
+      const j = await res.json();
+      if (!res.ok || j.error) { toast.error(j.error ?? "Failed to unassign driver"); return; }
+      toast.success("Driver unassigned");
+      setVehicles((prev) =>
+        prev.map((v) => v.id === vehicleId ? { ...v, driver_id: null } : v)
       );
     } catch { toast.error("Network error"); }
     finally { setAssigning(null); }
@@ -102,9 +121,18 @@ export default function FleetDriversPage() {
               </span>
             </div>
             {assignedVehicle ? (
-              <div className="flex items-center gap-2 text-xs text-sub">
-                <Car className="w-3.5 h-3.5" />
-                {assignedVehicle.make} {assignedVehicle.model_name} · {assignedVehicle.number}
+              <div className="flex items-center justify-between text-xs text-sub">
+                <div className="flex items-center gap-2">
+                  <Car className="w-3.5 h-3.5" />
+                  {assignedVehicle.make} {assignedVehicle.model_name} · {assignedVehicle.number}
+                </div>
+                <button
+                  onClick={() => unassignVehicle(d.id, assignedVehicle.id)}
+                  disabled={assigning === d.id}
+                  className="text-red-400 text-[10px] font-semibold disabled:opacity-50 ml-2 flex-shrink-0"
+                >
+                  {assigning === d.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Unassign"}
+                </button>
               </div>
             ) : (
               <div>

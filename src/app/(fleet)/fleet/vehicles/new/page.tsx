@@ -71,7 +71,7 @@ export default function NewVehiclePage() {
           body:    fd,
         });
         const j = await res.json();
-        if (j.error) { toast.error(j.error); continue; }
+        if (!res.ok || j.error) { toast.error(j.error ?? "Upload failed"); continue; }
         setPhotos(j.data.photos);
         setPreviews((prev) => [...prev, URL.createObjectURL(file)]);
       }

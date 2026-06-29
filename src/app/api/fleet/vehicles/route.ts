@@ -26,6 +26,7 @@ const createSchema = z.object({
 export async function GET(req: NextRequest) {
   const owner = await getOwner(req);
   if (!owner) return Response.json({ data: null, error: "Unauthorized" }, { status: 401 });
+  if (owner.status !== "ACTIVE") return Response.json({ data: null, error: "Account not active" }, { status: 403 });
 
   const db = getAdminClient();
   try {

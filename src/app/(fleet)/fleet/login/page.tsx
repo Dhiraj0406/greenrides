@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 
 export default function FleetLoginPage() {
   const router = useRouter();
@@ -118,7 +119,7 @@ export default function FleetLoginPage() {
 
         <p className="text-center text-xs text-sub pt-2">
           New to Green Rides Fleet?{" "}
-          <a href="/fleet/register" className="text-leaf font-semibold">Register here</a>
+          <Link href="/fleet/register" className="text-leaf font-semibold">Register here</Link>
         </p>
       </div>
     </div>

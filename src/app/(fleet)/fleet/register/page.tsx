@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Car, Building2, Users, ArrowRight, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 
 type Step = "phone" | "otp" | "role" | "profile";
 type RoleType = "driver" | "owner" | "both";
@@ -178,7 +179,7 @@ export default function FleetRegisterPage() {
 
           <p className="text-center text-xs text-sub pt-2">
             Already registered?{" "}
-            <a href="/fleet/login" className="text-leaf font-semibold">Sign in here</a>
+            <Link href="/fleet/login" className="text-leaf font-semibold">Sign in here</Link>
           </p>
         </div>
       )}

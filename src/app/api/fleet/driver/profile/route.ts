@@ -51,10 +51,10 @@ export async function PATCH(req: NextRequest) {
   };
 
   const profileUpdate: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (body.vehicle_type)   profileUpdate.vehicle_type   = body.vehicle_type;
-  if (body.vehicle_number) profileUpdate.vehicle_number = body.vehicle_number.toUpperCase();
-  if (body.vehicle_model)  profileUpdate.vehicle_model  = body.vehicle_model;
-  if (body.license_number) profileUpdate.license_number = body.license_number.toUpperCase();
+  if (body.vehicle_type   !== undefined) profileUpdate.vehicle_type   = body.vehicle_type;
+  if (body.vehicle_number !== undefined) profileUpdate.vehicle_number = body.vehicle_number?.toUpperCase() ?? null;
+  if (body.vehicle_model  !== undefined) profileUpdate.vehicle_model  = body.vehicle_model;
+  if (body.license_number !== undefined) profileUpdate.license_number = body.license_number?.toUpperCase() ?? null;
 
   try {
     if (Object.keys(profileUpdate).length > 1) {

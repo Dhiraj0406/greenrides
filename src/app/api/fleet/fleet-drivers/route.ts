@@ -11,8 +11,9 @@ export async function GET(req: NextRequest) {
   if (!roles.includes("owner")) return NextResponse.json({ data: null, error: "Forbidden" }, { status: 403 });
 
   try {
-    const { data: owner } = await db.from("Owner").select("id").eq("user_id", user.id).maybeSingle();
+    const { data: owner } = await db.from("Owner").select("id, status").eq("user_id", user.id).maybeSingle();
     if (!owner) return NextResponse.json({ data: [], error: null });
+    if (owner.status !== "ACTIVE") return NextResponse.json({ data: null, error: "Account not active" }, { status: 403 });
 
     const { data: drivers, error } = await db
       .from("DriverProfile")

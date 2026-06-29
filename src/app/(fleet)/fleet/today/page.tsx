@@ -262,6 +262,15 @@ function DispatchCard({
     );
   }
 
+  if (req?.status === "CANCELLED") {
+    return (
+      <div className="bg-red-50 border border-red-300 rounded-2xl p-4 mb-3">
+        <p className="text-sm font-semibold text-red-600 mb-1">Booking Cancelled</p>
+        <p className="text-xs text-sub">The rider or admin cancelled this booking.</p>
+      </div>
+    );
+  }
+
   return null;
 }
 
@@ -336,12 +345,17 @@ export default function TodayPage() {
 
   const hasActiveDispatches = dispatches.length > 0;
 
-  // Poll dispatches every 15s unconditionally — idle drivers need timely new dispatch notifications
+  // Poll dispatches every 15s — always refresh the session token so long-lived sessions stay active
   useEffect(() => {
     if (!token) return;
-    const id = setInterval(() => fetchDispatches(token), 15_000);
+    const id = setInterval(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { router.replace("/fleet/login"); return; }
+      setToken(session.access_token);
+      fetchDispatches(session.access_token);
+    }, 15_000);
     return () => clearInterval(id);
-  }, [token, fetchDispatches]);
+  }, [token, fetchDispatches, router]);
 
   // GPS ping loop — active only while a trip is IN_PROGRESS
   useEffect(() => {

@@ -14,10 +14,11 @@ interface Vehicle {
 }
 
 export default function VehiclesPage() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [token,    setToken]    = useState<string | null>(null);
-  const [toggling, setToggling] = useState<string | null>(null);
+  const [vehicles,  setVehicles]  = useState<Vehicle[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [token,     setToken]     = useState<string | null>(null);
+  const [toggling,  setToggling]  = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession()
@@ -31,6 +32,7 @@ export default function VehiclesPage() {
           setVehicles(j.data ?? []);
         } catch (err) {
           console.error("[fleet/vehicles]", err);
+          setLoadError(true);
           toast.error("Failed to load vehicles");
         } finally { setLoading(false); }
       })
@@ -66,7 +68,13 @@ export default function VehiclesPage() {
         </Link>
       </div>
       {loading && <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-leaf" /></div>}
-      {!loading && vehicles.length === 0 && (
+      {!loading && loadError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
+          <p className="text-red-500 text-sm">Failed to load vehicles.</p>
+          <button onClick={() => window.location.reload()} className="mt-2 text-xs text-red-400 underline">Retry</button>
+        </div>
+      )}
+      {!loading && !loadError && vehicles.length === 0 && (
         <div className="flex flex-col items-center py-12 gap-3">
           <Truck className="w-8 h-8 text-sub" />
           <p className="text-center text-sub text-sm">No vehicles added yet.</p>

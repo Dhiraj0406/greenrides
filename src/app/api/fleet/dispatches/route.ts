@@ -44,8 +44,9 @@ export async function GET(req: NextRequest) {
       request: req
         ? {
             ...req,
-            // Only expose trip_otp to the driver when they need to verify it at pickup
-            trip_otp: (req.status === "CONFIRMED" || req.status === "IN_PROGRESS") ? req.trip_otp : null,
+            // Only expose trip_otp and rider_phone after the driver accepts
+            trip_otp:    (req.status === "CONFIRMED" || req.status === "IN_PROGRESS") ? req.trip_otp    : null,
+            rider_phone: (req.status === "CONFIRMED" || req.status === "IN_PROGRESS") ? req.rider_phone : null,
           }
         : null,
     };

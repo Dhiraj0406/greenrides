@@ -81,8 +81,10 @@ export async function POST(req: NextRequest) {
       if (ownerErr) throw ownerErr;
     }
 
+    const { data: currentUserData } = await adminClient.auth.admin.getUserById(userId);
+    const existingMeta = currentUserData?.user?.app_metadata ?? {};
     await adminClient.auth.admin.updateUserById(userId, {
-      app_metadata: { fleet_status: "pending" },
+      app_metadata: { ...existingMeta, fleet_status: "pending" },
     });
 
     return Response.json({ data: { registered: true }, error: null });

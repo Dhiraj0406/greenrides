@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
             .from("Booking")
             .select("id, amount_paise, status, created_at, ride_id, Ride!ride_id(from_city, to_city, departure_time)")
             .in("ride_id", rideIds)
-            .in("status", ["CONFIRMED", "COMPLETED"])
+            .in("status", ["COMPLETED"])
             .order("created_at", { ascending: false })
             .limit(100);
 

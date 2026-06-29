@@ -16,8 +16,9 @@ interface EarningsData {
 }
 
 export default function EarningsPage() {
-  const [data, setData]       = useState<EarningsData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData]         = useState<EarningsData | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -26,10 +27,13 @@ export default function EarningsPage() {
         headers: { Authorization: `Bearer ${session.access_token}` },
       })
         .then((r) => r.json())
-        .then((j) => { if (j.error) { toast.error(j.error); } else { setData(j.data ?? null); } })
-        .catch(() => toast.error("Failed to load earnings"))
+        .then((j) => {
+          if (j.error) { setLoadError(true); toast.error(j.error); }
+          else { setData(j.data ?? null); }
+        })
+        .catch(() => { setLoadError(true); toast.error("Failed to load earnings"); })
         .finally(() => setLoading(false));
-    }).catch(() => setLoading(false));
+    }).catch(() => { setLoadError(true); setLoading(false); });
   }, []);
 
   const fmt = (d: string) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
@@ -43,7 +47,13 @@ export default function EarningsPage() {
         <h2 className="font-display text-xl text-forest">Earnings</h2>
       </div>
       {loading && <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-leaf" /></div>}
-      {!loading && !data && (
+      {!loading && loadError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
+          <p className="text-red-500 text-sm">Failed to load earnings data.</p>
+          <button onClick={() => window.location.reload()} className="mt-2 text-xs text-red-400 underline">Retry</button>
+        </div>
+      )}
+      {!loading && !loadError && !data && (
         <div className="flex flex-col items-center py-12 gap-2">
           <TrendingUp className="w-8 h-8 text-sub" />
           <p className="text-center text-sub text-sm">No earnings data yet.</p>
