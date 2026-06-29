@@ -151,7 +151,7 @@ function ConfirmedHeroCard({ req, token }: { req: MyRequest; token: string }) {
         </div>
       )}
 
-      {req.driver_name || req.driver_phone || req.eta_min ? (
+      {req.driver_name || req.driver_phone || req.eta_min !== null ? (
         <div className="bg-white/10 rounded-xl p-3 space-y-2">
           {req.driver_name && (
             <div className="flex items-center gap-2">
@@ -159,11 +159,11 @@ function ConfirmedHeroCard({ req, token }: { req: MyRequest; token: string }) {
               <span className="text-sm font-semibold">{req.driver_name}</span>
             </div>
           )}
-          {req.eta_min && (
-            <p className="text-sm text-lime/80">
-              Driver arriving in ~{req.eta_min} min
-            </p>
-          )}
+          {req.eta_min === 0 ? (
+            <p className="text-sm text-lime font-bold">📍 Driver has arrived at pickup! Show your OTP.</p>
+          ) : req.eta_min ? (
+            <p className="text-sm text-lime/80">Driver arriving in ~{req.eta_min} min</p>
+          ) : null}
           {req.driver_phone && (
             <a
               href={`tel:${req.driver_phone}`}
@@ -288,6 +288,9 @@ function RequestCard({ request, onRate }: { request: MyRequest; onRate: (id: str
 
       <p className="text-xs text-sub font-mono">#{shortId}</p>
 
+      {request.status === "CANCELLED" && request.notes && (
+        <p className="mt-2 text-xs text-red-400 bg-red-50 rounded-lg px-3 py-2">{request.notes}</p>
+      )}
       {request.status === "COMPLETED" && (
         <Link
           href={`/receipt/${request.id}?type=request`}
@@ -296,10 +299,18 @@ function RequestCard({ request, onRate }: { request: MyRequest; onRate: (id: str
           View Receipt →
         </Link>
       )}
+      {(request.status === "COMPLETED" || request.status === "CANCELLED") && (
+        <Link
+          href={`/?from=${encodeURIComponent(request.from_city)}&to=${encodeURIComponent(request.to_city)}`}
+          className="mt-2 w-full flex items-center justify-center text-xs font-semibold text-leaf rounded-xl py-2"
+        >
+          Book same route →
+        </Link>
+      )}
       {request.status === "COMPLETED" && !request.has_rating && (
         <button
           onClick={() => onRate(request.id)}
-          className="mt-2 w-full text-sm font-semibold text-leaf border border-leaf/30 rounded-xl py-2"
+          className="mt-1 w-full text-sm font-semibold text-leaf border border-leaf/30 rounded-xl py-2"
         >
           ⭐ Rate this ride
         </button>
@@ -365,6 +376,14 @@ function CabBookingCard({ booking, onRate }: { booking: CabBooking; onRate: (id:
           className="mt-3 w-full flex items-center justify-center gap-1.5 text-sm font-semibold text-forest border border-forest/20 rounded-xl py-2"
         >
           View Receipt →
+        </Link>
+      )}
+      {(booking.status === "COMPLETED" || booking.status === "CANCELLED" || booking.status === "REFUNDED") && (
+        <Link
+          href={`/?from=${encodeURIComponent(booking.from)}&to=${encodeURIComponent(booking.to)}`}
+          className="mt-2 w-full flex items-center justify-center text-xs font-semibold text-leaf rounded-xl py-2"
+        >
+          Book same route →
         </Link>
       )}
       {booking.status === "COMPLETED" && !booking.has_rating && (

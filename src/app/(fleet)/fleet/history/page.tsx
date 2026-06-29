@@ -1,9 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Car, ArrowRight, CheckCircle } from "lucide-react";
+import { Loader2, Car, ArrowRight, CheckCircle, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+
+function weekStart(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00+05:30");
+  const day = d.getDay(); // 0=Sun
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1)); // roll back to Monday
+  return d.toLocaleDateString("en-CA"); // YYYY-MM-DD
+}
+
+function weekLabel(monStr: string): string {
+  const mon = new Date(monStr + "T00:00:00+05:30");
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+  return `${mon.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${sun.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`;
+}
 
 interface TripRequest {
   id:          string;
@@ -60,50 +74,69 @@ export default function HistoryPage() {
         </div>
       )}
 
-      {!loading && trips.length > 0 && (
-        <>
-          {/* ── Earnings summary ─────────────────────────── */}
-          <div className="bg-forest rounded-2xl px-4 py-4 mb-4 flex items-center justify-between">
-            <p className="text-lime/70 text-sm font-medium">Total earned</p>
-            <p className="font-display text-2xl text-white">
-              ₹{Math.round(totalEarnings / 100).toLocaleString("en-IN")}
-            </p>
-          </div>
+      {!loading && trips.length > 0 && (() => {
+        // Group trips by week
+        const grouped = new Map<string, typeof trips>();
+        trips.forEach((d) => {
+          if (!d.request) return;
+          const key = weekStart(d.request.travel_date);
+          if (!grouped.has(key)) grouped.set(key, []);
+          grouped.get(key)!.push(d);
+        });
+        const weeks = Array.from(grouped.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+        return (
+          <>
+            {/* ── All-time summary ─────────────────────────── */}
+            <div className="bg-forest rounded-2xl px-4 py-4 mb-4 flex items-center justify-between">
+              <p className="text-lime/70 text-sm font-medium">Total earned</p>
+              <p className="font-display text-2xl text-white">
+                ₹{Math.round(totalEarnings / 100).toLocaleString("en-IN")}
+              </p>
+            </div>
 
-          {/* ── Trip cards ────────────────────────────────── */}
-          {trips.map((dispatch) => {
-            const req = dispatch.request;
-            if (!req) return null;
-            const date = new Date(req.travel_date).toLocaleDateString("en-IN", {
-              day:   "numeric",
-              month: "short",
-              year:  "numeric",
-              timeZone: "Asia/Kolkata",
-            });
-            return (
-              <div key={dispatch.id} className="bg-white border border-border rounded-2xl p-4 mb-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 font-semibold text-text text-sm">
-                    <span>{req.from_city}</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-sub" />
-                    <span>{req.to_city}</span>
+            {/* ── Weekly breakdown ─────────────────────────── */}
+            {weeks.map(([monStr, weekTrips]) => {
+              const weekTotal = weekTrips.reduce((s, d) => s + (d.request?.fare_paise ?? 0), 0);
+              return (
+                <div key={monStr} className="mb-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-bold text-sub uppercase tracking-wide">{weekLabel(monStr)}</p>
+                    <div className="flex items-center gap-1 text-xs font-semibold text-forest">
+                      <CreditCard className="w-3.5 h-3.5" />
+                      ₹{Math.round(weekTotal / 100).toLocaleString("en-IN")}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-leaf text-xs font-semibold">
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    Completed
-                  </div>
+                  {weekTrips.map((dispatch) => {
+                    const req = dispatch.request;
+                    if (!req) return null;
+                    const date = new Date(req.travel_date).toLocaleDateString("en-IN", {
+                      day: "numeric", month: "short", timeZone: "Asia/Kolkata",
+                    });
+                    return (
+                      <div key={dispatch.id} className="bg-white border border-border rounded-2xl p-4 mb-2">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-1.5 font-semibold text-text text-sm">
+                            <span>{req.from_city}</span>
+                            <ArrowRight className="w-3 h-3 text-sub" />
+                            <span>{req.to_city}</span>
+                          </div>
+                          <span className="font-bold text-forest text-sm">
+                            ₹{Math.round(req.fare_paise / 100).toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-sub">
+                          <CheckCircle className="w-3 h-3 text-leaf" />
+                          <span>{date}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="flex items-center justify-between text-xs text-sub">
-                  <span>{date}</span>
-                  <span className="font-bold text-forest text-sm">
-                    ₹{Math.round(req.fare_paise / 100).toLocaleString("en-IN")}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </>
-      )}
+              );
+            })}
+          </>
+        );
+      })()}
     </div>
   );
 }

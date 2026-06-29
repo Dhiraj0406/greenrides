@@ -47,9 +47,11 @@ function BookingsContent({ token }: { token: string }) {
   const [loading, setLoading]     = useState(true);
   const [active, setActive]       = useState<ReqStatus | "ALL">(filterStatus ?? "ALL");
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [driverName, setDriverName]     = useState("");
   const [driverPhone, setDriverPhone]   = useState("");
   const [etaMin, setEtaMin]             = useState("");
+  const [cancelReason, setCancelReason] = useState("");
   const [saving, setSaving]             = useState(false);
 
   useEffect(() => {
@@ -76,6 +78,23 @@ function BookingsContent({ token }: { token: string }) {
       if (!res.ok) { const j = await res.json(); toast.error(j.error ?? "Update failed"); return; }
       setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
     } catch { toast.error("Network error"); }
+  }
+
+  async function cancelRequest(id: string) {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/requests/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({ status: "CANCELLED", cancel_reason: cancelReason.trim() || undefined }),
+      });
+      if (!res.ok) { const j = await res.json(); toast.error(j.error ?? "Cancel failed"); return; }
+      setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "CANCELLED" } : r));
+      setCancellingId(null);
+      setCancelReason("");
+      toast.success("Booking cancelled");
+    } catch { toast.error("Network error"); }
+    finally { setSaving(false); }
   }
 
   function openConfirmForm(id: string) {
@@ -177,7 +196,7 @@ function BookingsContent({ token }: { token: string }) {
               </div>
               <p className="text-[10px] text-sub/60 mt-2 font-mono-green">#{req.id.slice(0, 8).toUpperCase()}</p>
 
-              {(NEXT_STATUS[req.status] || req.status === "CONFIRMED") && confirmingId !== req.id && (
+              {(NEXT_STATUS[req.status] || req.status === "CONFIRMED") && confirmingId !== req.id && cancellingId !== req.id && (
                 <div className="flex gap-2 mt-3 pt-3 border-t border-border">
                   {NEXT_STATUS[req.status] && (
                     <button
@@ -188,11 +207,38 @@ function BookingsContent({ token }: { token: string }) {
                   )}
                   {(req.status === "PENDING" || req.status === "CONFIRMED") && (
                     <button
-                      onClick={() => updateStatus(req.id, "CANCELLED")}
+                      onClick={() => { setCancellingId(req.id); setCancelReason(""); }}
                       className="px-4 bg-red-50 text-red-500 text-sm font-semibold py-2.5 rounded-xl">
                       Cancel
                     </button>
                   )}
+                </div>
+              )}
+
+              {cancellingId === req.id && (
+                <div className="mt-3 pt-3 border-t border-red-100 space-y-2">
+                  <p className="text-xs font-semibold text-red-500 uppercase tracking-wide">Cancellation reason (shown to rider)</p>
+                  <input
+                    type="text"
+                    placeholder="e.g. No driver available for this date"
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    className="w-full bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-sm text-text outline-none focus:border-red-400"
+                    autoFocus
+                  />
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => cancelRequest(req.id)}
+                      disabled={saving}
+                      className="flex-1 bg-red-500 disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-xl flex items-center justify-center gap-1.5">
+                      {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Confirm Cancel"}
+                    </button>
+                    <button
+                      onClick={() => { setCancellingId(null); setCancelReason(""); }}
+                      className="px-4 bg-warm text-sub text-sm font-semibold py-2.5 rounded-xl">
+                      Back
+                    </button>
+                  </div>
                 </div>
               )}
 

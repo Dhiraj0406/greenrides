@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useBookingStore } from "@/store/booking";
 import { DESTINATIONS, DAY_TRIPS, PICKUP_TIMES, fmt } from "@/data/constants";
 import { BookingConfirmSheet } from "@/components/booking/BookingConfirmSheet";
@@ -79,6 +80,7 @@ export function HomeContent({ initialRoutes }: Props) {
     setOrigin, setDestination, setRouteData, setDiscount,
     fareRupees, distanceKm, durationText,
   } = useBookingStore();
+  const searchParams = useSearchParams();
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
@@ -100,8 +102,8 @@ export function HomeContent({ initialRoutes }: Props) {
   }, []);
 
   const [rideType, setRideType]     = useState<"intercity" | "daytrip">("intercity");
-  const [from, setFrom]             = useState("Koraput");
-  const [to, setTo]                 = useState("");
+  const [from, setFrom]             = useState(() => searchParams.get("from") || "Koraput");
+  const [to, setTo]                 = useState(() => searchParams.get("to") || "");
   const [date, setDate]             = useState(todayStr());
   const [time, setTime]             = useState("");
   const [showConfirm, setShowConfirm] = useState(false);

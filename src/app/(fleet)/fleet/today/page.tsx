@@ -80,6 +80,7 @@ function DispatchCard({
 }) {
   const [loading, setLoading] = useState(false);
   const [otpInput, setOtpInput] = useState("");
+  const [arrived,  setArrived]  = useState(false);
   const req = dispatch.request;
 
   async function respond(action: "accept" | "reject") {
@@ -204,6 +205,32 @@ function DispatchCard({
           >
             <Phone className="w-4 h-4" /> Call Rider · {req.rider_phone}
           </a>
+        )}
+        {!arrived ? (
+          <button
+            onClick={async () => {
+              setLoading(true);
+              try {
+                const res = await fetch(`/api/requests/${dispatch.request_id}/arrived`, {
+                  method: "PATCH",
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                const j = await res.json();
+                if (!res.ok) { toast.error(j.error ?? "Failed"); return; }
+                setArrived(true);
+                toast.success("Rider notified — you've arrived!");
+              } catch { toast.error("Network error"); }
+              finally { setLoading(false); }
+            }}
+            disabled={loading}
+            className="w-full mb-3 bg-white/20 text-white font-semibold text-sm py-2.5 rounded-xl disabled:opacity-50"
+          >
+            📍 I&apos;ve Arrived at Pickup
+          </button>
+        ) : (
+          <div className="bg-white/10 rounded-xl px-4 py-2.5 mb-3 text-center">
+            <p className="text-lime text-sm font-semibold">✓ Rider notified — you&apos;ve arrived!</p>
+          </div>
         )}
         <p className="text-sm text-lime/70 mb-2">Ask the rider for the 6-digit OTP to start the trip.</p>
         <div className="flex gap-2">

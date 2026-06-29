@@ -14,29 +14,41 @@ interface Stats {
   total:     number;
   revenue:   number;
 }
+interface QuickStats {
+  today_revenue:    number;
+  week_revenue:     number;
+  active_trips:     number;
+  pending_requests: number;
+}
 
 function Dashboard({ token }: { token: string }) {
-  const [stats, setStats]     = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [stats,      setStats]      = useState<Stats | null>(null);
+  const [quickStats, setQuickStats] = useState<QuickStats | null>(null);
+  const [loading,    setLoading]    = useState(true);
 
   useEffect(() => {
-    fetch("/api/admin/requests", { headers: { "x-admin-token": token } })
-      .then((r) => r.json())
-      .then((j) => {
-        if (!j.data) return;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const reqs: any[] = j.data;
-        setStats({
-          pending:   reqs.filter((r) => r.status === "PENDING").length,
-          confirmed: reqs.filter((r) => r.status === "CONFIRMED").length,
-          completed: reqs.filter((r) => r.status === "COMPLETED").length,
-          cancelled: reqs.filter((r) => r.status === "CANCELLED").length,
-          total:     reqs.length,
-          revenue:   reqs
-            .filter((r) => r.status === "COMPLETED")
-            .reduce((sum: number, r) => sum + r.fare_paise, 0),
-        });
-      })
+    Promise.all([
+      fetch("/api/admin/requests", { headers: { "x-admin-token": token } })
+        .then((r) => r.json())
+        .then((j) => {
+          if (!j.data) return;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const reqs: any[] = j.data;
+          setStats({
+            pending:   reqs.filter((r) => r.status === "PENDING").length,
+            confirmed: reqs.filter((r) => r.status === "CONFIRMED").length,
+            completed: reqs.filter((r) => r.status === "COMPLETED").length,
+            cancelled: reqs.filter((r) => r.status === "CANCELLED").length,
+            total:     reqs.length,
+            revenue:   reqs
+              .filter((r) => r.status === "COMPLETED")
+              .reduce((sum: number, r) => sum + r.fare_paise, 0),
+          });
+        }),
+      fetch("/api/admin/stats", { headers: { "x-admin-token": token } })
+        .then((r) => r.json())
+        .then((j) => { if (j.data) setQuickStats(j.data); }),
+    ])
       .catch(() => toast.error("Failed to load dashboard stats"))
       .finally(() => setLoading(false));
   }, [token]);
@@ -64,13 +76,37 @@ function Dashboard({ token }: { token: string }) {
           </div>
         ) : (
           <>
-            {stats && stats.revenue > 0 && (
-              <div className="bg-forest rounded-2xl p-5 text-white mb-5">
-                <p className="text-lime/60 text-xs uppercase tracking-wide mb-1">Total Revenue</p>
-                <p className="font-display text-4xl text-white">₹{(stats.revenue / 100).toLocaleString("en-IN")}</p>
-                <p className="text-lime/50 text-xs mt-1">{stats.completed} trips completed</p>
+            {/* Revenue hero */}
+            <div className="bg-forest rounded-2xl p-5 text-white mb-5">
+              <div className="flex items-end justify-between mb-2">
+                <div>
+                  <p className="text-lime/60 text-xs uppercase tracking-wide mb-1">Today&apos;s Revenue</p>
+                  <p className="font-display text-4xl text-white">
+                    ₹{((quickStats?.today_revenue ?? 0) / 100).toLocaleString("en-IN")}
+                  </p>
+                </div>
+                {quickStats && quickStats.active_trips > 0 && (
+                  <div className="text-right">
+                    <p className="text-lime/60 text-xs uppercase tracking-wide mb-1">Active Now</p>
+                    <p className="font-display text-2xl text-lime">{quickStats.active_trips}</p>
+                  </div>
+                )}
               </div>
-            )}
+              <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/10">
+                <div>
+                  <p className="text-lime/50 text-[10px] uppercase tracking-wide">This Week</p>
+                  <p className="text-white font-semibold text-sm">₹{((quickStats?.week_revenue ?? 0) / 100).toLocaleString("en-IN")}</p>
+                </div>
+                <div>
+                  <p className="text-lime/50 text-[10px] uppercase tracking-wide">All Time</p>
+                  <p className="text-white font-semibold text-sm">₹{((stats?.revenue ?? 0) / 100).toLocaleString("en-IN")}</p>
+                </div>
+                <div>
+                  <p className="text-lime/50 text-[10px] uppercase tracking-wide">Total Trips</p>
+                  <p className="text-white font-semibold text-sm">{stats?.completed ?? 0}</p>
+                </div>
+              </div>
+            </div>
 
             <div className="grid grid-cols-2 gap-3 mb-6">
               {cards.map(({ label, value, icon: Icon, color, href }) => (

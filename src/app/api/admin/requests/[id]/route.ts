@@ -7,10 +7,11 @@ function isAdmin(req: NextRequest) {
 }
 
 const patchSchema = z.object({
-  status:       z.enum(["CONFIRMED", "COMPLETED", "CANCELLED"]),
-  driver_name:  z.string().max(100).optional(),
-  driver_phone: z.string().max(20).optional(),
-  eta_min:      z.number().int().min(1).max(600).optional(),
+  status:         z.enum(["CONFIRMED", "COMPLETED", "CANCELLED"]),
+  driver_name:    z.string().max(100).optional(),
+  driver_phone:   z.string().max(20).optional(),
+  eta_min:        z.number().int().min(1).max(600).optional(),
+  cancel_reason:  z.string().max(300).optional(),
 });
 
 const VALID_TRANSITIONS: Partial<Record<string, string[]>> = {
@@ -42,13 +43,16 @@ export async function PATCH(
     );
   }
 
-  const { status, driver_name, driver_phone, eta_min } = parsed.data;
+  const { status, driver_name, driver_phone, eta_min, cancel_reason } = parsed.data;
 
   const updateData: Record<string, unknown> = { status };
   if (status === "CONFIRMED") {
     if (driver_name  !== undefined) updateData.driver_name  = driver_name;
     if (driver_phone !== undefined) updateData.driver_phone = driver_phone;
     if (eta_min      !== undefined) updateData.eta_min      = eta_min;
+  }
+  if (status === "CANCELLED" && cancel_reason !== undefined) {
+    updateData.notes = cancel_reason;
   }
 
   try {
