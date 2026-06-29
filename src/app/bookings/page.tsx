@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Calendar, Car, Phone, Ticket } from "lucide-react";
+import { ArrowRight, Calendar, Car, Phone, Ticket, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { BottomNav } from "@/components/shared/BottomNav";
@@ -114,6 +114,16 @@ function PayNowButton({ requestId, orderId, amountPaise }: { requestId: string; 
 }
 
 function ConfirmedHeroCard({ req, token }: { req: MyRequest; token: string }) {
+  async function shareTrip() {
+    const url = `${window.location.origin}/track/${req.id}`;
+    if (navigator.share) {
+      await navigator.share({ title: "Track my Green Rides trip", url }).catch(() => {});
+    } else {
+      await navigator.clipboard.writeText(url).catch(() => {});
+      toast.success("Share link copied!");
+    }
+  }
+
   return (
     <div className="bg-forest rounded-2xl p-5 mb-4 text-white">
       <div className="flex items-center gap-1.5 text-lime/60 text-xs font-semibold uppercase tracking-wide mb-3">
@@ -178,6 +188,14 @@ function ConfirmedHeroCard({ req, token }: { req: MyRequest; token: string }) {
       )}
 
       <LiveMap requestId={req.id} token={token} />
+
+      <button
+        onClick={shareTrip}
+        className="mt-3 w-full flex items-center justify-center gap-2 bg-white/10 text-white font-semibold text-sm py-2.5 rounded-xl"
+      >
+        <Share2 className="w-4 h-4" />
+        Share trip link
+      </button>
     </div>
   );
 }
@@ -270,10 +288,18 @@ function RequestCard({ request, onRate }: { request: MyRequest; onRate: (id: str
 
       <p className="text-xs text-sub font-mono">#{shortId}</p>
 
+      {request.status === "COMPLETED" && (
+        <Link
+          href={`/receipt/${request.id}?type=request`}
+          className="mt-3 w-full flex items-center justify-center gap-1.5 text-sm font-semibold text-forest border border-forest/20 rounded-xl py-2"
+        >
+          View Receipt →
+        </Link>
+      )}
       {request.status === "COMPLETED" && !request.has_rating && (
         <button
           onClick={() => onRate(request.id)}
-          className="mt-3 w-full text-sm font-semibold text-leaf border border-leaf/30 rounded-xl py-2"
+          className="mt-2 w-full text-sm font-semibold text-leaf border border-leaf/30 rounded-xl py-2"
         >
           ⭐ Rate this ride
         </button>
@@ -333,10 +359,18 @@ function CabBookingCard({ booking, onRate }: { booking: CabBooking; onRate: (id:
         <span className="text-xs text-sub">{booking.driver_name} · {booking.vehicle_model}</span>
       </div>
       <p className="text-xs text-sub font-mono">#{shortId}</p>
+      {booking.status === "COMPLETED" && (
+        <Link
+          href={`/receipt/${booking.id}?type=booking`}
+          className="mt-3 w-full flex items-center justify-center gap-1.5 text-sm font-semibold text-forest border border-forest/20 rounded-xl py-2"
+        >
+          View Receipt →
+        </Link>
+      )}
       {booking.status === "COMPLETED" && !booking.has_rating && (
         <button
           onClick={() => onRate(booking.id)}
-          className="mt-3 w-full text-sm font-semibold text-leaf border border-leaf/30 rounded-xl py-2"
+          className="mt-2 w-full text-sm font-semibold text-leaf border border-leaf/30 rounded-xl py-2"
         >
           ⭐ Rate this ride
         </button>
@@ -374,6 +408,7 @@ export default function MyBookingsPage() {
   const [ratingFor, setRatingFor] = useState<{ type: "booking" | "request"; id: string } | null>(null);
   const [ratingScore, setRatingScore]       = useState(5);
   const [submittingRating, setSubmittingRating] = useState(false);
+  const prevStatusMapRef = useRef<Record<string, string>>({});
 
   const fetchRequests = useCallback(async (accessToken: string) => {
     try {
@@ -384,7 +419,24 @@ export default function MyBookingsPage() {
       if (!res.ok || json.error) {
         setError(json.error ?? "Failed to load trips");
       } else {
-        setRequests(json.data ?? []);
+        const newReqs: MyRequest[] = json.data ?? [];
+        if (Object.keys(prevStatusMapRef.current).length > 0) {
+          newReqs.forEach((req) => {
+            const prev = prevStatusMapRef.current[req.id];
+            if (prev && prev !== req.status) {
+              if (req.status === "CONFIRMED")
+                toast.success(`Driver assigned for ${req.from_city} → ${req.to_city}!`, { duration: 8000 });
+              else if (req.status === "IN_PROGRESS")
+                toast.info(`Your trip to ${req.to_city} has started!`);
+              else if (req.status === "COMPLETED")
+                toast.success(`Trip to ${req.to_city} completed!`);
+            }
+          });
+        }
+        const map: Record<string, string> = {};
+        newReqs.forEach((r) => { map[r.id] = r.status; });
+        prevStatusMapRef.current = map;
+        setRequests(newReqs);
         setError(null);
       }
     } catch {
@@ -458,9 +510,11 @@ export default function MyBookingsPage() {
     }
   }
 
-  const confirmed  = requests.filter((r) => r.status === "CONFIRMED" || r.status === "IN_PROGRESS");
-  const pending    = requests.filter((r) => r.status === "PENDING");
-  const otherReqs  = requests.filter((r) => r.status !== "CONFIRMED" && r.status !== "IN_PROGRESS" && r.status !== "PENDING");
+  const confirmed      = requests.filter((r) => r.status === "CONFIRMED" || r.status === "IN_PROGRESS");
+  const pending        = requests.filter((r) => r.status === "PENDING");
+  const otherReqs      = requests.filter((r) => r.status !== "CONFIRMED" && r.status !== "IN_PROGRESS" && r.status !== "PENDING");
+  const activeBookings = bookings.filter((b) => b.status === "PENDING" || b.status === "CONFIRMED" || b.status === "IN_PROGRESS");
+  const pastBookings   = bookings.filter((b) => b.status !== "PENDING" && b.status !== "CONFIRMED" && b.status !== "IN_PROGRESS");
 
   return (
     <div className="green-container min-h-screen bg-cream pb-24">
@@ -496,6 +550,9 @@ export default function MyBookingsPage() {
 
         {!loading && !error && (
           <>
+            {(confirmed.length > 0 || pending.length > 0 || activeBookings.length > 0) && (
+              <h2 className="text-xs font-bold text-sub uppercase tracking-wide mb-1">Active Trips</h2>
+            )}
             {confirmed.map((req) => (
               <ConfirmedHeroCard key={req.id} req={req} token={token} />
             ))}
@@ -507,16 +564,17 @@ export default function MyBookingsPage() {
                 onCancelled={(id) => setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "CANCELLED" } : r))}
               />
             ))}
+            {activeBookings.map((b) => (
+              <CabBookingCard key={b.id} booking={b} onRate={(id) => { setRatingFor({ type: "booking", id }); setRatingScore(5); }} />
+            ))}
+
+            {(otherReqs.length > 0 || pastBookings.length > 0) && (
+              <h2 className="text-xs font-bold text-sub uppercase tracking-wide mt-5 mb-1">Past Trips</h2>
+            )}
             {otherReqs.map((req) => (
               <RequestCard key={req.id} request={req} onRate={(id) => { setRatingFor({ type: "request", id }); setRatingScore(5); }} />
             ))}
-          </>
-        )}
-
-        {!loading && !error && bookings.length > 0 && (
-          <>
-            <h2 className="text-xs font-bold text-sub uppercase tracking-wide mt-4">Cab Bookings</h2>
-            {bookings.map((b) => (
+            {pastBookings.map((b) => (
               <CabBookingCard key={b.id} booking={b} onRate={(id) => { setRatingFor({ type: "booking", id }); setRatingScore(5); }} />
             ))}
           </>
