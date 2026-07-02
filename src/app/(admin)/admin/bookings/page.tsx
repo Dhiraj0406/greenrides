@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Phone, ArrowRight, ChevronLeft } from "lucide-react";
+import { Loader2, Phone, ArrowRight, ChevronLeft, Download } from "lucide-react";
 import { toast } from "sonner";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { cn } from "@/lib/utils";
@@ -140,7 +140,28 @@ function BookingsContent({ token }: { token: string }) {
           <Link href="/admin" className="text-lime/70 hover:text-lime">
             <ChevronLeft className="w-5 h-5" />
           </Link>
-          <h1 className="font-display text-xl text-white">Bookings</h1>
+          <h1 className="font-display text-xl text-white flex-1">Bookings</h1>
+          <button
+            onClick={() => {
+              fetch(`/api/admin/requests?format=csv`, { headers: { "x-admin-token": token } })
+                .then((r) => r.blob())
+                .then((blob) => {
+                  const url = URL.createObjectURL(blob);
+                  const a   = document.createElement("a");
+                  a.href     = url;
+                  a.download = `green-rides-bookings.csv`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                })
+                .catch(() => toast.error("Export failed"));
+            }}
+            className="flex items-center gap-1.5 text-xs font-semibold text-lime/70 hover:text-lime py-1.5 px-3 rounded-lg bg-forest-mid"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Export
+          </button>
         </div>
         <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
           {tabs.map((t) => (
