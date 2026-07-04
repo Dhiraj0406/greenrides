@@ -48,7 +48,28 @@ export async function GET(req: NextRequest) {
       }
     } catch { /* non-critical — ratings unavailable, requests still returned */ }
 
-    const data = rows.map((r: { id: string; [key: string]: unknown }) => ({ ...r, has_rating: ratedSet.has(r.id) }));
+    const STALE_MS = 4 * 60 * 60 * 1000;
+    const nowTs = Date.now();
+    const staleIds = rows
+      .filter((r: { status: string; created_at: string }) =>
+        r.status === "PENDING" && nowTs - new Date(r.created_at).getTime() > STALE_MS
+      )
+      .map((r: { id: string }) => r.id);
+
+    if (staleIds.length > 0) {
+      try {
+        await db.from("RideRequest")
+          .update({ status: "CANCELLED", updated_at: new Date().toISOString() })
+          .in("id", staleIds)
+          .eq("status", "PENDING");
+      } catch { /* non-critical — list still returns with corrected statuses */ }
+    }
+
+    const data = rows.map((r: { id: string; status: string; [key: string]: unknown }) => ({
+      ...r,
+      status: staleIds.includes(r.id) ? "CANCELLED" : r.status,
+      has_rating: ratedSet.has(r.id),
+    }));
     return Response.json({ data, error: null });
   } catch (err) {
     console.error("[requests GET]", err);
