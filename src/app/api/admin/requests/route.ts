@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
       const rows = data ?? [];
       const header = ["ID", "Rider Name", "Rider Phone", "From", "To", "Fare (INR)", "Travel Date", "Status", "Driver", "Driver Phone", "Booked At"];
       const lines  = rows.map((r) => {
-        const rider = r.rider as { name: string | null; phone: string } | null;
+        const rider = r.rider as unknown as { name: string | null; phone: string } | null;
         return [
           r.id,
           rider?.name ?? "",
