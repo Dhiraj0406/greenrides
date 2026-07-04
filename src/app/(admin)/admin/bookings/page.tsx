@@ -216,6 +216,11 @@ function BookingsContent({ token }: { token: string }) {
                 </a>
               </div>
               <p className="text-[10px] text-sub/60 mt-2 font-mono-green">#{req.id.slice(0, 8).toUpperCase()}</p>
+              {req.status === "PENDING" && (
+                <p className="text-xs text-sub italic mt-1">
+                  Waiting for a driver to accept — or assign one manually below.
+                </p>
+              )}
 
               {(NEXT_STATUS[req.status] || req.status === "CONFIRMED") && confirmingId !== req.id && cancellingId !== req.id && (
                 <div className="flex gap-2 mt-3 pt-3 border-t border-border">
@@ -223,7 +228,7 @@ function BookingsContent({ token }: { token: string }) {
                     <button
                       onClick={() => req.status === "PENDING" ? openConfirmForm(req.id) : updateStatus(req.id, NEXT_STATUS[req.status]!)}
                       className="flex-1 bg-leaf text-white text-sm font-semibold py-2.5 rounded-xl">
-                      {req.status === "PENDING" ? "Confirm →" : "Mark Done ✓"}
+                      {req.status === "PENDING" ? "Assign Driver ↗" : "Mark Done ✓"}
                     </button>
                   )}
                   {(req.status === "PENDING" || req.status === "CONFIRMED") && (
