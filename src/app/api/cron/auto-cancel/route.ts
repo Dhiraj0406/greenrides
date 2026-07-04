@@ -2,6 +2,11 @@ import { NextRequest } from "next/server";
 import { getAdminClient } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
 
+export const dynamic = "force-dynamic";
+
+const STALE_HOURS = 4;
+const STALE_MS    = STALE_HOURS * 60 * 60 * 1000;
+
 export async function GET(req: NextRequest) {
   const isVercelCron = req.headers.get("x-vercel-cron") === "1";
   const isInternal   = req.headers.get("authorization") === `Bearer ${process.env.CRON_SECRET}`;
@@ -10,7 +15,7 @@ export async function GET(req: NextRequest) {
   }
 
   const db      = getAdminClient();
-  const cutoff  = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+  const cutoff  = new Date(Date.now() - STALE_MS).toISOString();
   const now     = new Date().toISOString();
 
   const { data: stale, error } = await db
