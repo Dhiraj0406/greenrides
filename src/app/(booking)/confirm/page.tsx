@@ -71,14 +71,15 @@ function ConfirmContent() {
       </div>
 
       <div className="px-4 space-y-4">
-        {/* OTP box */}
+        {/* Booking reference */}
         <div className="bg-forest rounded-2xl p-5 flex flex-col items-center text-center">
           <p className="text-lime/60 text-xs uppercase tracking-widest mb-3">
-            Show this to your driver
+            Booking Reference
           </p>
-          <p className="font-mono text-4xl text-lime tracking-[0.3em]">
-            {data.booking_id.slice(0, 6).toUpperCase()}
+          <p className="font-mono text-3xl text-lime tracking-[0.25em]">
+            {data.booking_id.slice(0, 8).toUpperCase()}
           </p>
+          <p className="text-lime/50 text-xs mt-2">Your driver will call to confirm pickup</p>
         </div>
 
         {/* Route + departure */}
