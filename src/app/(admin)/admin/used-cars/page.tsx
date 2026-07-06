@@ -29,22 +29,30 @@ function formatPrice(paise: string): string {
 
 function UsedCarsContent({ token }: { token: string }) {
   const router = useRouter();
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [filter, setFilter]     = useState<Status | "ALL">("PENDING");
-  const [acting, setActing]     = useState<string | null>(null);
+  const [allListings, setAllListings] = useState<Listing[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [filter, setFilter]           = useState<Status | "ALL">("PENDING");
+  const [acting, setActing]           = useState<string | null>(null);
 
   function load() {
-    const qs = filter !== "ALL" ? `?status=${filter}` : "";
     setLoading(true);
-    fetch(`/api/admin/used-cars${qs}`, { headers: { "x-admin-token": token } })
+    fetch("/api/admin/used-cars", { headers: { "x-admin-token": token } })
       .then((r) => r.json())
-      .then((j) => { setListings(j.data ?? []); })
+      .then((j) => { setAllListings(j.data ?? []); })
       .catch(() => toast.error("Failed to load listings"))
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => { load(); }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const listings = filter === "ALL" ? allListings : allListings.filter((l) => l.status === filter);
+  const counts: Record<Status | "ALL", number> = {
+    ALL:      allListings.length,
+    PENDING:  allListings.filter((l) => l.status === "PENDING").length,
+    APPROVED: allListings.filter((l) => l.status === "APPROVED").length,
+    REJECTED: allListings.filter((l) => l.status === "REJECTED").length,
+    SOLD:     allListings.filter((l) => l.status === "SOLD").length,
+  };
 
   async function updateStatus(id: string, status: "APPROVED" | "REJECTED") {
     setActing(id);
@@ -57,7 +65,7 @@ function UsedCarsContent({ token }: { token: string }) {
       const json = await res.json();
       if (!res.ok) { toast.error(json.error ?? "Action failed"); return; }
       toast.success(`Listing ${status.toLowerCase()}`);
-      load();
+      setAllListings((prev) => prev.map((l) => l.id === id ? { ...l, status } : l));
     } catch { toast.error("Network error — please try again"); }
     finally { setActing(null); }
   }
@@ -89,11 +97,16 @@ function UsedCarsContent({ token }: { token: string }) {
           {(["PENDING", "APPROVED", "REJECTED", "SOLD", "ALL"] as const).map((s) => (
             <button
               key={s}
-              onClick={() => { setLoading(true); setFilter(s); }}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors
+              onClick={() => setFilter(s)}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors
                 ${filter === s ? "bg-forest text-white" : "bg-white border border-border text-sub"}`}
             >
               {s}
+              {counts[s] > 0 && (
+                <span className={`text-[10px] font-bold px-1 rounded-full ${
+                  filter === s ? "bg-white/20 text-white" : "bg-pale text-sub"
+                }`}>{counts[s]}</span>
+              )}
             </button>
           ))}
         </div>

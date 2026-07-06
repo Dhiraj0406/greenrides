@@ -27,10 +27,11 @@ interface Doc {
 }
 
 function DocumentsContent({ token }: { token: string }) {
-  const [docs, setDocs]       = useState<Doc[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter]   = useState<"" | "PENDING" | "APPROVED" | "REJECTED">("");
-  const [acting, setActing]   = useState<string | null>(null);
+  const [docs, setDocs]         = useState<Doc[]>([]);
+  const [allDocs, setAllDocs]   = useState<Doc[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [filter, setFilter]     = useState<"" | "PENDING" | "APPROVED" | "REJECTED">("");
+  const [acting, setActing]     = useState<string | null>(null);
 
   function load() {
     const qs = filter ? `?status=${filter}` : "";
@@ -38,13 +39,19 @@ function DocumentsContent({ token }: { token: string }) {
       .then(async (r) => {
         const j = await r.json();
         if (!r.ok) { toast.error(j.error ?? "Failed to load documents"); return; }
-        setDocs(j.data ?? []);
+        const data: Doc[] = j.data ?? [];
+        setDocs(data);
+        if (!filter) setAllDocs(data);
       })
       .catch(() => toast.error("Failed to load documents"))
       .finally(() => setLoading(false));
   }
 
   useEffect(() => { load(); }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const pendingCount  = allDocs.filter((d) => d.status === "PENDING").length;
+  const approvedCount = allDocs.filter((d) => d.status === "APPROVED").length;
+  const total         = allDocs.length;
 
   async function verify(id: string, action: "approve" | "reject") {
     setActing(id);
@@ -75,9 +82,30 @@ function DocumentsContent({ token }: { token: string }) {
           <Link href="/admin" className="text-lime/70 -ml-1">
             <ChevronLeft className="w-5 h-5" />
           </Link>
-          <div>
+          <div className="flex-1">
             <p className="text-lime/60 text-xs font-mono uppercase tracking-widest mb-1">Green Admin</p>
-            <h1 className="font-display text-2xl text-white">KYC Documents</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="font-display text-2xl text-white">KYC Documents</h1>
+              {pendingCount > 0 && (
+                <span className="bg-gold text-forest text-[11px] font-bold px-2 py-0.5 rounded-full">
+                  {pendingCount} pending
+                </span>
+              )}
+            </div>
+            {total > 0 && (
+              <div className="mt-2">
+                <div className="flex justify-between text-[10px] text-lime/50 mb-1">
+                  <span>{approvedCount}/{total} verified</span>
+                  <span>{Math.round((approvedCount / total) * 100)}%</span>
+                </div>
+                <div className="bg-white/10 h-1.5 rounded-full w-full">
+                  <div
+                    className="bg-lime h-1.5 rounded-full transition-all"
+                    style={{ width: `${(approvedCount / total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -89,10 +117,15 @@ function DocumentsContent({ token }: { token: string }) {
             <button
               key={s}
               onClick={() => { setLoading(true); setFilter(s); }}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors
                 ${filter === s ? "bg-forest text-white" : "bg-white border border-border text-sub"}`}
             >
               {s || "All"}
+              {s === "PENDING" && pendingCount > 0 && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                  filter === "PENDING" ? "bg-white/20 text-white" : "bg-gold/10 text-gold"
+                }`}>{pendingCount}</span>
+              )}
             </button>
           ))}
         </div>
