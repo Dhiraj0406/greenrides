@@ -52,6 +52,63 @@ function StatusBadge({ status }: { status: MyRequest["status"] }) {
   );
 }
 
+// --- Trip status timeline ---
+const TIMELINE_STEPS = ["Pending", "Confirmed", "In Progress", "Done"];
+
+const STATUS_TO_STEP: Record<string, number> = {
+  PENDING:     0,
+  CONFIRMED:   1,
+  IN_PROGRESS: 2,
+  COMPLETED:   3,
+};
+
+function TripTimeline({ status }: { status: string }) {
+  // Do not render for CANCELLED
+  if (status === "CANCELLED") {
+    return (
+      <div className="mt-3 mb-1">
+        <span className="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-red-50 text-red-500">
+          Cancelled
+        </span>
+      </div>
+    );
+  }
+
+  const activeStep = STATUS_TO_STEP[status] ?? 0;
+
+  return (
+    <div className="mt-3 mb-1">
+      <div className="flex items-center gap-0">
+        {TIMELINE_STEPS.map((step, index) => (
+          <div key={step} className="flex items-center flex-1 last:flex-none">
+            {/* Step column: circle + label */}
+            <div className="flex flex-col items-center gap-1">
+              <div
+                className={`w-5 h-5 rounded-full text-[9px] flex items-center justify-center font-bold flex-shrink-0 ${
+                  index <= activeStep ? "bg-leaf text-white" : "bg-pale text-sub"
+                }`}
+              >
+                {index + 1}
+              </div>
+              <span className="text-[8px] text-sub text-center leading-tight w-10">
+                {step}
+              </span>
+            </div>
+            {/* Connector bar — not after last step */}
+            {index < TIMELINE_STEPS.length - 1 && (
+              <div
+                className={`flex-1 h-0.5 mb-3 ${
+                  index < activeStep ? "bg-leaf" : "bg-pale"
+                }`}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PayNowButton({ requestId, orderId, amountPaise }: { requestId: string; orderId: string; amountPaise: number }) {
   const [paying, setPaying] = useState(false);
 
@@ -232,12 +289,13 @@ function PendingCard({ req, token, onCancelled }: { req: MyRequest; token: strin
           Pending
         </span>
       </div>
-      <div className="flex items-center gap-1.5 text-sm text-sub mb-3">
+      <div className="flex items-center gap-1.5 text-sm text-sub mb-1">
         <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
         <span>{formatTravelDate(req.travel_date)}</span>
         <span className="text-sub">·</span>
         <span className="font-semibold text-forest">₹{fareRupees}</span>
       </div>
+      <TripTimeline status={req.status} />
       <div className="bg-amber-50 border border-gold/20 rounded-xl p-3 mb-3">
         <p className="text-sm font-semibold text-gold">Finding your driver…</p>
         <p className="text-xs text-sub mt-0.5">We&apos;ll call you once a driver is confirmed.</p>
@@ -277,10 +335,12 @@ function RequestCard({ request, onRate }: { request: MyRequest; onRate: (id: str
         <StatusBadge status={request.status} />
       </div>
 
-      <div className="flex items-center gap-1.5 text-sm text-sub mb-3">
+      <div className="flex items-center gap-1.5 text-sm text-sub mb-1">
         <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
         <span>{formatTravelDate(request.travel_date)}</span>
       </div>
+
+      <TripTimeline status={request.status} />
 
       <div className="flex items-center justify-between mb-2">
         <span className="font-display text-xl text-forest">₹{fareRupees}</span>
@@ -349,6 +409,9 @@ function CabBookingCard({ booking, onRate }: { booking: CabBooking; onRate: (id:
     CANCELLED:   "bg-red-50 text-red-500",
     REFUNDED:    "bg-blue-50 text-blue-500",
   };
+  // REFUNDED is not in the 4-step timeline — treat as COMPLETED visually
+  const timelineStatus = booking.status === "REFUNDED" ? "COMPLETED" : booking.status;
+
   return (
     <div className="bg-white border border-border rounded-2xl p-4">
       <div className="flex items-center justify-between mb-2">
@@ -361,10 +424,11 @@ function CabBookingCard({ booking, onRate }: { booking: CabBooking; onRate: (id:
           {booking.status.charAt(0) + booking.status.slice(1).toLowerCase()}
         </span>
       </div>
-      <div className="flex items-center gap-1.5 text-sm text-sub mb-2">
+      <div className="flex items-center gap-1.5 text-sm text-sub mb-1">
         <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
         <span>{new Date(booking.departure_time).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}</span>
       </div>
+      <TripTimeline status={timelineStatus} />
       <div className="flex items-center justify-between mb-2">
         <span className="font-display text-xl text-forest">₹{fareRupees}</span>
         <span className="text-xs text-sub">{booking.driver_name} · {booking.vehicle_model}</span>

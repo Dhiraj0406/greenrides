@@ -440,7 +440,7 @@
         "src/app/bookings/page.tsx"
       ],
       "prompt_hint": "Inside each booking card (after the from/to row), add a horizontal 4-step timeline. Steps: ['Pending', 'Confirmed', 'In Progress', 'Done']. Compute activeStep from booking.status: PENDING=0, CONFIRMED=1, IN_PROGRESS=2, COMPLETED=3, CANCELLED=-1. Render: <div className='flex items-center gap-0 mt-3 mb-1'>. For each step: a circle (w-5 h-5 rounded-full text-[9px] flex items-center justify-center font-bold) that is bg-leaf text-white if step <= activeStep, else bg-pale text-sub. Between circles: a <div className='flex-1 h-0.5'> that is bg-leaf if the connecting segment is passed, else bg-pale. Below each circle (absolute or flex col): a label in text-[8px] text-sub text-center. Skip the timeline entirely if status is CANCELLED — show a red 'Cancelled' chip instead. Do NOT show timeline for CANCELLED trips.",
-      "status": "pending",
+      "status": "in_progress",
       "completed_at": null,
       "deployment_id": null
     },
