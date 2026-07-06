@@ -38,8 +38,14 @@ export function FindingDriverSheet({ requestId, from, to, fare, onDone }: Props)
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, []);
+    history.pushState({ findingDriver: true }, "");
+    const handlePop = () => onDone();
+    window.addEventListener("popstate", handlePop);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("popstate", handlePop);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {

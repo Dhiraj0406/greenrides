@@ -332,11 +332,24 @@ export default function DriverDashboardPage() {
               />
             )}
             {!driver.active_dispatch && (
-              <div className="bg-white border border-border rounded-2xl p-6 text-center text-sm text-sub">
-                {driver.is_online
-                  ? "You're online. Waiting for ride requests…"
-                  : "Go online to start receiving ride requests."}
-              </div>
+              <>
+                <div className="bg-white border border-border rounded-2xl p-6 text-center text-sm text-sub">
+                  {driver.is_online
+                    ? "You're online. Waiting for ride requests…"
+                    : "Go online to start receiving ride requests."}
+                </div>
+                <a href="/drivers/post-ride"
+                  className="bg-white border border-border rounded-2xl p-4 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-leaf/10 flex items-center justify-center flex-shrink-0">
+                    <Plus className="w-5 h-5 text-leaf" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-text text-sm">Post a Ride</p>
+                    <p className="text-xs text-sub">Share your route and earn more</p>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-sub" />
+                </a>
+              </>
             )}
           </>
         )}
@@ -399,8 +412,51 @@ export default function DriverDashboardPage() {
               const total = rideEarnings + requestEarnings;
               const tripCount = earnings.rides.length + earnings.requests.length;
 
+              const last7 = Array.from({ length: 7 }, (_, i) => {
+                const d = new Date();
+                d.setDate(d.getDate() - (6 - i));
+                return d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+              });
+              const dayLabels = last7.map((day) =>
+                new Date(day + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short" }).slice(0, 2)
+              );
+              const dailyEarnings = last7.map((day) => {
+                const rSum = (earnings.rides as Array<Record<string, unknown>>).reduce((s, r) => {
+                  const rDay = new Date(r.departure_time as string).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+                  if (rDay !== day) return s;
+                  const booked = (r.total_seats as number) - (r.available_seats as number);
+                  return s + Math.round((r.fare_paise as number) / 100) * booked;
+                }, 0);
+                const qSum = (earnings.requests as Array<Record<string, unknown>>).reduce((s, d2) => {
+                  const req = d2.request as Record<string, unknown> | null;
+                  if (!req) return s;
+                  const rDay = new Date(req.travel_date as string).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+                  if (rDay !== day) return s;
+                  return s + Math.round((req.fare_paise as number) / 100);
+                }, 0);
+                return rSum + qSum;
+              });
+              const maxE = Math.max(...dailyEarnings, 1);
+              const todayKey = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+
               return (
                 <>
+                  {tripCount > 0 && (
+                    <div className="bg-white border border-border rounded-2xl p-4 mb-2">
+                      <p className="text-xs font-bold text-sub uppercase tracking-wide mb-3">Last 7 Days</p>
+                      <div className="flex items-end gap-1.5 h-16">
+                        {last7.map((day, i) => (
+                          <div key={day} className="flex-1 flex flex-col items-center gap-1">
+                            <div
+                              className={`w-full rounded-t-md ${day === todayKey ? "bg-leaf" : "bg-leaf/50"}`}
+                              style={{ height: `${Math.max(4, (dailyEarnings[i] / maxE) * 56)}px` }}
+                            />
+                            <span className="text-[9px] text-sub">{dayLabels[i]}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="bg-forest rounded-2xl p-5 text-white mb-2">
                     <p className="text-lime/60 text-xs font-semibold uppercase tracking-wide mb-1">Total Earnings</p>
                     <p className="font-display text-4xl text-lime mb-1">₹{total.toLocaleString("en-IN")}</p>
@@ -468,6 +524,26 @@ export default function DriverDashboardPage() {
         {/* SCHEDULE TAB */}
         {tab === "schedule" && (
           <>
+            {(() => {
+              const now = new Date();
+              const year = now.getFullYear();
+              const month = now.getMonth();
+              const daysInMonth = new Date(year, month + 1, 0).getDate();
+              let availableDays = 0;
+              for (let d = 1; d <= daysInMonth; d++) {
+                const key = new Date(year, month, d).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+                if ((localAvail as Record<string, unknown>)[key] !== "rest") availableDays++;
+              }
+              return (
+                <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 mb-2 ${availableDays === 0 ? "bg-gold/10" : "bg-pale"}`}>
+                  <span className="text-sm font-semibold text-text">
+                    {availableDays === 0
+                      ? "No available days this month — mark your schedule"
+                      : `${availableDays} available days this month`}
+                  </span>
+                </div>
+              );
+            })()}
             <AvailabilityCalendar
               value={localAvail as Record<string, { start: string; end: string } | "rest">}
               onChange={setLocalAvail as (v: Record<string, unknown>) => void}
@@ -565,6 +641,37 @@ export default function DriverDashboardPage() {
                   <p className="font-display text-2xl text-lime">{profile?.name ?? "—"}</p>
                   <p className="text-lime/60 text-sm">{profile?.phone ?? "—"}</p>
                 </div>
+
+                {(() => {
+                  const fields = [
+                    profileForm.name.trim(),
+                    profileForm.license_number.trim(),
+                    profileForm.vehicle_number.trim(),
+                    profileForm.vehicle_model.trim(),
+                  ];
+                  const filled = fields.filter(Boolean).length;
+                  const pct = Math.round((filled / fields.length) * 100);
+                  const missing = [
+                    !profileForm.name.trim() && "name",
+                    !profileForm.license_number.trim() && "licence number",
+                    !profileForm.vehicle_number.trim() && "vehicle number",
+                    !profileForm.vehicle_model.trim() && "vehicle model",
+                  ].filter(Boolean);
+                  return (
+                    <div className="bg-white border border-border rounded-2xl p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-semibold text-text">Profile {pct}% complete</p>
+                        {pct === 100 && <span className="text-xs text-leaf font-semibold">✓ All done</span>}
+                      </div>
+                      <div className="bg-pale h-2 rounded-full w-full mb-2">
+                        <div className="bg-leaf h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                      {missing.length > 0 && (
+                        <p className="text-xs text-sub">Missing: {missing.join(", ")}</p>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="space-y-3">
                   <input

@@ -127,7 +127,8 @@ function AddDriverModal({ token, onClose, onCreated }: {
 function DriversContent({ token }: { token: string }) {
   const [drivers, setDrivers]   = useState<Driver[]>([]);
   const [loading, setLoading]   = useState(true);
-  const [tab, setTab]           = useState<"pending" | "all">("pending");
+  const [tab, setTab]           = useState<"pending" | "approved" | "all">("pending");
+  const [query, setQuery]       = useState("");
   const [showAdd, setShowAdd]   = useState(false);
   const [toggling, setToggling] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
@@ -174,7 +175,19 @@ function DriversContent({ token }: { token: string }) {
     finally { setToggling(null); }
   }
 
-  const filtered = tab === "pending" ? drivers.filter((d) => !d.is_approved) : drivers;
+  const byTab = tab === "pending"
+    ? drivers.filter((d) => !d.is_approved)
+    : tab === "approved"
+    ? drivers.filter((d) => d.is_approved)
+    : drivers;
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? byTab.filter((d) =>
+        (d.user.name ?? "").toLowerCase().includes(q) ||
+        d.user.phone.includes(q) ||
+        (d.vehicle_number ?? "").toLowerCase().includes(q)
+      )
+    : byTab;
 
   return (
     <div className="green-container min-h-screen bg-cream pb-16">
@@ -191,16 +204,29 @@ function DriversContent({ token }: { token: string }) {
             <Plus className="w-3.5 h-3.5" /> Add Driver
           </button>
         </div>
-        <div className="flex gap-2 mt-3">
-          {(["pending", "all"] as const).map((t) => (
+        <div className="flex gap-2 mt-3 flex-wrap">
+          {([
+            ["pending",  "Pending"],
+            ["approved", `Approved (${drivers.filter((d) => d.is_approved).length})`],
+            ["all",      "All"],
+          ] as const).map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)}
               className={cn(
                 "px-3 py-1.5 rounded-full text-xs font-semibold transition-all",
                 tab === t ? "bg-leaf text-white" : "bg-forest-mid text-lime/60 hover:text-lime"
               )}>
-              {t === "pending" ? "Pending Approval" : "All Drivers"}
+              {label}
             </button>
           ))}
+        </div>
+        <div className="mt-2">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by name, phone, or plate…"
+            className="w-full bg-forest-mid border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder-lime/40 outline-none focus:border-lime/40"
+          />
         </div>
       </header>
 

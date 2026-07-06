@@ -74,6 +74,22 @@ export default function VehiclesPage() {
           <button onClick={() => window.location.reload()} className="mt-2 text-xs text-red-400 underline">Retry</button>
         </div>
       )}
+      {!loading && !loadError && vehicles.length > 0 && (
+        <div className="bg-white border border-border rounded-2xl p-4 grid grid-cols-3 gap-2 mb-4 text-center">
+          <div>
+            <p className="font-display text-2xl text-leaf">{vehicles.filter((v) => v.active).length}</p>
+            <p className="text-[10px] text-sub uppercase tracking-wide">Active</p>
+          </div>
+          <div>
+            <p className="font-display text-2xl text-sub">{vehicles.filter((v) => !v.active).length}</p>
+            <p className="text-[10px] text-sub uppercase tracking-wide">Inactive</p>
+          </div>
+          <div>
+            <p className="font-display text-2xl text-gold">{vehicles.filter((v) => !v.driver_id).length}</p>
+            <p className="text-[10px] text-sub uppercase tracking-wide">No Driver</p>
+          </div>
+        </div>
+      )}
       {!loading && !loadError && vehicles.length === 0 && (
         <div className="flex flex-col items-center py-12 gap-3">
           <Truck className="w-8 h-8 text-sub" />
@@ -89,7 +105,7 @@ export default function VehiclesPage() {
           <div className="flex items-start gap-3">
             {v.thumbnail_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={v.thumbnail_url} alt={v.number}
+              <img src={v.thumbnail_url} alt={v.number} loading="lazy" decoding="async"
                 className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-border" />
             ) : (
               <div className="w-16 h-16 rounded-xl bg-pale border border-border flex-shrink-0 flex items-center justify-center">
