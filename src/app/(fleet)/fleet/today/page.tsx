@@ -384,14 +384,15 @@ export default function TodayPage() {
     return () => clearInterval(id);
   }, [token, fetchDispatches, router]);
 
-  // GPS ping loop — active only while a trip is IN_PROGRESS
-  useEffect(() => {
-    const inProgress = dispatches.find(
-      (d) => d.status === "ACCEPTED" && d.request?.status === "IN_PROGRESS"
-    );
-    if (!inProgress || !token) return;
+  // GPS ping loop — active only while a trip is IN_PROGRESS.
+  // Derived outside the effect so React compares by value, not by array reference,
+  // preventing the interval from restarting on every 15s dispatch poll.
+  const inProgressId = dispatches.find(
+    (d) => d.status === "ACCEPTED" && d.request?.status === "IN_PROGRESS"
+  )?.request_id ?? null;
 
-    const requestId = inProgress.request_id;
+  useEffect(() => {
+    if (!inProgressId || !token) return;
 
     function ping() {
       navigator.geolocation.getCurrentPosition(
@@ -400,7 +401,7 @@ export default function TodayPage() {
             method:  "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             body:    JSON.stringify({
-              request_id: requestId,
+              request_id: inProgressId,
               lat:        pos.coords.latitude,
               lng:        pos.coords.longitude,
               heading:    pos.coords.heading ?? undefined,
@@ -412,11 +413,11 @@ export default function TodayPage() {
       );
     }
 
-    ping(); // immediate first ping
+    ping();
     const interval = setInterval(ping, 10_000);
 
     return () => clearInterval(interval);
-  }, [dispatches, token]);
+  }, [inProgressId, token]);
 
   // Play alert when a new dispatch arrives after initial load
   const pendingDispatches  = dispatches.filter((d) => d.status === "PENDING");

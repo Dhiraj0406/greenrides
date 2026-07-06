@@ -141,7 +141,7 @@ function ConfirmedHeroCard({ req, token }: { req: MyRequest; token: string }) {
         <Calendar className="w-3.5 h-3.5" />
         <span>{formatTravelDate(req.travel_date)}</span>
         <span>·</span>
-        <span className="font-semibold text-white">₹{req.fare_paise / 100}</span>
+        <span className="font-semibold text-white">₹{Math.round(req.fare_paise / 100)}</span>
       </div>
 
       {req.trip_otp && (

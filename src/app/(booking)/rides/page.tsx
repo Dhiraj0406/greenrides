@@ -292,6 +292,8 @@ export default function RidesPage() {
           to={bookingRide.to_city}
           fareRupees={Math.round(bookingRide.fare_paise / 100)}
           date={date}
+          rideId={bookingRide.id}
+          seats={getSeats(bookingRide.id)}
         />
       )}
 

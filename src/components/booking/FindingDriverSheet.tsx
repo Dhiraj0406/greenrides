@@ -111,8 +111,8 @@ export function FindingDriverSheet({ requestId, from, to, fare, onDone }: Props)
           overflowY: "auto",
         }}
       >
-        {/* ── CONFIRMED ───────────────────────────────────────── */}
-        {status === "CONFIRMED" && req && (
+        {/* ── CONFIRMED / COMPLETED ──────────────────────────── */}
+        {(status === "CONFIRMED" || status === "COMPLETED") && req && (
           <>
             <div style={{ background: "var(--green)", padding: "28px 24px 24px", textAlign: "center" }}>
               <div style={{ fontSize: 48, marginBottom: 8 }}>✅</div>

@@ -18,9 +18,11 @@ interface Props {
   to:          string;
   fareRupees:  number;
   date?:       string;
+  rideId?:     string;
+  seats?:      number;
 }
 
-export function DriverSheet({ open, onClose, from, to, fareRupees, date }: Props) {
+export function DriverSheet({ open, onClose, from, to, fareRupees, date, rideId, seats }: Props) {
   const router = useRouter();
   const [rides, setRides] = useState<RideWithDriver[]>([]);
   const [loading, setLoading] = useState(false);
@@ -77,7 +79,7 @@ export function DriverSheet({ open, onClose, from, to, fareRupees, date }: Props
         body: JSON.stringify({
           ride_id:        ride.id,
           rider_id:       user.id,
-          seats:          1,
+          seats:          seats ?? 1,
           pickup_point:   ride.pickup_points[0] ?? from,
           payment_method: "cash",
           ...(forSomeoneElse && travelerName ? { traveler_name: travelerName, traveler_phone: travelerPhone || null } : {}),
@@ -98,7 +100,7 @@ export function DriverSheet({ open, onClose, from, to, fareRupees, date }: Props
     }
   }
 
-  const ride = rides[0] ?? null;
+  const ride = (rideId ? rides.find((r) => r.id === rideId) : rides[0]) ?? null;
 
   return (
     <Drawer.Root open={open} onOpenChange={(o) => !o && onClose()}>

@@ -128,18 +128,22 @@ function ConfirmContent() {
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-forest-mid flex items-center
                             justify-center text-lime font-display text-lg flex-shrink-0">
-              {data.driver_name.charAt(0)}
+              {(data.driver_name ?? "?").charAt(0)}
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-text">{data.driver_name}</p>
-              <p className="text-sm text-sub">{data.vehicle_number}</p>
+              <p className="font-semibold text-text">{data.driver_name ?? "Driver assigned"}</p>
+              {data.vehicle_number && (
+                <p className="text-sm text-sub">{data.vehicle_number}</p>
+              )}
             </div>
-            <a
-              href={`tel:${data.driver_phone}`}
-              className="w-10 h-10 rounded-full bg-pale flex items-center justify-center"
-            >
-              <Phone className="w-4 h-4 text-leaf" />
-            </a>
+            {data.driver_phone && (
+              <a
+                href={`tel:${data.driver_phone}`}
+                className="w-10 h-10 rounded-full bg-pale flex items-center justify-center"
+              >
+                <Phone className="w-4 h-4 text-leaf" />
+              </a>
+            )}
           </div>
         </div>
 
