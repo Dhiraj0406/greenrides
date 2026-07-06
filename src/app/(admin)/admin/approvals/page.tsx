@@ -39,6 +39,40 @@ function ApprovalsContent({ token }: { token: string }) {
   const [loadingUpgr,  setLoadingUpgr]  = useState(true);
   const [decidingApp,  setDecidingApp]  = useState<string | null>(null);
   const [decidingUpgr, setDecidingUpgr] = useState<string | null>(null);
+  const [selectedIds,  setSelectedIds]  = useState<Set<string>>(new Set());
+  const [bulkDeciding, setBulkDeciding] = useState(false);
+
+  function toggleSelect(key: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+
+  async function bulkDecide(action: "approve" | "reject") {
+    setBulkDeciding(true);
+    const keys = Array.from(selectedIds);
+    const selected = applicants.filter((a) => keys.includes(`${a.kind}-${a.id}`));
+    let successCount = 0;
+    for (const a of selected) {
+      try {
+        const res = await fetch("/api/admin/applicants", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", "x-admin-token": token },
+          body: JSON.stringify({ user_id: a.user_id, action, applicant_type: a.kind }),
+        });
+        const j = await res.json();
+        if (res.ok && !j.error) {
+          successCount++;
+          setApplicants((prev) => prev.filter((p) => !(p.id === a.id && p.kind === a.kind)));
+        }
+      } catch { /* skip failed items */ }
+    }
+    if (successCount > 0) toast.success(`${successCount} ${action === "approve" ? "approved" : "rejected"}`);
+    setSelectedIds(new Set());
+    setBulkDeciding(false);
+  }
 
   useEffect(() => {
     fetch("/api/admin/applicants", { headers: { "x-admin-token": token } })
@@ -173,6 +207,12 @@ function ApprovalsContent({ token }: { token: string }) {
             {applicants.map((a) => (
               <div key={`${a.kind}-${a.id}`} className="bg-white border border-border rounded-2xl p-4 mb-3">
                 <div className="flex items-start gap-3 mb-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(`${a.kind}-${a.id}`)}
+                    onChange={() => toggleSelect(`${a.kind}-${a.id}`)}
+                    className="w-4 h-4 accent-leaf mt-1 flex-shrink-0 cursor-pointer"
+                  />
                   <div className="w-9 h-9 rounded-full bg-pale flex items-center justify-center flex-shrink-0">
                     <User className="w-4 h-4 text-sub" />
                   </div>
@@ -247,6 +287,30 @@ function ApprovalsContent({ token }: { token: string }) {
           </>
         )}
       </div>
+
+      {/* Bulk action bar */}
+      {tab === "applications" && selectedIds.size > 0 && (
+        <div className="fixed bottom-0 inset-x-0 bg-white border-t border-border px-4 py-3 flex items-center justify-between z-20 shadow-lg">
+          <span className="text-sm font-semibold text-text">{selectedIds.size} selected</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => bulkDecide("reject")}
+              disabled={bulkDeciding}
+              className="border border-red-200 text-red-500 px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-60"
+            >
+              Reject All
+            </button>
+            <button
+              onClick={() => bulkDecide("approve")}
+              disabled={bulkDeciding}
+              className="bg-leaf text-white px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-60 flex items-center gap-1.5"
+            >
+              {bulkDeciding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+              Approve All
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

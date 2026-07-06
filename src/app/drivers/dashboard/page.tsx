@@ -587,14 +587,24 @@ export default function DriverDashboardPage() {
                       <ArrowRight className="w-3.5 h-3.5 text-sub" />
                       <span>{r.to_city as string}</span>
                     </div>
-                    <span className={cn(
-                      "text-[10px] font-bold px-2 py-0.5 rounded-full",
-                      r.status === "SCHEDULED" ? "bg-amber-50 text-amber-600" :
-                      r.status === "IN_PROGRESS" ? "bg-leaf/10 text-leaf" :
-                      r.status === "COMPLETED" ? "bg-gray-50 text-sub" : "bg-red-50 text-red-500"
-                    )}>
-                      {r.status as string}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {(() => {
+                        const booked = (r.total_seats as number) - (r.available_seats as number);
+                        return booked > 0 ? (
+                          <span className="text-[10px] bg-pale text-sub px-1.5 py-0.5 rounded-full font-semibold">
+                            {booked}/{r.total_seats as number} pax
+                          </span>
+                        ) : null;
+                      })()}
+                      <span className={cn(
+                        "text-[10px] font-bold px-2 py-0.5 rounded-full",
+                        r.status === "SCHEDULED" ? "bg-amber-50 text-amber-600" :
+                        r.status === "IN_PROGRESS" ? "bg-leaf/10 text-leaf" :
+                        r.status === "COMPLETED" ? "bg-gray-50 text-sub" : "bg-red-50 text-red-500"
+                      )}>
+                        {r.status as string}
+                      </span>
+                    </div>
                   </div>
                   <p className="text-xs text-sub mb-3">
                     {new Date(r.departure_time as string).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })} ·{" "}

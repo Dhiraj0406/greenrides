@@ -71,6 +71,43 @@ export default function EarningsPage() {
             </div>
           </div>
 
+          {/* 6-month trend chart */}
+          {data.payouts.length > 0 && (() => {
+            const now = new Date();
+            const months = Array.from({ length: 6 }, (_, i) => {
+              const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+              const y = d.getFullYear(); const m = d.getMonth();
+              const total = data!.payouts
+                .filter((p) => { const t = new Date(p.period_to); return t.getFullYear() === y && t.getMonth() === m; })
+                .reduce((sum, p) => sum + p.amount_paise, 0);
+              return { label: d.toLocaleDateString("en-IN", { month: "short" }), total };
+            });
+            const max = Math.max(...months.map((m) => m.total), 1);
+            return (
+              <div className="bg-white border border-border rounded-2xl p-4 mb-5">
+                <p className="text-xs font-semibold text-sub uppercase tracking-wide mb-4">6-Month Trend</p>
+                <div className="flex items-end gap-2 h-24">
+                  {months.map((m, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                      <div
+                        className="w-full rounded-t-md"
+                        style={{
+                          height: `${Math.max(4, Math.round((m.total / max) * 72))}px`,
+                          background: m.total > 0 ? "var(--green)" : "var(--pale)",
+                          opacity: m.total > 0 ? 1 : 0.4,
+                        }}
+                      />
+                      <span className="text-[9px] text-sub font-semibold">{m.label}</span>
+                      {m.total > 0 && (
+                        <span className="text-[9px] text-text font-bold">₹{Math.round(m.total / 100)}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           <h3 className="text-sm font-semibold text-text mb-3">Payouts</h3>
           {data.payouts.length === 0 && (
             <p className="text-center text-sub text-sm py-6">No payouts yet.</p>
