@@ -34,17 +34,32 @@ Strict rules:
 5. Keep changes minimal and focused on the stated improvement only.
 6. Match the existing code style exactly — same indentation, naming conventions, comment style.
 
-Output format — output ONLY these XML blocks, no explanation, no markdown, no preamble:
+Output format — CRITICAL RULES:
+- Output ONLY <file> blocks. Zero explanation, zero markdown, zero preamble or postamble.
+- Do NOT wrap the blocks in triple backticks or any code fence.
+- Each changed file gets exactly one block. Never truncate — every line must be present.
+- Format (use this exactly, including the angle brackets):
+
 <file path="src/app/example/page.tsx">
-[complete new file content — every line, not a partial diff]
+complete file content here — every line, not a diff
 </file>`;
 
 function parseFileBlocks(text: string): { path: string; content: string }[] {
-  const pattern = /<file path="([^"]+)">([\s\S]*?)<\/file>/g;
+  // Strip markdown code fences that may wrap the XML blocks
+  const stripped = text.replace(/```[a-z]*\n?/g, "").replace(/```/g, "");
+  const pattern  = /<file path="([^"]+)">([\s\S]*?)<\/file>/g;
   const files: { path: string; content: string }[] = [];
   let match: RegExpExecArray | null;
-  while ((match = pattern.exec(text)) !== null) {
-    files.push({ path: match[1].trim(), content: match[2].trim() });
+  // Search both stripped and raw text (handles cases where fences aren't uniform)
+  for (const source of [stripped, text]) {
+    pattern.lastIndex = 0;
+    while ((match = pattern.exec(source)) !== null) {
+      const p = match[1].trim();
+      if (!files.some((f) => f.path === p)) {
+        files.push({ path: p, content: match[2].trim() });
+      }
+    }
+    if (files.length > 0) break;
   }
   return files;
 }
@@ -128,7 +143,7 @@ async function main() {
   console.log("Calling Claude API...");
   const message = await anthropic.messages.create({
     model:      "claude-sonnet-4-6",
-    max_tokens: 8000,
+    max_tokens: 16000,
     system:     SYSTEM_PROMPT,
     messages:   [{ role: "user", content: userPrompt }],
   });

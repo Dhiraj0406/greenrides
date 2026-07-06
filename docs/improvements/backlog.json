@@ -12,8 +12,8 @@
         "src/app/bookings/page.tsx"
       ],
       "prompt_hint": "While loading=true, show animate-pulse skeleton divs using bg-border that mirror the exact layout of the loaded content. Use rounded-xl for card skeletons, rounded-full for avatar/icon placeholders. When loading=false and data arrives, render the real content. Do not add a new component — inline the skeleton JSX in the existing conditional render.",
-      "status": "in_progress",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-06-19T02:30:00.000Z",
       "deployment_id": null
     },
     {
@@ -26,8 +26,8 @@
         "src/app/(booking)/confirm/page.tsx"
       ],
       "prompt_hint": "Show: (1) large green checkmark icon (CheckCircle w-16 h-16 text-leaf), (2) 'Booking Confirmed!' in font-display text-2xl text-forest, (3) an OTP box: bg-forest rounded-2xl p-5, label 'Show this to your driver' in text-lime/60 text-xs uppercase, the OTP digits in font-mono text-4xl text-lime tracking-[0.3em]. Below the OTP box: route (from → to) in text-text font-semibold, departure date in text-sub. Add a 'View My Bookings' button linking to /bookings.",
-      "status": "in_progress",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-06-19T02:30:00.000Z",
       "deployment_id": null
     },
     {
@@ -40,8 +40,8 @@
         "src/app/(booking)/rides/page.tsx"
       ],
       "prompt_hint": "For each ride card, render a row of circles (max 8 shown). Booked seats = filled circle (w-2.5 h-2.5 rounded-full bg-sub inline-block). Available seats = empty circle (w-2.5 h-2.5 rounded-full border border-leaf inline-block). Space them with gap-1. Cap at 8 circles even for larger vehicles. Keep existing seat count text as a subtitle in text-xs text-sub beneath the circles.",
-      "status": "in_progress",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-06-19T02:30:00.000Z",
       "deployment_id": null
     },
     {
@@ -55,8 +55,8 @@
         "src/app/(booking)/rides/page.tsx"
       ],
       "prompt_hint": "For bookings page empty state: Ticket icon (w-12 h-12 text-sub/40), heading 'No bookings yet' (text-lg font-semibold text-text), subtitle 'Your upcoming and past rides will appear here' (text-sm text-sub), CTA button 'Find a ride →' (bg-leaf text-white font-semibold px-5 py-3 rounded-xl) linking to /rides. For rides page with no results: Search icon, heading 'No rides found', subtitle 'Try different dates or cities', CTA 'Clear filters'. Wrap in a flex-col items-center py-16 gap-3 div.",
-      "status": "in_progress",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-06-19T02:30:00.000Z",
       "deployment_id": null
     },
     {
@@ -70,8 +70,8 @@
         "src/app/(booking)/confirm/page.tsx"
       ],
       "prompt_hint": "In the booking summary/confirmation step, add a fare breakdown row: '₹{farePerSeat} × {seats} seat{s} = ₹{total}' in text-sm text-sub. The total should be in font-display text-lg text-forest font-bold. Update dynamically when seat count changes. Convert from paise: fare_paise / 100. Place directly above the 'Book Now' / 'Confirm' button.",
-      "status": "in_progress",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-06-19T02:30:00.000Z",
       "deployment_id": null
     },
     {
@@ -84,8 +84,8 @@
         "src/app/routes/[slug]/page.tsx"
       ],
       "prompt_hint": "Add a sticky bottom bar (fixed bottom-0 left-0 right-0 bg-white border-t border-border px-4 py-3 flex items-center justify-between z-10). Left side: 'From ₹{minFare}' in font-display text-xl text-forest (show only if fare data is available; omit if unknown). Right side: a Link to /rides?from={fromCity}&to={toCity} styled as bg-leaf text-white font-bold px-6 py-3 rounded-xl 'Book Now →'. Add pb-20 to the page content div to avoid content being hidden behind the sticky bar.",
-      "status": "in_progress",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-06-19T02:30:00.000Z",
       "deployment_id": null
     },
     {
@@ -98,8 +98,8 @@
         "src/app/layout.tsx"
       ],
       "prompt_hint": "Add a new 'use client' component OfflineBanner inside layout.tsx (not a separate file). Use useEffect to add/remove listeners on window 'online' and 'offline' events. When offline: render a fixed top banner (fixed top-0 inset-x-0 z-50 bg-gold text-white text-sm font-semibold text-center py-2 px-4 flex items-center justify-center gap-2). Show WifiOff icon from lucide-react and text 'You're offline — check your connection'. When back online: call toast.success('Back online') and hide the banner. The banner should animate in with transition-all.",
-      "status": "in_progress",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-06-19T02:30:00.000Z",
       "deployment_id": null
     },
     {
@@ -112,8 +112,8 @@
         "src/app/drivers/dashboard/page.tsx"
       ],
       "prompt_hint": "In the earnings tab, above the existing earnings cards, add a 7-day chart. Compute last 7 calendar days from today (Asia/Kolkata). For each day, sum earnings from completed rides and requests that day. Render as a row of 7 bars: each bar is a flex-col items-center gap-1 div. The bar itself is a div with bg-leaf/80 rounded-t-lg w-8, height proportional to that day's earnings relative to the max (use inline style height: `${(dayEarnings/maxEarnings)*80}px`, min-height: 4px). Below: day label in text-[10px] text-sub (Mon/Tue/etc). Highlight today's bar with bg-leaf. Show '₹0' days as minimum height bars in bg-pale.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -126,8 +126,8 @@
         "src/app/drivers/dashboard/page.tsx"
       ],
       "prompt_hint": "In the PENDING dispatch card section, after the route/fare/date line, add a rider info row. Fetch the rider's rating from the existing request data (add avg_rating to the RideRequest select query if not already present, or use a placeholder 4.8 if unavailable). Render: Star icon (w-3 h-3 text-gold fill-gold) + '{rating} rider rating' in text-xs text-sub. Place this between the fare/date row and the notes (if any), before the Accept/Reject buttons.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -140,8 +140,8 @@
         "src/app/drivers/dashboard/page.tsx"
       ],
       "prompt_hint": "In the HOME tab section, when there is no active_dispatch, add a 'Post a Ride' quick-action card below the online toggle. Style: bg-white border border-border rounded-2xl p-4 flex items-center gap-4. Left: a rounded icon box bg-leaf/10 w-12 h-12 flex items-center justify-center with Plus icon text-leaf. Center: title 'Post a Ride' font-semibold text-text, subtitle 'Share your route and earn more' text-xs text-sub. Right: ArrowRight icon text-sub. Wrap the whole card in an <a href='/drivers/post-ride'> tag.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -154,8 +154,8 @@
         "src/app/drivers/dashboard/page.tsx"
       ],
       "prompt_hint": "On each ride card in the RIDES tab, add a passenger count indicator. Calculate booked seats: total_seats - available_seats. Show as a small badge next to the status badge: Users icon (w-3 h-3) + '{bookedSeats}/{totalSeats} passengers' in text-[10px] text-sub bg-pale px-1.5 py-0.5 rounded-full. Place it in the top-right area of the card next to the existing status badge, or on a second line below the route.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -168,8 +168,8 @@
         "src/app/drivers/dashboard/page.tsx"
       ],
       "prompt_hint": "At the top of the SCHEDULE tab (before the AvailabilityCalendar), add a summary chip. Count the days in the current month that are NOT marked as rest days in localAvail. Show: bg-pale rounded-full px-4 py-2 inline-flex items-center gap-2, CalendarDays icon text-leaf w-4 h-4, text '{n} available days this month' in text-sm font-semibold text-text. If n === 0, change the bg to bg-gold/10 and text to text-gold to prompt the driver to mark availability.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -182,8 +182,8 @@
         "src/app/drivers/dashboard/page.tsx"
       ],
       "prompt_hint": "In the PROFILE tab, above the form inputs, add a completion meter. Check which fields have values: name (profileForm.name), license_number, vehicle_number, vehicle_model. Score = filled fields / 4. Render: a label 'Profile {score*100}% complete' in text-sm font-semibold text-text, then a progress bar: bg-pale rounded-full h-2 w-full with an inner div bg-leaf rounded-full h-2 style={{width: `${score*100}%`}} transition-all. Below the bar, if score < 1: list missing fields in text-xs text-sub as 'Missing: name, licence number' etc.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -196,8 +196,8 @@
         "src/app/drivers/dashboard/page.tsx"
       ],
       "prompt_hint": "The dashboard already has loadingRequests and loadingRides state. Add similar loadingEarnings state initialized to false, set to true when earnings tab loads, false when done. For each tab that has a loading state, when loading is true show 3 skeleton cards: bg-white border border-border rounded-2xl p-4 animate-pulse with inner divs of bg-border rounded-lg h-4 w-3/4 mb-2 and bg-border rounded-lg h-3 w-1/2. This replaces the immediate empty state that currently shows while data loads.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -210,8 +210,8 @@
         "src/app/(fleet)/fleet/dashboard/page.tsx"
       ],
       "prompt_hint": "Fetch the vehicles count from the existing dashboard data (or from /api/fleet/vehicles if not already loaded). Show a new card: bg-white border border-border rounded-2xl p-5. Title: 'Fleet Utilization' in text-xs font-bold text-sub uppercase. Large number: '{activeCount}/{totalCount}' in font-display text-3xl text-forest. Subtitle: '{pct}% active' in text-sm text-sub. A simple progress bar: bg-pale h-2 rounded-full with inner bg-leaf rounded-full width={pct}%. Place this card in the existing stats grid on the dashboard.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -224,8 +224,8 @@
         "src/app/(fleet)/fleet/vehicles/page.tsx"
       ],
       "prompt_hint": "After the page header row, add a 3-column summary bar: bg-white border border-border rounded-2xl p-4 grid grid-cols-3 gap-2 mb-4. Each column: number in font-display text-2xl (text-leaf for active, text-sub for inactive, text-gold for unassigned), label in text-[10px] text-sub uppercase. Active = vehicles.filter(v => v.active).length. Inactive = vehicles.filter(v => !v.active).length. Unassigned = vehicles.filter(v => !v.driver_id).length. Only render this bar when !loading and vehicles.length > 0.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -238,8 +238,8 @@
         "src/app/(fleet)/fleet/earnings/page.tsx"
       ],
       "prompt_hint": "Group the existing bookings data by ride_id vehicle. The bookings from /api/fleet/earnings already contain Ride data. Group by ride vehicle (you'll need to cross-reference with vehicle data if available, or group by driver). Show a table below the existing payouts section: 'Earnings by Trip' heading, then each booking as a row with columns: route (from_city → to_city), date (departure_time formatted), amount (₹{amount_paise/100}), status badge. Wrap in bg-white border border-border rounded-2xl overflow-hidden. Use a simple div table pattern (not an HTML table) with flex rows.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -252,8 +252,8 @@
         "src/app/(fleet)/fleet/fleet-drivers/page.tsx"
       ],
       "prompt_hint": "The driver data from /api/fleet/fleet-drivers includes Vehicle data. Add a 'Trips this week' count to each driver card. Fetch from /api/fleet/history with the driver_profile_id as a filter query param (GET /api/fleet/history?driver_profile_id={id}&days=7). Show the count as a small chip: Route icon w-3 h-3 + '{count} trips this week' in text-xs text-sub. If the fetch fails or returns 0, show '0 trips this week'. Fetch per-driver in a useEffect after drivers load.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -266,8 +266,8 @@
         "src/app/(fleet)/fleet/dashboard/page.tsx"
       ],
       "prompt_hint": "After loading dashboard data, also fetch /api/fleet/fleet-drivers. Count drivers where vehicles array is empty (no assigned vehicle). If count > 0, show an alert banner in the dashboard: bg-gold/10 border border-gold/30 rounded-2xl p-4 flex items-center gap-3. AlertCircle icon text-gold w-5 h-5. Text: '{count} driver{s} {have/has} no assigned vehicle.' in text-sm text-text. Link: 'Assign now →' text-leaf font-semibold href='/fleet/fleet-drivers'. Place this banner below the stats grid.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -280,8 +280,8 @@
         "src/app/(fleet)/fleet/vehicles/page.tsx"
       ],
       "prompt_hint": "On each vehicle card where driver_id is null, add an 'Assign Driver' section below the existing card content. Fetch approved drivers from /api/fleet/fleet-drivers on page load alongside vehicles. Show a select dropdown: border border-border rounded-xl px-3 py-2 text-xs w-full. Options: 'Assign a driver…' (disabled default) + each driver's name + phone. On change, call POST /api/fleet/assign-driver with {vehicle_id, driver_profile_id}. On success: toast.success + update local vehicles state to set driver_id. On error: toast.error.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -294,8 +294,8 @@
         "src/app/(fleet)/fleet/dashboard/page.tsx"
       ],
       "prompt_hint": "Fetch /api/fleet/earnings. Group bookings by month (last 6 months). For each month compute total amount_paise. Render a CSS-only bar chart: flex items-end gap-2 h-20. Each bar: flex-1 bg-leaf/70 rounded-t-lg with height proportional to that month's revenue relative to the max (inline style). Below each bar: 3-letter month label in text-[10px] text-sub text-center. Add a 'Last 6 months' label and total in font-display text-2xl text-forest above the chart. Wrap in a bg-white border border-border rounded-2xl p-5 card.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -308,8 +308,8 @@
         "src/app/(admin)/admin/page.tsx"
       ],
       "prompt_hint": "Fetch /api/admin/requests (already done on this page). Additionally fetch /api/admin/applicants for new signups. Add a 3-column metrics bar at the top of the Dashboard component: bg-forest rounded-2xl p-5 grid grid-cols-3 gap-4 text-white mb-6. Column 1: today's confirmed+completed bookings count, label 'Today's Bookings' text-lime/60. Column 2: confirmed rides currently (status CONFIRMED), label 'Active Rides'. Column 3: applicants submitted today (created_at >= today), label 'New Signups'. Each metric: font-display text-3xl text-lime + text-xs label.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -322,8 +322,8 @@
         "src/app/(admin)/admin/approvals/page.tsx"
       ],
       "prompt_hint": "Add a selectedIds: Set<string> state. Add a checkbox to each applicant card (top-left corner, w-4 h-4 accent-green-700). Add a sticky bottom action bar that appears when selectedIds.size > 0: fixed bottom-0 inset-x-0 bg-white border-t border-border px-4 py-3 flex items-center justify-between z-20. Left: '{n} selected'. Right: 'Approve All' button (bg-leaf text-white px-4 py-2 rounded-xl text-sm font-bold) and 'Reject All' button (border border-red-300 text-red-500 px-4 py-2 rounded-xl text-sm font-bold). Bulk action calls the existing single-item approve/reject API endpoint in a Promise.all loop.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -336,8 +336,8 @@
         "src/app/(admin)/admin/drivers/page.tsx"
       ],
       "prompt_hint": "Add: (1) a search input above the driver list: border border-border rounded-xl px-4 py-2.5 text-sm w-full placeholder 'Search by name or phone…'. Filter the in-memory drivers array by name.toLowerCase().includes(query) || phone.includes(query). (2) Status filter tabs below the search: 'All' | 'Pending' | 'Approved' | 'Rejected' as button tabs (active: bg-leaf text-white, inactive: bg-pale text-sub) text-sm font-semibold px-4 py-2 rounded-xl. Show filtered count in each tab label: 'Approved (12)'. Both filters compose: show drivers matching BOTH search and status filter.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -350,8 +350,8 @@
         "src/app/(admin)/admin/documents/page.tsx"
       ],
       "prompt_hint": "Add: (1) A count badge next to the 'Documents' page title: bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full showing the number of documents with status PENDING. (2) For each driver group in the document list, show a verification progress ring next to their name: a small SVG circle (32×32, stroke-dasharray technique) showing verified_count/total_docs_count. Filled arc in stroke-leaf, empty arc in stroke-border. Below the ring: '{n}/{total}' in text-[10px] text-sub. This gives at-a-glance sense of how many docs are cleared per driver.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -364,8 +364,8 @@
         "src/app/(admin)/admin/drivers/dispatch/page.tsx"
       ],
       "prompt_hint": "Add a 'Manual Dispatch' button at the top of the page (bg-leaf text-white font-bold px-4 py-2.5 rounded-xl). On click, show an inline form: a select for pending ride requests (fetched from /api/admin/requests?status=PENDING), a select for approved drivers (fetched from /api/admin/drivers), and a 'Dispatch' button. On submit: POST /api/admin/dispatch with {request_id, driver_id}. On success: toast.success('Dispatched successfully') and refresh the dispatch list. On error: toast.error(json.error). Use a simple show/hide toggle for the form — no modal.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -378,8 +378,8 @@
         "src/app/(admin)/admin/used-cars/page.tsx"
       ],
       "prompt_hint": "Add: (1) Status filter tabs: 'All' | 'Active' | 'Sold' | 'Inactive' — same tab styling as other admin filter tabs (bg-leaf active, bg-pale inactive). Filter the in-memory listings array. Show count in each tab label. (2) On each listing card, add an inquiry count badge: bg-leaf/10 text-leaf text-xs font-bold px-2 py-0.5 rounded-full '{n} inquiries' — fetch inquiry counts from /api/admin/used-cars/{id}/inquiries or use a pre-fetched count if already in the listing data. If the listing data doesn't include inquiry_count, add it to the GET fetch by including a count query.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -394,8 +394,8 @@
         "src/app/(admin)/admin/page.tsx"
       ],
       "prompt_hint": "Fetch GET /api/admin/improvements (no auth needed for a public summary endpoint — add a public variant). Return the most recent completed improvement: {day, title, completed_at}. In each portal header, show a small chip: bg-leaf/10 text-leaf text-[10px] font-semibold px-2.5 py-1 rounded-full '✨ Day {n}: {title}'. On click/tap expand to show the full title. Cache in sessionStorage so it only fetches once per session. Place in the header row, right-aligned, after other header elements.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -410,8 +410,8 @@
         "src/app/bookings/page.tsx"
       ],
       "prompt_hint": "For any bottom sheets or modals that open inline (not using Radix/Vaul): add a useEffect that pushes a history entry on open (history.pushState(null, '', window.location.href)) and listens to popstate to close. Add overscroll-y-none to any full-height scroll containers. Audit all interactive buttons in these files: any with only icon children need explicit w-11 h-11 min-w-[44px] min-h-[44px] classes. Add touch-manipulation to all button elements to remove 300ms tap delay.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     },
     {
@@ -426,8 +426,8 @@
         "src/app/(fleet)/fleet/vehicles/page.tsx"
       ],
       "prompt_hint": "In layout.tsx <head>: add <link rel='preconnect' href='https://fonts.googleapis.com' /> and <link rel='preconnect' href='https://supabase.co' crossOrigin='' />. For any <img> tags (not Next.js Image): add loading='lazy' decoding='async'. For vehicle thumbnail images in fleet/vehicles/page.tsx: wrap in a div with a fixed aspect-square and bg-pale placeholder so the layout doesn't shift when the image loads. For ride listing cards in rides/page.tsx: add min-h-[120px] to each card so the skeleton and loaded card have the same height.",
-      "status": "pending",
-      "completed_at": null,
+      "status": "done",
+      "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
     }
   ]
