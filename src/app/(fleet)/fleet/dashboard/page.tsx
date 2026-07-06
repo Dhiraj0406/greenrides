@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 interface DashboardData {
   vehicles: { total: number; active: number };
   drivers: number;
-  earnings: { totalEarned: number };
+  earnings: { totalEarned: number; payouts?: { amount_paise: number; period_to: string }[] };
   unassignedDrivers: number;
 }
 
@@ -115,6 +115,36 @@ export default function OwnerDashboardPage() {
               </div>
             </div>
           )}
+          {/* Monthly revenue trend */}
+          {data.earnings.payouts && data.earnings.payouts.length > 0 && (() => {
+            const now = new Date();
+            const months = Array.from({ length: 6 }, (_, i) => {
+              const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+              const y = d.getFullYear(); const m = d.getMonth();
+              const total = data!.earnings.payouts!
+                .filter((p) => { const t = new Date(p.period_to); return t.getFullYear() === y && t.getMonth() === m; })
+                .reduce((sum, p) => sum + p.amount_paise, 0);
+              return { label: d.toLocaleDateString("en-IN", { month: "short" }), total };
+            });
+            const max = Math.max(...months.map((m) => m.total), 1);
+            return (
+              <div className="bg-white border border-border rounded-2xl p-5 mb-3">
+                <p className="text-xs font-bold text-sub uppercase tracking-wide mb-4">Revenue Trend</p>
+                <div className="flex items-end gap-2 h-20">
+                  {months.map((m, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                      <div className="w-full rounded-t-md" style={{
+                        height: `${Math.max(3, Math.round((m.total / max) * 56))}px`,
+                        background: m.total > 0 ? "var(--green)" : "var(--pale)",
+                        opacity: m.total > 0 ? 1 : 0.4,
+                      }} />
+                      <span className="text-[9px] text-sub font-semibold">{m.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </>
       )}
       <Link href="/fleet/vehicles/new"

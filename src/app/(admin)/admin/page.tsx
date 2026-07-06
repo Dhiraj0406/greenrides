@@ -108,6 +108,24 @@ function Dashboard({ token }: { token: string }) {
               </div>
             </div>
 
+            {/* Live metrics strip */}
+            {quickStats && (
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="bg-white border border-border rounded-xl p-3 text-center">
+                  <p className="font-display text-2xl text-leaf">{quickStats.active_trips}</p>
+                  <p className="text-[10px] text-sub uppercase tracking-wide mt-0.5">Active</p>
+                </div>
+                <div className="bg-white border border-border rounded-xl p-3 text-center">
+                  <p className="font-display text-2xl text-gold">{quickStats.pending_requests}</p>
+                  <p className="text-[10px] text-sub uppercase tracking-wide mt-0.5">Pending</p>
+                </div>
+                <div className="bg-white border border-border rounded-xl p-3 text-center">
+                  <p className="font-display text-2xl text-text">{stats?.completed ?? 0}</p>
+                  <p className="text-[10px] text-sub uppercase tracking-wide mt-0.5">Done</p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3 mb-6">
               {cards.map(({ label, value, icon: Icon, color, href }) => (
                 <Link key={label} href={href}
