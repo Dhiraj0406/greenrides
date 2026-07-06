@@ -429,6 +429,426 @@
       "status": "done",
       "completed_at": "2026-07-06T08:00:00.000Z",
       "deployment_id": null
+    },
+    {
+      "day": 31,
+      "title": "Rider bookings — visual trip status timeline",
+      "portal": "rider",
+      "area": "ux",
+      "description": "Add a horizontal step-progress timeline to each booking card showing which stage the trip is at: Pending → Confirmed → In Progress → Done.",
+      "files": [
+        "src/app/bookings/page.tsx"
+      ],
+      "prompt_hint": "Inside each booking card (after the from/to row), add a horizontal 4-step timeline. Steps: ['Pending', 'Confirmed', 'In Progress', 'Done']. Compute activeStep from booking.status: PENDING=0, CONFIRMED=1, IN_PROGRESS=2, COMPLETED=3, CANCELLED=-1. Render: <div className='flex items-center gap-0 mt-3 mb-1'>. For each step: a circle (w-5 h-5 rounded-full text-[9px] flex items-center justify-center font-bold) that is bg-leaf text-white if step <= activeStep, else bg-pale text-sub. Between circles: a <div className='flex-1 h-0.5'> that is bg-leaf if the connecting segment is passed, else bg-pale. Below each circle (absolute or flex col): a label in text-[8px] text-sub text-center. Skip the timeline entirely if status is CANCELLED — show a red 'Cancelled' chip instead. Do NOT show timeline for CANCELLED trips.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 32,
+      "title": "Rider profile — trip count and member badge",
+      "portal": "rider",
+      "area": "ux",
+      "description": "Enrich the rider profile page with a trip count stat, member-since date, and a loyalty tier badge.",
+      "files": [
+        "src/app/profile/page.tsx"
+      ],
+      "prompt_hint": "Fetch GET /api/requests?mine=true (or whichever endpoint returns the rider's own bookings — check the file's existing fetch calls). Count completed trips. Below the user's name and phone number add a 3-column stats row: bg-white border border-border rounded-2xl p-4 grid grid-cols-3 gap-2 mb-4. Column 1: completed trip count with label 'Trips'. Column 2: member since date (format: user.created_at formatted as 'MMM YYYY' using toLocaleDateString('en-IN', {month:'short', year:'numeric', timeZone:'Asia/Kolkata'})) with label 'Member since'. Column 3: a tier badge based on trip count: 0–4 = 'Explorer' bg-pale text-sub, 5–19 = 'Regular' bg-leaf/10 text-leaf, 20+ = 'Elite' bg-gold/10 text-gold. Each stat: font-display text-xl text-forest value + text-[10px] text-sub uppercase tracking-wide label.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 33,
+      "title": "Trip tracker — live auto-refresh polling",
+      "portal": "rider",
+      "area": "ux",
+      "description": "Make the public trip tracker page auto-refresh every 30 seconds so riders see status updates without manually reloading.",
+      "files": [
+        "src/app/track/[id]/page.tsx"
+      ],
+      "prompt_hint": "Find the existing data-fetching useEffect (the one that fetches trip info by id). Extract the fetch logic into a named async function (e.g., fetchTrip). Call it once on mount. Then set up a polling interval: const interval = setInterval(fetchTrip, 30000). Clear it in the cleanup function and also clear it when trip.status === 'COMPLETED' (no need to poll a done trip). Add a 'Last updated' timestamp: a state lastUpdated = new Date(). Update it after each successful fetch. Show it below the status badge: <p className='text-[10px] text-sub text-center mt-2'>Updated {lastUpdated.toLocaleTimeString('en-IN', {timeZone:'Asia/Kolkata'})}</p>. Also add a 'Refresh now' text link next to the timestamp that calls fetchTrip manually.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 34,
+      "title": "Receipt page — print-friendly layout and copy-link button",
+      "portal": "rider",
+      "area": "ux",
+      "description": "Add a print button and a copy-link button to the trip receipt page, and add print-friendly CSS so the page renders cleanly when printed.",
+      "files": [
+        "src/app/receipt/[id]/page.tsx"
+      ],
+      "prompt_hint": "Add two action buttons below the existing WhatsApp share button. Button 1: 'Copy Link' — calls navigator.clipboard.writeText(window.location.href) then shows toast.success('Link copied!'). Use a Copy icon from lucide-react (import Link2). Button 2: 'Print' — calls window.print(). Use a Printer icon (already imported). Both buttons: flex items-center gap-2 border border-border rounded-xl px-4 py-2.5 text-sm font-semibold text-sub w-full justify-center. Stack all 3 share buttons vertically with gap-2. Add a <style> block (JSX dangerouslySetInnerHTML or a <style jsx> tag) with @media print rules: hide the action buttons, remove padding, set background white, remove rounded corners from cards. Use className='print:hidden' on the button container.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 35,
+      "title": "Rider bookings — rate completed trip prompt",
+      "portal": "rider",
+      "area": "ux",
+      "description": "Show a star-rating prompt card for the most recent completed trip that hasn't been rated yet, using localStorage to track dismissal.",
+      "files": [
+        "src/app/bookings/page.tsx"
+      ],
+      "prompt_hint": "Add a 'Rate your trip' inline card for the most-recent COMPLETED booking. State: const [rated, setRated] = useState<string | null>(null); const [hovered, setHovered] = useState(0); const [submitted, setSubmitted] = useState(false). On mount: check localStorage.getItem('gr_rated_' + booking.id). If already rated or dismissed, skip. Render a card at the very top of the bookings list (before the list) when there is a qualifying booking: bg-white border border-border rounded-2xl p-4 mb-4. Content: 'How was your trip to {to_city}?' in font-semibold text-text text-sm. 5 stars in a row: ★ characters, text-2xl, text-gold if index <= hovered or <= submitted_rating else text-pale. On star click: call POST /api/bookings/{id}/rate with {rating: n}, then localStorage.setItem('gr_rated_' + id, String(n)), setSubmitted(true). On 'Maybe later' link click: localStorage.setItem('gr_rated_' + id, 'dismissed'), hide card.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 36,
+      "title": "Booking search — recent routes quick-fill chips",
+      "portal": "rider",
+      "area": "ux",
+      "description": "Show up to 3 recent route chips below the search form that pre-fill the from/to fields when tapped.",
+      "files": [
+        "src/app/(booking)/rides/page.tsx"
+      ],
+      "prompt_hint": "Add a recentRoutes: {from: string; to: string}[] state. On mount: parse localStorage.getItem('gr_recent_routes') (JSON array, max 3 items). After a successful search (when the user submits the search form and results load), save the search pair: const routes = JSON.parse(localStorage.getItem('gr_recent_routes') || '[]'); const updated = [{from, to}, ...routes.filter(r => !(r.from===from && r.to===to))].slice(0,3); localStorage.setItem('gr_recent_routes', JSON.stringify(updated)). Render the chips between the search form and the results list (only when recentRoutes.length > 0 AND no results showing yet): <div className='flex gap-2 overflow-x-auto pb-1 mt-2'>. Each chip: <button onClick={() => {setFrom(r.from); setTo(r.to);}} className='flex-shrink-0 flex items-center gap-1 bg-white border border-border rounded-full px-3 py-1.5 text-xs text-sub font-medium'>{r.from} → {r.to}</button>. Look at the existing state variables for from/to (they may be named differently in the file) and adapt accordingly.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 37,
+      "title": "Used car detail — image gallery navigation",
+      "portal": "rider",
+      "area": "ux",
+      "description": "Add prev/next navigation arrows to the used car detail page photo gallery so users can browse all photos.",
+      "files": [
+        "src/app/used-cars/[id]/page.tsx"
+      ],
+      "prompt_hint": "Find where the car's photos are displayed (likely an images array or photos array from the fetched listing data). Add a photoIndex: number state (default 0). Wrap the main photo in a relative container: <div className='relative w-full aspect-video bg-pale rounded-2xl overflow-hidden mb-3'>. Show the current photo as <img src={car.photos[photoIndex]} className='w-full h-full object-cover' loading='lazy' />. Add a left arrow button: <button onClick={() => setPhotoIndex(i => Math.max(0, i-1))} className='absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 text-white rounded-full w-8 h-8 flex items-center justify-center'>‹</button>. Right arrow: same with Math.min(photos.length-1, i+1) and ›. Hide left arrow when photoIndex===0, hide right arrow when photoIndex===photos.length-1 (use conditional rendering). Below: dot indicators: <div className='flex justify-center gap-1.5 mb-3'>. Each dot: <div className={photoIndex===i ? 'w-2 h-2 rounded-full bg-forest' : 'w-1.5 h-1.5 rounded-full bg-pale'} />. If the file uses a single image (no array), skip the navigation and just add proper rounded-2xl aspect-video styling.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 38,
+      "title": "Driver dashboard — today's earnings summary",
+      "portal": "driver",
+      "area": "ux",
+      "description": "Add a 'Today's earnings' mini card to the driver dashboard home tab showing today's total and trip count.",
+      "files": [
+        "src/app/drivers/dashboard/page.tsx"
+      ],
+      "prompt_hint": "Find where the driver's ride data is fetched (completed rides). Filter rides whose travel_date === today (compare ISO date strings with new Date().toISOString().split('T')[0]). Compute todayTrips (count) and todayEarnings (sum of fare_paise / 100). Add a card just above the status toggle section (or at the top of the home tab content): <div className='grid grid-cols-2 gap-3 mb-4'>. Left cell: bg-white border border-border rounded-2xl p-4. Top: text-[10px] text-sub uppercase tracking-wide 'Today'. Value: font-display text-2xl text-forest '₹{todayEarnings}'. Right cell: same styling. Top: 'Trips today'. Value: font-display text-2xl text-forest '{todayTrips}'. If no rides data is available on the home tab (rides fetched only on the rides tab), compute from whatever earnings/stats data is already fetched on the home tab. If nothing is available, show '—' as the value.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 39,
+      "title": "Driver dashboard — star rating display on Me tab",
+      "portal": "driver",
+      "area": "ux",
+      "description": "Replace the raw numeric rating on the driver Me tab with rendered star icons and a context label.",
+      "files": [
+        "src/app/drivers/dashboard/page.tsx"
+      ],
+      "prompt_hint": "Find where the driver's avg_rating is displayed (on the Me/Profile tab). Replace the raw number display with a star row. Create a StarRating component inline: function StarRating({ rating }: { rating: number }) { return (<div className='flex items-center gap-0.5'>{[1,2,3,4,5].map(i => (<span key={i} className={i <= Math.round(rating) ? 'text-gold' : 'text-pale'} style={{fontSize:'18px'}}>★</span>))}<span className='text-xs text-sub ml-1.5'>{rating.toFixed(1)}</span></div>); }. Show it below the driver's name. Also add a context label below the stars: text-[10px] text-sub 'Based on passenger ratings'. If avg_rating is 0 or null, show 'No ratings yet' in text-sub text-sm instead of the stars.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 40,
+      "title": "Driver post-ride form — field completion progress bar",
+      "portal": "driver",
+      "area": "ux",
+      "description": "Add a progress bar at the top of the post-ride form showing how many required fields have been filled.",
+      "files": [
+        "src/app/drivers/post-ride/page.tsx"
+      ],
+      "prompt_hint": "Identify all required form fields in the post-ride form (look for the form state variables). Create a derived value: const filledCount = [field1, field2, ...].filter(v => v !== '' && v !== null && v !== undefined).length; const totalRequired = <total number of required fields>. Compute percent = Math.round((filledCount / totalRequired) * 100). At the top of the form (below the page title, above the first input): render a progress section: <div className='mb-5'><div className='flex justify-between text-xs text-sub mb-1.5'><span>Form completion</span><span>{filledCount}/{totalRequired} fields</span></div><div className='h-1.5 bg-pale rounded-full overflow-hidden'><div className='h-full bg-leaf rounded-full transition-all duration-300' style={{width: percent + '%'}} /></div></div>. The bar color transitions from leaf (green) at all fill levels. Only count fields that are truly required (not optional notes fields).",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 41,
+      "title": "Driver KYC — document upload status badges",
+      "portal": "driver",
+      "area": "ux",
+      "description": "Add color-coded status badges to each document slot on the driver KYC page showing pending/approved/rejected state.",
+      "files": [
+        "src/app/drivers/kyc/page.tsx"
+      ],
+      "prompt_hint": "For each document type displayed on the KYC page, show a status badge next to the document name. The document objects fetched from the API should have a status field (e.g., 'PENDING', 'APPROVED', 'REJECTED', or null if not uploaded). Badge styling: APPROVED → bg-leaf/10 text-leaf text-[10px] font-bold px-2 py-0.5 rounded-full 'Approved'. PENDING → bg-gold/10 text-gold text-[10px] font-bold px-2 py-0.5 rounded-full 'Under review'. REJECTED → bg-red-50 text-red-500 text-[10px] font-bold px-2 py-0.5 rounded-full 'Rejected'. null (not uploaded) → bg-pale text-sub text-[10px] font-bold px-2 py-0.5 rounded-full 'Not uploaded'. Also add a KYC overall progress bar at the top of the page: count approved docs / total doc types. Same h-1.5 bg-pale rounded-full bar with bg-leaf fill. Label: '{n} of {total} documents verified'.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 42,
+      "title": "Fleet drivers — star rating display and online sort",
+      "portal": "fleet",
+      "area": "ux",
+      "description": "Display avg_rating as star icons on each driver card and sort drivers by online status (online first).",
+      "files": [
+        "src/app/(fleet)/fleet/fleet-drivers/page.tsx"
+      ],
+      "prompt_hint": "1) Sort the drivers array before rendering: const sorted = [...drivers].sort((a,b) => (b.is_online ? 1 : 0) - (a.is_online ? 1 : 0)). Use sorted in the map. 2) In each driver card, replace or augment the existing trips badge area with a star rating display. After the 'trips' badge, add: <span className='flex items-center gap-0.5 text-gold text-xs'>{[1,2,3,4,5].map(i => (<span key={i}>{i <= Math.round(d.avg_rating ?? 0) ? '★' : '☆'}</span>))}<span className='text-sub text-[10px] ml-0.5'>{d.avg_rating ? d.avg_rating.toFixed(1) : '—'}</span></span>. Wrap the trip badge and star rating in a flex items-center gap-2 container. If avg_rating is null or 0, show '☆☆☆☆☆ —' so the layout is consistent.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 43,
+      "title": "Fleet history — earnings summary header",
+      "portal": "fleet",
+      "area": "ux",
+      "description": "Add a summary header above the trip history list showing total trips completed and total earnings for the loaded period.",
+      "files": [
+        "src/app/(fleet)/fleet/history/page.tsx"
+      ],
+      "prompt_hint": "Read the file to find where trips/bookings are stored in state (the history list). After the list loads, compute: totalTrips = trips.length; totalEarnings = trips.reduce((sum, t) => sum + (t.fare_paise ?? 0), 0) / 100. Add a summary card below the page header and above the trip list: <div className='bg-forest rounded-2xl p-5 text-white mb-4 grid grid-cols-2 gap-4'>. Left: <div><p className='text-lime/60 text-[10px] uppercase tracking-wide mb-1'>Total Trips</p><p className='font-display text-3xl text-lime'>{totalTrips}</p></div>. Right: <div><p className='text-lime/60 text-[10px] uppercase tracking-wide mb-1'>Total Earned</p><p className='font-display text-3xl text-white'>₹{totalEarnings.toLocaleString('en-IN')}</p></div>. Only show this card when trips.length > 0. If fare field is named differently (check the trip interface), adapt accordingly.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 44,
+      "title": "Fleet today — active dispatch ETA card",
+      "portal": "fleet",
+      "area": "ux",
+      "description": "Add a prominent ETA/status card at the top of the fleet today page when a dispatch is active, showing the current trip stage.",
+      "files": [
+        "src/app/(fleet)/fleet/today/page.tsx"
+      ],
+      "prompt_hint": "Read the file to find the active dispatch/trip state variable. When there is an active (CONFIRMED or IN_PROGRESS) dispatch, render a prominent status card at the very top of the page content: <div className='bg-leaf rounded-2xl p-5 text-white mb-4'>. Content: <p className='text-white/70 text-[10px] uppercase tracking-wide mb-1'>{status === 'CONFIRMED' ? 'Driver on the way' : 'Trip in progress'}</p>. <p className='font-display text-2xl text-white mb-2'>{trip.from_city} → {trip.to_city}</p>. <div className='flex items-center gap-2'><span className='bg-white/20 text-white text-xs font-semibold px-2.5 py-1 rounded-full'>{trip.travel_date formatted as 'dd MMM'}</span><span className='bg-white/20 text-white text-xs font-semibold px-2.5 py-1 rounded-full'>{trip.total_seats} seats</span></div>. If eta_min is available on the trip object: <p className='text-white/80 text-sm mt-2'>ETA: ~{eta_min} min</p>. If not available, omit the ETA line.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 45,
+      "title": "Fleet notifications — mark all read button",
+      "portal": "fleet",
+      "area": "ux",
+      "description": "Add a 'Mark all as read' button to the fleet notifications page and visually distinguish unread from read notifications.",
+      "files": [
+        "src/app/(fleet)/fleet/notifications/page.tsx"
+      ],
+      "prompt_hint": "Read the file to find the notifications state and how read/unread is tracked. Add a 'Mark all read' button in the page header row (right side): <button onClick={markAllRead} className='text-xs text-leaf font-semibold'>Mark all read</button>. The markAllRead function should call PATCH /api/fleet/notifications/read-all (with Bearer token) and then update local state to set all notifications' read field to true. Also update visual styling: unread notifications should have a left border accent: border-l-2 border-leaf bg-leaf/5 (add this to the card className when !n.read). Read notifications: normal bg-white border border-border. If the API endpoint path is different (check existing fetch calls in the file), adapt the URL accordingly. If there's no is_read or read field, look for a different field name in the notification interface.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 46,
+      "title": "Fleet availability — quick today toggle",
+      "portal": "fleet",
+      "area": "ux",
+      "description": "Add a 'Quick toggle' hero section at the top of the availability page to set today's availability with one tap.",
+      "files": [
+        "src/app/(fleet)/fleet/availability/page.tsx"
+      ],
+      "prompt_hint": "Read the file to understand how availability is managed (likely a list of dates or a toggle per date). Add a 'Today' section at the top of the page (above any existing availability list): <div className='bg-white border border-border rounded-2xl p-5 mb-4 flex items-center justify-between'>. Left side: <div><p className='text-xs text-sub uppercase tracking-wide mb-0.5'>Today</p><p className='font-display text-lg text-forest'>{new Date().toLocaleDateString('en-IN', {weekday:'long', day:'numeric', month:'long', timeZone:'Asia/Kolkata'})}</p></div>. Right side: a toggle button. If today is marked available: <button onClick={toggleToday} className='bg-leaf text-white text-sm font-bold px-4 py-2 rounded-xl'>Available</button>. If not: <button onClick={toggleToday} className='bg-pale text-sub text-sm font-bold px-4 py-2 rounded-xl'>Unavailable</button>. The toggleToday function should call the same API endpoint used for setting availability for a date, with today's ISO date string. Derive todayAvailable from the existing availability state.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 47,
+      "title": "Fleet profile — fleet stats and member since",
+      "portal": "fleet",
+      "area": "ux",
+      "description": "Enrich the fleet driver/owner profile page with a stats row showing fleet size, total trips, and member-since date.",
+      "files": [
+        "src/app/(fleet)/fleet/profile/page.tsx"
+      ],
+      "prompt_hint": "Read the file to find the profile data structure (user info, driver profile). Below the user's name and phone number, add a stats row: <div className='grid grid-cols-3 gap-2 mb-4'>. Each cell: bg-white border border-border rounded-2xl p-3 text-center. Cell 1: value = total_trips (from driver profile or fetched separately), label 'Trips'. Cell 2: value = member since date formatted as 'MMM YYYY' (from user.created_at or profile.created_at), label 'Member since'. Cell 3: value = avg_rating displayed as '{rating.toFixed(1)} ★', label 'Avg rating' (use text-gold for the ★). Each cell: font-display text-xl text-forest for the value, text-[10px] text-sub uppercase tracking-wide for the label. If any value is unavailable (null or undefined), show '—'. If total_trips is not in the fetched data, count from the history endpoint if already fetched, otherwise show '—'.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 48,
+      "title": "Fleet earnings — period filter tabs",
+      "portal": "fleet",
+      "area": "ux",
+      "description": "Add period filter tabs (This Month / Last Month / All Time) to the fleet earnings page to filter the payouts list.",
+      "files": [
+        "src/app/(fleet)/fleet/earnings/page.tsx"
+      ],
+      "prompt_hint": "Add a period: 'this_month' | 'last_month' | 'all' state (default: 'all'). Below the bar chart and above the payouts list, render 3 filter tabs: <div className='flex gap-2 mb-4 overflow-x-auto pb-1'>. Tab: <button className={period===key ? 'bg-leaf text-white px-4 py-2 rounded-full text-xs font-bold flex-shrink-0' : 'bg-white border border-border text-sub px-4 py-2 rounded-full text-xs font-semibold flex-shrink-0'}>. Labels: 'This Month', 'Last Month', 'All Time'. Filter the payouts in render: const now = new Date(); const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1); const lastMonthStart = new Date(now.getFullYear(), now.getMonth()-1, 1); const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0); const filtered = period==='all' ? payouts : period==='this_month' ? payouts.filter(p => new Date(p.period_to) >= thisMonthStart) : payouts.filter(p => new Date(p.period_to) >= lastMonthStart && new Date(p.period_to) <= lastMonthEnd). Use filtered for the list render. Show a filtered total above the list: 'Total: ₹{filteredSum.toLocaleString('en-IN')}' in font-display text-xl text-forest.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 49,
+      "title": "Admin bookings — search and status filter",
+      "portal": "admin",
+      "area": "ux",
+      "description": "Add a search input and status filter tabs to the admin bookings page so admins can quickly find rides.",
+      "files": [
+        "src/app/(admin)/admin/bookings/page.tsx"
+      ],
+      "prompt_hint": "Add a search: string state (default ''). Above the existing filter tabs (or above the list if no tabs exist), add a search input: <input value={search} onChange={e => setSearch(e.target.value)} placeholder='Search by phone or city…' className='w-full border border-border rounded-xl px-4 py-2.5 text-sm mb-3 outline-none focus:ring-2 ring-leaf/30 bg-white' />. Filter the in-memory requests array by both search and current status filter: const visible = requests.filter(r => { const matchesSearch = !search || r.rider_phone.includes(search) || r.from_city.toLowerCase().includes(search.toLowerCase()) || r.to_city.toLowerCase().includes(search.toLowerCase()); const matchesStatus = !statusFilter || r.status === statusFilter; return matchesSearch && matchesStatus; }). If status filter tabs don't exist yet, add them: 'All' | 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED'. Tab style: active = bg-leaf text-white, inactive = bg-pale text-sub. Each tab shows a count badge in parentheses based on the unfiltered array. Show a count label above the list: '{visible.length} bookings'.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 50,
+      "title": "Admin payouts — summary stats bar",
+      "portal": "admin",
+      "area": "ux",
+      "description": "Add a summary stats bar to the admin payouts page showing total pending payout amount and total paid to date.",
+      "files": [
+        "src/app/(admin)/admin/payouts/page.tsx"
+      ],
+      "prompt_hint": "Read the file to find the payouts state. Compute: pendingTotal = payouts.filter(p => p.status === 'PENDING').reduce((s, p) => s + p.amount_paise, 0) / 100; paidTotal = payouts.filter(p => p.status === 'PAID').reduce((s, p) => s + p.amount_paise, 0) / 100; pendingCount = payouts.filter(p => p.status === 'PENDING').length. Add a stats card above the payouts list: <div className='grid grid-cols-2 gap-3 mb-4'>. Left cell: bg-gold/10 border border-gold/20 rounded-2xl p-4. <p className='text-[10px] text-gold uppercase tracking-wide mb-1'>Pending Payouts</p><p className='font-display text-2xl text-forest'>₹{pendingTotal.toLocaleString('en-IN')}</p><p className='text-xs text-sub mt-1'>{pendingCount} payouts</p>. Right cell: bg-leaf/10 border border-leaf/20 rounded-2xl p-4. <p className='text-[10px] text-leaf uppercase tracking-wide mb-1'>Paid Out</p><p className='font-display text-2xl text-forest'>₹{paidTotal.toLocaleString('en-IN')}</p>. Only show this bar when payouts.length > 0. If the status values are different (check the interface), adapt filter strings accordingly.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 51,
+      "title": "Admin fares — bulk percentage adjustment",
+      "portal": "admin",
+      "area": "feature",
+      "description": "Add a bulk percentage increase/decrease control to the admin fares page so all fares can be adjusted at once.",
+      "files": [
+        "src/app/(admin)/admin/fares/page.tsx"
+      ],
+      "prompt_hint": "Add states: bulkPct: string (default ''), bulkMode: boolean (default false), bulkSaving: boolean. Add a 'Bulk Adjust' button in the header row (right side): <button onClick={() => setBulkMode(b => !b)} className='bg-pale text-sub text-xs font-semibold px-3 py-2 rounded-xl'>Bulk Adjust</button>. When bulkMode is true, show an inline panel below the header: bg-white border border-border rounded-2xl p-4 mb-4. Content: 'Adjust all fares by:' label. A row with: a text input for percentage (type='number', min=-50, max=100, value=bulkPct, onChange updates bulkPct), '%' suffix label, then two buttons: 'Increase' (bg-leaf text-white) and 'Decrease' (bg-red-50 text-red-500 border border-red-200). The Increase button multiplies all in-memory fares by (1 + pct/100) and the Decrease button by (1 - pct/100). Apply to all fares: update the local fares state (round to nearest integer paise). Show a preview below: 'Preview: {n} fares adjusted'. Also add a 'Save all' button that calls the existing fare update endpoint for each fare in a loop. Use a saving spinner (Loader2) on Save.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 52,
+      "title": "Admin activity log — action-type filter tabs",
+      "portal": "admin",
+      "area": "ux",
+      "description": "Add action-type filter tabs to the admin activity log so admins can filter by booking, driver, or system events.",
+      "files": [
+        "src/app/(admin)/admin/logs/page.tsx"
+      ],
+      "prompt_hint": "Read the file to understand the log entry structure (action field, entity type, etc.). Add a logFilter: string state (default 'all'). Below the page header, add filter tabs: derive unique action categories from the logs array. Common categories to look for: 'booking', 'driver', 'payout', 'config', 'auth'. Tab: 'All' plus each unique category that exists in the loaded logs. Tab style: active = bg-leaf text-white px-4 py-2 rounded-full text-xs font-bold, inactive = bg-white border border-border text-sub px-4 py-2 rounded-full text-xs font-semibold. Overflow-x-auto container. Filter visible logs: logs.filter(l => logFilter === 'all' || l.action_type === logFilter || l.entity?.toLowerCase().includes(logFilter)). Adapt the filter logic to match whatever field names the log entry interface actually uses. Show count after filter: '{filtered.length} entries'.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 53,
+      "title": "Admin improvements — portal color badges and mini chart",
+      "portal": "admin",
+      "area": "ux",
+      "description": "Improve the improvements audit trail page with portal color badges, area labels, and a mini completion bar chart.",
+      "files": [
+        "src/app/(admin)/admin/improvements/page.tsx"
+      ],
+      "prompt_hint": "Read the file to find the ImprovementLog data structure. 1) Add a portal color badge to each log entry. PORTAL_COLORS: { rider: 'bg-blue-50 text-blue-600', driver: 'bg-gold/10 text-gold', fleet: 'bg-leaf/10 text-leaf', admin: 'bg-forest/10 text-forest', all: 'bg-pale text-sub' }. Show a badge: <span className={PORTAL_COLORS[log.portal] + ' text-[10px] font-bold px-2 py-0.5 rounded-full capitalize'}>{log.portal}</span>. 2) Add an AREA badge next to it: area==='ux' → 'bg-purple-50 text-purple-600', area==='feature' → 'bg-leaf/10 text-leaf', area==='perf' → 'bg-gold/10 text-gold'. 3) At the top of the page, add a completion bar: total improvements in the system vs completed. Compute from the logs. <div className='bg-white border border-border rounded-2xl p-4 mb-4'><p className='text-xs text-sub mb-2'>{completed} of {total} improvements shipped</p><div className='h-2 bg-pale rounded-full overflow-hidden'><div className='h-full bg-leaf rounded-full' style={{width: (completed/Math.max(total,1)*100)+'%'}} /></div></div>.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 54,
+      "title": "Admin vehicles — summary stats and assignment status",
+      "portal": "admin",
+      "area": "ux",
+      "description": "Add a summary stats bar to the admin vehicles page showing total vehicles, how many are assigned to drivers, and how many have pending photo approval.",
+      "files": [
+        "src/app/(admin)/admin/vehicles/page.tsx"
+      ],
+      "prompt_hint": "Read the file to find the vehicles state. Compute: total = vehicles.length; assigned = vehicles.filter(v => v.driver_id).length; pendingPhotos = vehicles.filter(v => v.photo_status === 'PENDING' || v.photo_url && !v.photo_approved).length (adapt to actual field names). Add a 3-column stats bar below the page header: <div className='grid grid-cols-3 gap-2 mb-4'>. Each cell: bg-white border border-border rounded-xl p-3 text-center. Cell 1: value=total, label='Total'. Cell 2: value=assigned, label='Assigned'. Cell 3: value=(total-assigned), label='Unassigned'. Each: font-display text-2xl text-forest value + text-[10px] text-sub uppercase tracking-wide label. Also add an assignment status badge to each vehicle card: if driver_id → bg-leaf/10 text-leaf 'Assigned', else → bg-pale text-sub 'Unassigned'. Badge: text-[10px] font-bold px-2 py-0.5 rounded-full. Place it in the top-right of the card.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 55,
+      "title": "Admin fleet owners — fleet size and approval status",
+      "portal": "admin",
+      "area": "ux",
+      "description": "Add fleet size (vehicle count), driver count, and approval status badges to each owner card on the admin owners page.",
+      "files": [
+        "src/app/(admin)/admin/owners/page.tsx"
+      ],
+      "prompt_hint": "Read the file to understand the owner data structure (the interface for fleet owner entries). Each owner should have or be augmented with: vehicle count and driver count (may be nested arrays or counts). Add to each owner card: 1) A 2-column mini stats row: '<vehicles> vehicles · <drivers> drivers' in text-xs text-sub. If these counts aren't in the data, show what is available (e.g., just vehicle_count if that field exists). 2) An approval status badge in the top-right of the card. Use the owner's status or approval field: APPROVED → bg-leaf/10 text-leaf 'Active', PENDING → bg-gold/10 text-gold 'Pending', REJECTED or INACTIVE → bg-pale text-sub 'Inactive'. Badge: text-[10px] font-bold px-2 py-0.5 rounded-full. 3) At the top of the page add a summary: total owners count and active owners count in a 2-column card: bg-white border border-border rounded-2xl p-4 mb-4 grid grid-cols-2 gap-4.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 56,
+      "title": "Admin commission — earnings impact preview",
+      "portal": "admin",
+      "area": "feature",
+      "description": "When editing a commission rate, show a live preview of how the change would affect total driver earnings based on recent revenue.",
+      "files": [
+        "src/app/(admin)/admin/commission/page.tsx"
+      ],
+      "prompt_hint": "Read the file to find: the commission rate state variable(s), and whether there is recent revenue data available. Add a preview section that appears when the admin has edited a commission value. State: editingKey: string | null (which commission entry is being edited), previewRate: number | null. When editing a commission row, show an inline preview below the input: <div className='mt-2 p-3 bg-pale rounded-xl text-xs text-sub'>At {previewRate}% commission: drivers keep ₹{Math.round(recentRevenue * (1 - previewRate/100)).toLocaleString('en-IN')} of every ₹{recentRevenue.toLocaleString('en-IN')} earned</div>. If recent revenue data is not available on this page, use a hardcoded example: 'For every ₹10,000 earned, drivers receive ₹{(10000 * (1 - previewRate/100)).toLocaleString('en-IN')}'. The preview updates live as the input changes (compute from the controlled input value). Only show it when previewRate is not null and is a valid number (0-100).",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 57,
+      "title": "Admin config — unsaved changes indicator",
+      "portal": "admin",
+      "area": "ux",
+      "description": "Add an unsaved-changes banner and a discard button to the remote config page so admins don't accidentally lose edits.",
+      "files": [
+        "src/app/(admin)/admin/config/page.tsx"
+      ],
+      "prompt_hint": "Read the file to find how config values are stored and edited (likely a config object state and a separate editedConfig state or individual field states). Add a isDirty derived state: const isDirty = JSON.stringify(config) !== JSON.stringify(editedConfig) (or compare the relevant fields). When isDirty is true, show a sticky banner below the header: <div className='sticky top-0 z-10 bg-gold/10 border-b border-gold/30 px-4 py-2.5 flex items-center justify-between'>. Left: <span className='text-xs text-gold font-semibold'>⚠ Unsaved changes</span>. Right: two buttons: 'Discard' (text-xs text-sub font-semibold, onClick resets editedConfig to the original config) and 'Save' (bg-leaf text-white text-xs font-bold px-3 py-1.5 rounded-lg, calls the existing save function). If the page uses a single save button elsewhere, keep it but also add the sticky banner. If the page has no separate edited state (edits directly mutate config), introduce a localConfig state initialized from config, and save pushes localConfig.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 58,
+      "title": "Booking confirm — trip summary and fare breakdown",
+      "portal": "rider",
+      "area": "ux",
+      "description": "Improve the booking confirmation page with a clear fare breakdown card showing base fare, per-seat calculation, and a total.",
+      "files": [
+        "src/app/(booking)/confirm/page.tsx"
+      ],
+      "prompt_hint": "Read the file to find the booking data (fare, seats, route). Add a fare breakdown card below the trip details: <div className='bg-white border border-border rounded-2xl p-4 mb-4'>. Title: <p className='font-semibold text-text text-sm mb-3'>Fare Breakdown</p>. Rows: flex justify-between text-sm. Row 1: 'Base fare per seat' / '₹{perSeatFare}'. Row 2 (if seats > 1): 'Seats booked' / '{seats}'. A divider: <div className='border-t border-border my-2.5' />. Total row: 'Total' in font-bold / '₹{totalFare}' in font-display text-lg text-leaf. Compute: totalFare = fare_paise / 100 (or however it's stored), perSeatFare = totalFare / seats. Format with .toLocaleString('en-IN'). Below the breakdown, add a muted policy note: <p className='text-[11px] text-sub text-center mt-2'>Cancellation is free up to 2 hours before departure</p>. Keep all existing page content — only add the new card.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 59,
+      "title": "Used cars sell form — photo upload preview grid",
+      "portal": "rider",
+      "area": "ux",
+      "description": "Add a photo preview grid to the used car sell listing form so sellers can see uploaded images before submitting.",
+      "files": [
+        "src/app/used-cars/sell/page.tsx"
+      ],
+      "prompt_hint": "Read the file to find how photos are handled in the sell form (file input or URL input). If there is a file input for photos: add a previews: string[] state. On file input change: for each selected file call URL.createObjectURL(file) and push to previews. Render a photo preview grid below the file input: <div className='grid grid-cols-3 gap-2 mt-2'>. Each preview: <div className='relative aspect-square bg-pale rounded-xl overflow-hidden'><img src={url} className='w-full h-full object-cover' /><button onClick={() => removePreview(i)} className='absolute top-1 right-1 bg-black/50 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs'>×</button></div>. If fewer than 6 previews, add an 'Add more' placeholder: <label className='aspect-square bg-pale rounded-xl flex items-center justify-center cursor-pointer border-2 border-dashed border-border'><span className='text-sub text-2xl'>+</span><input type='file' accept='image/*' multiple className='hidden' onChange={...} /></label>. If the form uses URL strings instead of File objects, show the URL thumbnails directly.",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
+    },
+    {
+      "day": 60,
+      "title": "Admin dashboard — quick action shortcuts row",
+      "portal": "admin",
+      "area": "ux",
+      "description": "Add a row of quick-action shortcut buttons to the admin dashboard for the most common tasks: New Fare, View Pending, KYC Queue, Payouts.",
+      "files": [
+        "src/app/(admin)/admin/page.tsx"
+      ],
+      "prompt_hint": "Add a 'Quick Actions' row between the metrics strip and the existing navigation link list. A labeled section: <p className='text-xs text-sub uppercase tracking-widest font-semibold mb-2 mt-2'>Quick Actions</p>. Then a 2x2 grid: <div className='grid grid-cols-2 gap-2 mb-5'>. Cell 1: Link to /admin/fares, icon Tag, label 'Manage Fares'. Cell 2: Link to /admin/bookings?status=PENDING, icon ClipboardList, label 'Pending Rides'. Cell 3: Link to /admin/documents, icon ShieldCheck, label 'KYC Queue'. Cell 4: Link to /admin/payouts, icon Wallet, label 'Process Payouts'. Each cell: <Link href='...' className='bg-leaf text-white rounded-2xl p-4 flex flex-col gap-2 hover:bg-leaf/90 transition-colors'>. Icon: <Icon className='w-5 h-5 text-white/80' />. Label: <span className='text-sm font-semibold text-white'>{label}</span>. Use only icons already imported in the file (Tag, ClipboardList, ShieldCheck, Wallet, IndianRupee, Users are all already imported).",
+      "status": "pending",
+      "completed_at": null,
+      "deployment_id": null
     }
   ]
 }
