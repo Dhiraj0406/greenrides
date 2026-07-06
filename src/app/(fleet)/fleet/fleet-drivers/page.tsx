@@ -12,6 +12,8 @@ interface FleetDriver {
   vehicle_type: string | null;
   vehicle_number: string | null;
   is_online: boolean;
+  total_trips: number;
+  avg_rating: number;
   user: { name: string | null; phone: string };
   vehicles: { id: string; make: string; model_name: string; number: string }[];
 }
@@ -114,11 +116,16 @@ export default function FleetDriversPage() {
                 <p className="font-semibold text-text text-sm">{d.user.name ?? "Driver"}</p>
                 <p className="text-xs text-sub">+91 {d.user.phone}</p>
               </div>
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                d.is_online ? "bg-leaf/10 text-leaf" : "bg-pale text-sub"
-              }`}>
-                {d.is_online ? "Online" : "Offline"}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-sub font-semibold bg-pale px-2 py-0.5 rounded-full">
+                  {d.total_trips ?? 0} trips
+                </span>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  d.is_online ? "bg-leaf/10 text-leaf" : "bg-pale text-sub"
+                }`}>
+                  {d.is_online ? "Online" : "Offline"}
+                </span>
+              </div>
             </div>
             {assignedVehicle ? (
               <div className="flex items-center justify-between text-xs text-sub">
