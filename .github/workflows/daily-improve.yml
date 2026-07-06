@@ -32,14 +32,22 @@ jobs:
         run: npm install --ignore-scripts
 
       - name: Phase 1 — Generate improvement
+        id: phase1
         env:
           ANTHROPIC_API_KEY:         ${{ secrets.ANTHROPIC_API_KEY }}
           NEXT_PUBLIC_SUPABASE_URL:  ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DAY_OVERRIDE:              ${{ github.event.inputs.day_override }}
-        run: npx tsx scripts/daily-improve.ts
+        run: |
+          npx tsx scripts/daily-improve.ts
+          if [ -f /tmp/gr-day ]; then
+            echo "has_work=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_work=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Commit and push changes
+        if: steps.phase1.outputs.has_work == 'true'
         run: |
           git config user.name "Green Rides Improvement Agent"
           git config user.email "agent@greenrides.co.in"
@@ -50,6 +58,7 @@ jobs:
 
       - name: Deploy to Vercel
         id: vercel_deploy
+        if: steps.phase1.outputs.has_work == 'true'
         env:
           VERCEL_TOKEN:      ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID:     team_2kOfHI6diUznVNSYCoXLduWL
@@ -59,6 +68,7 @@ jobs:
           echo "done=1" >> $GITHUB_OUTPUT
 
       - name: Phase 2 — Smoke test and notify
+        if: steps.phase1.outputs.has_work == 'true'
         env:
           NEXT_PUBLIC_SUPABASE_URL:  ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
