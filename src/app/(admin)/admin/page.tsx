@@ -25,6 +25,11 @@ function Dashboard({ token }: { token: string }) {
   const [stats,      setStats]      = useState<Stats | null>(null);
   const [quickStats, setQuickStats] = useState<QuickStats | null>(null);
   const [loading,    setLoading]    = useState(true);
+  const [whatsNew,   setWhatsNew]   = useState(false);
+
+  useEffect(() => {
+    if (!localStorage.getItem("gr_admin_whats_new_v2")) setWhatsNew(true);
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -68,6 +73,17 @@ function Dashboard({ token }: { token: string }) {
           <h1 className="font-display text-2xl text-white">Dashboard</h1>
         </div>
       </header>
+
+      {whatsNew && (
+        <div className="bg-leaf/10 border-b border-leaf/20 px-4 py-2 flex items-center justify-between">
+          <span className="text-xs text-leaf font-semibold">✨ New: bulk approvals, metrics strip, KYC progress</span>
+          <button
+            onClick={() => { setWhatsNew(false); localStorage.setItem("gr_admin_whats_new_v2", "1"); }}
+            className="text-leaf/60 hover:text-leaf text-sm ml-3 flex-shrink-0"
+            aria-label="Dismiss"
+          >✕</button>
+        </div>
+      )}
 
       <div className="px-4 mt-6">
         {loading ? (

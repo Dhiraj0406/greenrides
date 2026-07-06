@@ -35,6 +35,7 @@ export default function FleetLayout({ children }: { children: React.ReactNode })
   const [unread, setUnread]   = useState(0);
   const [token, setToken]     = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [whatsNew, setWhatsNew] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession()
@@ -55,6 +56,10 @@ export default function FleetLayout({ children }: { children: React.ReactNode })
         if (!PUBLIC_PATHS.includes(pathname)) router.replace("/fleet/login");
       });
   }, [pathname, router]);
+
+  useEffect(() => {
+    if (!localStorage.getItem("gr_whats_new_v2")) setWhatsNew(true);
+  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -116,6 +121,18 @@ export default function FleetLayout({ children }: { children: React.ReactNode })
           </button>
         )}
       </header>
+
+      {/* What's new chip */}
+      {!isPublicPath && whatsNew && (
+        <div className="bg-leaf/10 border-b border-leaf/20 px-4 py-2 flex items-center justify-between">
+          <span className="text-xs text-leaf font-semibold">✨ New: charts, assign drivers from fleet, bulk approvals</span>
+          <button
+            onClick={() => { setWhatsNew(false); localStorage.setItem("gr_whats_new_v2", "1"); }}
+            className="text-leaf/60 hover:text-leaf text-sm ml-3 flex-shrink-0"
+            aria-label="Dismiss"
+          >✕</button>
+        </div>
+      )}
 
       {!isPublicPath && isDriver && isOwner && (
         <div className="px-4 pt-3 pb-1 bg-cream">
