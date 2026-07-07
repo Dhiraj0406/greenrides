@@ -10,8 +10,15 @@ import { SUPPORT_WA, SUPPORT_PHONE } from "@/data/constants";
 import { toast } from "sonner";
 
 interface Profile {
-  name:  string;
-  phone: string;
+  name:       string;
+  phone:      string;
+  created_at: string;
+}
+
+function getTierInfo(tripCount: number): { label: string; className: string } {
+  if (tripCount >= 20) return { label: "Elite",    className: "bg-gold/10 text-gold" };
+  if (tripCount >= 5)  return { label: "Regular",  className: "bg-leaf/10 text-leaf" };
+  return                      { label: "Explorer", className: "bg-pale text-sub"     };
 }
 
 export default function AccountPage() {
@@ -22,14 +29,31 @@ export default function AccountPage() {
   const [editing, setEditing]         = useState(false);
   const [nameInput, setNameInput]     = useState("");
   const [saving, setSaving]           = useState(false);
+  const [completedTrips, setCompletedTrips] = useState<number>(0);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { setLoading(false); router.replace("/login?next=/profile"); return; }
-      const name  = (session.user.user_metadata?.name as string | undefined) ?? "—";
-      const phone = session.user.phone ?? "—";
-      setProfile({ name, phone });
+      const name       = (session.user.user_metadata?.name as string | undefined) ?? "—";
+      const phone      = session.user.phone ?? "—";
+      const created_at = session.user.created_at ?? "";
+      setProfile({ name, phone, created_at });
       setLoading(false);
+
+      // Fetch rider's own bookings to count completed trips
+      try {
+        const res = await fetch("/api/requests?mine=true");
+        if (res.ok) {
+          const data = await res.json();
+          const bookings = Array.isArray(data) ? data : (data.requests ?? data.data ?? []);
+          const count = bookings.filter(
+            (b: { status?: string }) => b.status === "completed"
+          ).length;
+          setCompletedTrips(count);
+        }
+      } catch {
+        // silently ignore — trip count stays 0
+      }
     });
   }, [router]);
 
@@ -85,6 +109,16 @@ export default function AccountPage() {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+  const memberSince = profile?.created_at
+    ? new Date(profile.created_at).toLocaleDateString("en-IN", {
+        month:    "short",
+        year:     "numeric",
+        timeZone: "Asia/Kolkata",
+      })
+    : "—";
+
+  const tier = getTierInfo(completedTrips);
 
   const menuItems = [
     {
@@ -182,6 +216,39 @@ export default function AccountPage() {
           <p className="text-sm mt-1" style={{ color: "var(--ink-3)" }}>
             {profile?.phone}
           </p>
+        </div>
+
+        {/* Stats row */}
+        <div className="bg-white border border-border rounded-2xl p-4 grid grid-cols-3 gap-2 mb-4">
+          {/* Trips */}
+          <div className="flex flex-col items-center gap-0.5">
+            <span className="font-display text-xl text-forest font-bold leading-tight">
+              {completedTrips}
+            </span>
+            <span className="text-[10px] text-sub uppercase tracking-wide">
+              Trips
+            </span>
+          </div>
+
+          {/* Member since */}
+          <div className="flex flex-col items-center gap-0.5 border-x border-border">
+            <span className="font-display text-xl text-forest font-bold leading-tight">
+              {memberSince}
+            </span>
+            <span className="text-[10px] text-sub uppercase tracking-wide">
+              Member since
+            </span>
+          </div>
+
+          {/* Tier badge */}
+          <div className="flex flex-col items-center gap-0.5">
+            <span className={`font-display text-xl font-bold leading-tight px-2 py-0.5 rounded-lg ${tier.className}`}>
+              {tier.label}
+            </span>
+            <span className="text-[10px] text-sub uppercase tracking-wide">
+              Tier
+            </span>
+          </div>
         </div>
 
         {/* Menu group */}

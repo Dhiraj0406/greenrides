@@ -454,7 +454,7 @@
         "src/app/profile/page.tsx"
       ],
       "prompt_hint": "Fetch GET /api/requests?mine=true (or whichever endpoint returns the rider's own bookings — check the file's existing fetch calls). Count completed trips. Below the user's name and phone number add a 3-column stats row: bg-white border border-border rounded-2xl p-4 grid grid-cols-3 gap-2 mb-4. Column 1: completed trip count with label 'Trips'. Column 2: member since date (format: user.created_at formatted as 'MMM YYYY' using toLocaleDateString('en-IN', {month:'short', year:'numeric', timeZone:'Asia/Kolkata'})) with label 'Member since'. Column 3: a tier badge based on trip count: 0–4 = 'Explorer' bg-pale text-sub, 5–19 = 'Regular' bg-leaf/10 text-leaf, 20+ = 'Elite' bg-gold/10 text-gold. Each stat: font-display text-xl text-forest value + text-[10px] text-sub uppercase tracking-wide label.",
-      "status": "pending",
+      "status": "in_progress",
       "completed_at": null,
       "deployment_id": null
     },
