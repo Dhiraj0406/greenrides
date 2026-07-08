@@ -468,7 +468,7 @@
         "src/app/track/[id]/page.tsx"
       ],
       "prompt_hint": "Find the existing data-fetching useEffect (the one that fetches trip info by id). Extract the fetch logic into a named async function (e.g., fetchTrip). Call it once on mount. Then set up a polling interval: const interval = setInterval(fetchTrip, 30000). Clear it in the cleanup function and also clear it when trip.status === 'COMPLETED' (no need to poll a done trip). Add a 'Last updated' timestamp: a state lastUpdated = new Date(). Update it after each successful fetch. Show it below the status badge: <p className='text-[10px] text-sub text-center mt-2'>Updated {lastUpdated.toLocaleTimeString('en-IN', {timeZone:'Asia/Kolkata'})}</p>. Also add a 'Refresh now' text link next to the timestamp that calls fetchTrip manually.",
-      "status": "pending",
+      "status": "in_progress",
       "completed_at": null,
       "deployment_id": null
     },

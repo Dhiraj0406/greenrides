@@ -28,9 +28,10 @@ function fmt(iso: string) {
 
 export default function TrackPage() {
   const { id } = useParams<{ id: string }>();
-  const [trip,    setTrip]    = useState<TripInfo | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
+  const [trip,        setTrip]        = useState<TripInfo | null>(null);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const fetchTrip = useCallback(async () => {
     try {
@@ -38,6 +39,7 @@ export default function TrackPage() {
       const json = await res.json();
       if (!res.ok || json.error) { setError("Trip not found or no longer active."); return; }
       setTrip(json.data);
+      setLastUpdated(new Date());
       setError(null);
     } catch { setError("Could not load trip details. Please try again."); }
     finally  { setLoading(false); }
@@ -50,8 +52,8 @@ export default function TrackPage() {
   // Auto-refresh every 30s while trip is active
   useEffect(() => {
     if (!trip || trip.status === "COMPLETED") return;
-    const id = setInterval(fetchTrip, 30_000);
-    return () => clearInterval(id);
+    const interval = setInterval(fetchTrip, 30_000);
+    return () => clearInterval(interval);
   }, [trip, fetchTrip]);
 
   if (loading) {
@@ -98,6 +100,20 @@ export default function TrackPage() {
             )}
           </div>
         </div>
+
+        {/* Last updated + refresh */}
+        {lastUpdated && (
+          <p className="text-[10px] text-sub text-center mt-2">
+            Updated {lastUpdated.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" })}{" "}
+            &middot;{" "}
+            <button
+              onClick={fetchTrip}
+              className="text-leaf underline-offset-2 hover:underline"
+            >
+              Refresh now
+            </button>
+          </p>
+        )}
 
         {/* Route card */}
         <div className="bg-white rounded-2xl px-5 py-5 border border-border">
