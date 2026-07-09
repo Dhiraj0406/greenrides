@@ -482,7 +482,7 @@
         "src/app/receipt/[id]/page.tsx"
       ],
       "prompt_hint": "Add two action buttons below the existing WhatsApp share button. Button 1: 'Copy Link' — calls navigator.clipboard.writeText(window.location.href) then shows toast.success('Link copied!'). Use a Copy icon from lucide-react (import Link2). Button 2: 'Print' — calls window.print(). Use a Printer icon (already imported). Both buttons: flex items-center gap-2 border border-border rounded-xl px-4 py-2.5 text-sm font-semibold text-sub w-full justify-center. Stack all 3 share buttons vertically with gap-2. Add a <style> block (JSX dangerouslySetInnerHTML or a <style jsx> tag) with @media print rules: hide the action buttons, remove padding, set background white, remove rounded corners from cards. Use className='print:hidden' on the button container.",
-      "status": "pending",
+      "status": "in_progress",
       "completed_at": null,
       "deployment_id": null
     },

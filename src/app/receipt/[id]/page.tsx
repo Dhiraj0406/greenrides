@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { Loader2, Printer, ArrowRight, CheckCircle } from "lucide-react";
+import { Loader2, Printer, ArrowRight, CheckCircle, Link2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 interface Receipt {
   type:           "request" | "booking";
@@ -91,8 +92,21 @@ export default function ReceiptPage() {
 
   const waUrl = `https://wa.me/?text=${encodeURIComponent(whatsAppText(receipt))}`;
 
+  function handleCopyLink() {
+    navigator.clipboard.writeText(window.location.href);
+    toast.success("Link copied!");
+  }
+
   return (
     <div className="green-container min-h-screen bg-cream py-8 px-4 pb-16">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          body { background: white !important; padding: 0 !important; margin: 0 !important; }
+          .green-container { padding: 0 !important; background: white !important; }
+          .print-card { border-radius: 0 !important; box-shadow: none !important; max-width: 100% !important; }
+        }
+      ` }} />
+
       {/* Toolbar — hidden when printing */}
       <div className="flex items-center justify-between mb-6 print:hidden max-w-sm mx-auto">
         <button onClick={() => router.back()} className="text-sub text-sm">← Back</button>
@@ -105,7 +119,7 @@ export default function ReceiptPage() {
       </div>
 
       {/* Receipt card */}
-      <div className="bg-white rounded-2xl overflow-hidden shadow-sm max-w-sm mx-auto print:shadow-none print:max-w-full print:rounded-none">
+      <div className="print-card bg-white rounded-2xl overflow-hidden shadow-sm max-w-sm mx-auto print:shadow-none print:max-w-full print:rounded-none">
         {/* Brand header */}
         <div className="bg-forest px-6 py-5 text-white">
           <p className="font-display text-2xl font-bold tracking-tight">Green Rides</p>
@@ -170,16 +184,37 @@ export default function ReceiptPage() {
         </div>
       </div>
 
-      {/* WhatsApp share */}
-      <a
-        href={waUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="print:hidden mt-5 flex items-center justify-center gap-2.5 bg-[#25D366] text-white font-semibold py-4 rounded-2xl max-w-sm mx-auto text-sm"
-      >
-        <WhatsAppIcon />
-        Share Receipt via WhatsApp
-      </a>
+      {/* Share buttons — hidden when printing */}
+      <div className="print:hidden mt-5 flex flex-col gap-2 max-w-sm mx-auto">
+        {/* WhatsApp share */}
+        <a
+          href={waUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2.5 bg-[#25D366] text-white font-semibold py-4 rounded-2xl text-sm"
+        >
+          <WhatsAppIcon />
+          Share Receipt via WhatsApp
+        </a>
+
+        {/* Copy link */}
+        <button
+          onClick={handleCopyLink}
+          className="flex items-center gap-2 border border-border rounded-xl px-4 py-2.5 text-sm font-semibold text-sub w-full justify-center"
+        >
+          <Link2 className="w-4 h-4" />
+          Copy Link
+        </button>
+
+        {/* Print */}
+        <button
+          onClick={() => window.print()}
+          className="flex items-center gap-2 border border-border rounded-xl px-4 py-2.5 text-sm font-semibold text-sub w-full justify-center"
+        >
+          <Printer className="w-4 h-4" />
+          Print
+        </button>
+      </div>
     </div>
   );
 }
