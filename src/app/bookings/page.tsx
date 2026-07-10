@@ -465,6 +465,73 @@ function CabBookingCard({ booking, onRate }: { booking: CabBooking; onRate: (id:
   );
 }
 
+// --- Inline rate prompt card for most-recent unrated completed booking ---
+function RateTripPromptCard({ booking, onDismiss }: { booking: CabBooking; onDismiss: () => void }) {
+  const [rated, setRated] = useState<string | null>(null);
+  const [hovered, setHovered] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
+  const [submittedRating, setSubmittedRating] = useState(0);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(`gr_rated_${booking.id}`);
+    setRated(stored);
+  }, [booking.id]);
+
+  // Already rated or dismissed — render nothing
+  if (rated !== null) return null;
+  if (submitted) return null;
+
+  async function handleStarClick(n: number) {
+    try {
+      await fetch(`/api/bookings/${booking.id}/rate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: n }),
+      });
+    } catch { /* non-critical */ }
+    localStorage.setItem(`gr_rated_${booking.id}`, String(n));
+    setSubmittedRating(n);
+    setSubmitted(true);
+    toast.success("Thanks for your rating!");
+    onDismiss();
+  }
+
+  function handleMaybeLater() {
+    localStorage.setItem(`gr_rated_${booking.id}`, "dismissed");
+    setRated("dismissed");
+    onDismiss();
+  }
+
+  return (
+    <div className="bg-white border border-border rounded-2xl p-4 mb-4">
+      <p className="font-semibold text-text text-sm mb-3">
+        How was your trip to {booking.to}?
+      </p>
+      <div className="flex items-center gap-1 mb-3">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            onMouseEnter={() => setHovered(n)}
+            onMouseLeave={() => setHovered(0)}
+            onClick={() => handleStarClick(n)}
+            className={`text-2xl leading-none transition-colors ${
+              n <= (hovered || submittedRating) ? "text-gold" : "text-pale"
+            }`}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+      <button
+        onClick={handleMaybeLater}
+        className="text-xs text-sub underline"
+      >
+        Maybe later
+      </button>
+    </div>
+  );
+}
+
 function EmptyState() {
   return (
     <div className="flex flex-col items-center py-16 gap-3">
@@ -491,6 +558,7 @@ export default function MyBookingsPage() {
   const [ratingFor, setRatingFor] = useState<{ type: "booking" | "request"; id: string } | null>(null);
   const [ratingScore, setRatingScore]       = useState(5);
   const [submittingRating, setSubmittingRating] = useState(false);
+  const [promptDismissed, setPromptDismissed] = useState(false);
   const prevStatusMapRef = useRef<Record<string, string>>({});
 
   const fetchRequests = useCallback(async (accessToken: string) => {
@@ -599,6 +667,11 @@ export default function MyBookingsPage() {
   const activeBookings = bookings.filter((b) => b.status === "PENDING" || b.status === "CONFIRMED" || b.status === "IN_PROGRESS");
   const pastBookings   = bookings.filter((b) => b.status !== "PENDING" && b.status !== "CONFIRMED" && b.status !== "IN_PROGRESS");
 
+  // Most-recent completed booking that hasn't been rated (server-side flag)
+  const unratedCompletedBooking = !promptDismissed
+    ? (pastBookings.find((b) => b.status === "COMPLETED" && !b.has_rating) ?? null)
+    : null;
+
   return (
     <div className="green-container min-h-screen bg-cream pb-24">
       <header className="bg-forest px-4 pt-safe-top pb-6">
@@ -633,6 +706,14 @@ export default function MyBookingsPage() {
 
         {!loading && !error && (
           <>
+            {/* Rate your trip prompt — shown at the very top of the bookings list */}
+            {unratedCompletedBooking && (
+              <RateTripPromptCard
+                booking={unratedCompletedBooking}
+                onDismiss={() => setPromptDismissed(true)}
+              />
+            )}
+
             {(confirmed.length > 0 || pending.length > 0 || activeBookings.length > 0) && (
               <h2 className="text-xs font-bold text-sub uppercase tracking-wide mb-1">Active Trips</h2>
             )}

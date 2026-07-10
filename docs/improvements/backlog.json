@@ -496,7 +496,7 @@
         "src/app/bookings/page.tsx"
       ],
       "prompt_hint": "Add a 'Rate your trip' inline card for the most-recent COMPLETED booking. State: const [rated, setRated] = useState<string | null>(null); const [hovered, setHovered] = useState(0); const [submitted, setSubmitted] = useState(false). On mount: check localStorage.getItem('gr_rated_' + booking.id). If already rated or dismissed, skip. Render a card at the very top of the bookings list (before the list) when there is a qualifying booking: bg-white border border-border rounded-2xl p-4 mb-4. Content: 'How was your trip to {to_city}?' in font-semibold text-text text-sm. 5 stars in a row: ★ characters, text-2xl, text-gold if index <= hovered or <= submitted_rating else text-pale. On star click: call POST /api/bookings/{id}/rate with {rating: n}, then localStorage.setItem('gr_rated_' + id, String(n)), setSubmitted(true). On 'Maybe later' link click: localStorage.setItem('gr_rated_' + id, 'dismissed'), hide card.",
-      "status": "pending",
+      "status": "in_progress",
       "completed_at": null,
       "deployment_id": null
     },
