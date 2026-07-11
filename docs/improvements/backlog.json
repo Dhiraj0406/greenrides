@@ -510,7 +510,7 @@
         "src/app/(booking)/rides/page.tsx"
       ],
       "prompt_hint": "Add a recentRoutes: {from: string; to: string}[] state. On mount: parse localStorage.getItem('gr_recent_routes') (JSON array, max 3 items). After a successful search (when the user submits the search form and results load), save the search pair: const routes = JSON.parse(localStorage.getItem('gr_recent_routes') || '[]'); const updated = [{from, to}, ...routes.filter(r => !(r.from===from && r.to===to))].slice(0,3); localStorage.setItem('gr_recent_routes', JSON.stringify(updated)). Render the chips between the search form and the results list (only when recentRoutes.length > 0 AND no results showing yet): <div className='flex gap-2 overflow-x-auto pb-1 mt-2'>. Each chip: <button onClick={() => {setFrom(r.from); setTo(r.to);}} className='flex-shrink-0 flex items-center gap-1 bg-white border border-border rounded-full px-3 py-1.5 text-xs text-sub font-medium'>{r.from} → {r.to}</button>. Look at the existing state variables for from/to (they may be named differently in the file) and adapt accordingly.",
-      "status": "pending",
+      "status": "in_progress",
       "completed_at": null,
       "deployment_id": null
     },

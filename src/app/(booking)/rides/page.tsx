@@ -65,6 +65,22 @@ export default function RidesPage() {
   const [date, setDate]         = useState(todayISO());
   const [bookingRide, setBookingRide] = useState<RideWithDriver | null>(null);
   const [seatCounts, setSeatCounts]   = useState<Record<string, number>>({});
+  const [recentRoutes, setRecentRoutes] = useState<{ from: string; to: string }[]>([]);
+
+  // Load recent routes from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("gr_recent_routes");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setRecentRoutes(parsed.slice(0, 3));
+        }
+      }
+    } catch {
+      // ignore malformed data
+    }
+  }, []);
 
   useEffect(() => {
     if (!origin) { setLoading(false); return; }
@@ -74,7 +90,27 @@ export default function RidesPage() {
     setLoading(true);
     fetch(url)
       .then((r) => r.json())
-      .then((j) => setRides(j.data ?? []))
+      .then((j) => {
+        const results: RideWithDriver[] = j.data ?? [];
+        setRides(results);
+
+        // Save to recent routes after a successful search that returns results
+        if (results.length > 0 && origin) {
+          try {
+            const existing = JSON.parse(localStorage.getItem("gr_recent_routes") || "[]");
+            const updated = [
+              { from: origin, to: to },
+              ...existing.filter(
+                (r: { from: string; to: string }) => !(r.from === origin && r.to === to)
+              ),
+            ].slice(0, 3);
+            localStorage.setItem("gr_recent_routes", JSON.stringify(updated));
+            setRecentRoutes(updated);
+          } catch {
+            // ignore storage errors
+          }
+        }
+      })
       .catch(() => { toast.error("Failed to load rides"); setRides([]); })
       .finally(() => setLoading(false));
   }, [origin, destination, date]);
@@ -85,6 +121,10 @@ export default function RidesPage() {
 
   function setSeats(rideId: string, value: number) {
     setSeatCounts((prev) => ({ ...prev, [rideId]: value }));
+  }
+
+  function applyRecentRoute(r: { from: string; to: string }) {
+    useBookingStore.setState({ origin: r.from, destination: r.to });
   }
 
   return (
@@ -124,6 +164,21 @@ export default function RidesPage() {
       </header>
 
       <div className="px-4 mt-4">
+        {/* Recent route chips — shown only when no results are currently displayed */}
+        {recentRoutes.length > 0 && !rides.length && !loading && (
+          <div className="flex gap-2 overflow-x-auto pb-1 mt-2 mb-3">
+            {recentRoutes.map((r, i) => (
+              <button
+                key={i}
+                onClick={() => applyRecentRoute(r)}
+                className="flex-shrink-0 flex items-center gap-1 bg-white border border-border rounded-full px-3 py-1.5 text-xs text-sub font-medium"
+              >
+                {r.from} → {r.to}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4">
           <p className="text-xs font-bold text-amber-700 mb-1.5">Two ways to book</p>
           <div className="space-y-1.5 text-xs text-amber-700">
