@@ -77,6 +77,7 @@ export default function ListingDetailPage() {
   if (!listing) return null;
 
   const sold = listing.status === "SOLD";
+  const photos = listing.photos;
 
   return (
     <div className="green-container min-h-screen bg-cream pb-24">
@@ -90,36 +91,54 @@ export default function ListingDetailPage() {
         </div>
       </div>
 
-      {/* Photo carousel */}
-      {listing.photos.length > 0 ? (
-        <div className="relative">
-          <div className="flex overflow-x-auto snap-x snap-mandatory">
-            {listing.photos.map((url, i) => (
-              <img
-                key={i}
-                src={url}
-                alt={`Photo ${i + 1}`}
-                onScroll={() => setPhotoIdx(i)}
-                className="snap-center flex-shrink-0 w-full aspect-[4/3] object-cover"
-              />
-            ))}
+      {/* Photo gallery */}
+      {photos.length > 0 ? (
+        <div className="px-4 pt-4">
+          <div className="relative w-full aspect-video bg-pale rounded-2xl overflow-hidden mb-3">
+            <img
+              src={photos[photoIdx]}
+              alt={`Photo ${photoIdx + 1}`}
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
+            {photoIdx > 0 && (
+              <button
+                onClick={() => setPhotoIdx(i => Math.max(0, i - 1))}
+                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 text-white rounded-full w-8 h-8 flex items-center justify-center"
+              >
+                ‹
+              </button>
+            )}
+            {photoIdx < photos.length - 1 && (
+              <button
+                onClick={() => setPhotoIdx(i => Math.min(photos.length - 1, i + 1))}
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 text-white rounded-full w-8 h-8 flex items-center justify-center"
+              >
+                ›
+              </button>
+            )}
+            {sold && (
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                <span className="text-white text-sm font-bold bg-red-500 px-4 py-2 rounded-full">This car has been sold</span>
+              </div>
+            )}
           </div>
-          {listing.photos.length > 1 && (
-            <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
-              {listing.photos.map((_, i) => (
-                <div key={i} className={`w-1.5 h-1.5 rounded-full ${i === photoIdx ? "bg-white" : "bg-white/40"}`} />
+          {photos.length > 1 && (
+            <div className="flex justify-center gap-1.5 mb-3">
+              {photos.map((_, i) => (
+                <div
+                  key={i}
+                  className={photoIdx === i ? "w-2 h-2 rounded-full bg-forest" : "w-1.5 h-1.5 rounded-full bg-pale"}
+                />
               ))}
-            </div>
-          )}
-          {sold && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <span className="text-white text-sm font-bold bg-red-500 px-4 py-2 rounded-full">This car has been sold</span>
             </div>
           )}
         </div>
       ) : (
-        <div className="w-full aspect-[4/3] bg-warm flex items-center justify-center">
-          <span className="text-sub text-sm">No photos</span>
+        <div className="px-4 pt-4">
+          <div className="w-full aspect-video bg-pale rounded-2xl flex items-center justify-center mb-3">
+            <span className="text-sub text-sm">No photos</span>
+          </div>
         </div>
       )}
 

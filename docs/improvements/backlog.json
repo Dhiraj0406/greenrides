@@ -524,7 +524,7 @@
         "src/app/used-cars/[id]/page.tsx"
       ],
       "prompt_hint": "Find where the car's photos are displayed (likely an images array or photos array from the fetched listing data). Add a photoIndex: number state (default 0). Wrap the main photo in a relative container: <div className='relative w-full aspect-video bg-pale rounded-2xl overflow-hidden mb-3'>. Show the current photo as <img src={car.photos[photoIndex]} className='w-full h-full object-cover' loading='lazy' />. Add a left arrow button: <button onClick={() => setPhotoIndex(i => Math.max(0, i-1))} className='absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 text-white rounded-full w-8 h-8 flex items-center justify-center'>‹</button>. Right arrow: same with Math.min(photos.length-1, i+1) and ›. Hide left arrow when photoIndex===0, hide right arrow when photoIndex===photos.length-1 (use conditional rendering). Below: dot indicators: <div className='flex justify-center gap-1.5 mb-3'>. Each dot: <div className={photoIndex===i ? 'w-2 h-2 rounded-full bg-forest' : 'w-1.5 h-1.5 rounded-full bg-pale'} />. If the file uses a single image (no array), skip the navigation and just add proper rounded-2xl aspect-video styling.",
-      "status": "pending",
+      "status": "in_progress",
       "completed_at": null,
       "deployment_id": null
     },
