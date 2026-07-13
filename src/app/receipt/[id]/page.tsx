@@ -104,6 +104,7 @@ export default function ReceiptPage() {
           body { background: white !important; padding: 0 !important; margin: 0 !important; }
           .green-container { padding: 0 !important; background: white !important; }
           .print-card { border-radius: 0 !important; box-shadow: none !important; max-width: 100% !important; }
+          .print\\:hidden { display: none !important; }
         }
       ` }} />
 
