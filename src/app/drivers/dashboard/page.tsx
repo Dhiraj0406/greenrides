@@ -55,6 +55,10 @@ export default function DriverDashboardPage() {
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [loadingRides, setLoadingRides]       = useState(false);
 
+  // Today's earnings summary (home tab)
+  const [homeRides, setHomeRides]           = useState<unknown[]>([]);
+  const [homeRidesLoaded, setHomeRidesLoaded] = useState(false);
+
   // Profile tab
   const [profile, setProfile]             = useState<ProfileData | null>(null);
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -102,6 +106,25 @@ export default function DriverDashboardPage() {
     return () => { channel?.unsubscribe(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Load today's earnings data for the home tab
+  useEffect(() => {
+    if (!userId || homeRidesLoaded) return;
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) { setHomeRidesLoaded(true); return; }
+      try {
+        const { data } = await supabase
+          .from("Ride")
+          .select("id, fare_paise, departure_time, total_seats, available_seats")
+          .eq("driver_id", session.user.id)
+          .eq("status", "COMPLETED")
+          .order("departure_time", { ascending: false })
+          .limit(50);
+        setHomeRides(data ?? []);
+      } catch { /* non-fatal — summary will show '—' */ }
+      setHomeRidesLoaded(true);
+    }).catch(() => { setHomeRidesLoaded(true); });
+  }, [userId, homeRidesLoaded]);
 
   // Load requests tab data
   useEffect(() => {
@@ -278,6 +301,21 @@ export default function DriverDashboardPage() {
 
   const inputClass = "w-full border border-border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 ring-leaf/30";
 
+  // Compute today's earnings summary from homeRides
+  const todayKey = new Date().toISOString().split("T")[0];
+  const todayRides = (homeRides as Array<Record<string, unknown>>).filter((r) => {
+    const depTime = r.departure_time as string | null;
+    if (!depTime) return false;
+    return new Date(depTime).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }) === todayKey;
+  });
+  const todayTrips    = homeRidesLoaded ? todayRides.length : null;
+  const todayEarnings = homeRidesLoaded
+    ? todayRides.reduce((sum, r) => {
+        const booked = (r.total_seats as number) - (r.available_seats as number);
+        return sum + Math.round((r.fare_paise as number) / 100) * booked;
+      }, 0)
+    : null;
+
   return (
     <div className="green-container min-h-screen bg-cream pb-16">
       {/* Header with tabs */}
@@ -321,6 +359,22 @@ export default function DriverDashboardPage() {
         {/* HOME TAB */}
         {tab === "home" && driver && (
           <>
+            {/* Today's earnings summary */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="bg-white border border-border rounded-2xl p-4">
+                <p className="text-[10px] text-sub uppercase tracking-wide mb-1">Today</p>
+                <p className="font-display text-2xl text-forest">
+                  {todayEarnings !== null ? `₹${todayEarnings.toLocaleString("en-IN")}` : "—"}
+                </p>
+              </div>
+              <div className="bg-white border border-border rounded-2xl p-4">
+                <p className="text-[10px] text-sub uppercase tracking-wide mb-1">Trips today</p>
+                <p className="font-display text-2xl text-forest">
+                  {todayTrips !== null ? todayTrips : "—"}
+                </p>
+              </div>
+            </div>
+
             <OnlineToggle
               initialValue={driver.is_online}
               onChanged={(v) => setDriver(d => d ? { ...d, is_online: v } : d)}
@@ -437,7 +491,7 @@ export default function DriverDashboardPage() {
                 return rSum + qSum;
               });
               const maxE = Math.max(...dailyEarnings, 1);
-              const todayKey = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+              const todayKey2 = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 
               return (
                 <>
@@ -448,7 +502,7 @@ export default function DriverDashboardPage() {
                         {last7.map((day, i) => (
                           <div key={day} className="flex-1 flex flex-col items-center gap-1">
                             <div
-                              className={`w-full rounded-t-md ${day === todayKey ? "bg-leaf" : "bg-leaf/50"}`}
+                              className={`w-full rounded-t-md ${day === todayKey2 ? "bg-leaf" : "bg-leaf/50"}`}
                               style={{ height: `${Math.max(4, (dailyEarnings[i] / maxE) * 56)}px` }}
                             />
                             <span className="text-[9px] text-sub">{dayLabels[i]}</span>

@@ -538,7 +538,7 @@
         "src/app/drivers/dashboard/page.tsx"
       ],
       "prompt_hint": "Find where the driver's ride data is fetched (completed rides). Filter rides whose travel_date === today (compare ISO date strings with new Date().toISOString().split('T')[0]). Compute todayTrips (count) and todayEarnings (sum of fare_paise / 100). Add a card just above the status toggle section (or at the top of the home tab content): <div className='grid grid-cols-2 gap-3 mb-4'>. Left cell: bg-white border border-border rounded-2xl p-4. Top: text-[10px] text-sub uppercase tracking-wide 'Today'. Value: font-display text-2xl text-forest '₹{todayEarnings}'. Right cell: same styling. Top: 'Trips today'. Value: font-display text-2xl text-forest '{todayTrips}'. If no rides data is available on the home tab (rides fetched only on the rides tab), compute from whatever earnings/stats data is already fetched on the home tab. If nothing is available, show '—' as the value.",
-      "status": "pending",
+      "status": "in_progress",
       "completed_at": null,
       "deployment_id": null
     },
