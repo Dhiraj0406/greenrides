@@ -94,8 +94,8 @@ export default function RidesPage() {
         const results: RideWithDriver[] = j.data ?? [];
         setRides(results);
 
-        // Save to recent routes after a successful search that returns results
-        if (results.length > 0 && origin) {
+        // Save to recent routes after a successful search
+        if (origin) {
           try {
             const existing = JSON.parse(localStorage.getItem("gr_recent_routes") || "[]");
             const updated = [
