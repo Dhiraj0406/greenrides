@@ -38,6 +38,17 @@ interface ProfileData {
   total_trips:    number;
 }
 
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map(i => (
+        <span key={i} className={i <= Math.round(rating) ? "text-gold" : "text-pale"} style={{ fontSize: "18px" }}>★</span>
+      ))}
+      <span className="text-xs text-sub ml-1.5">{rating.toFixed(1)}</span>
+    </div>
+  );
+}
+
 export default function DriverDashboardPage() {
   const [tab, setTab]         = useState<Tab>("home");
   const [driver, setDriver]   = useState<DriverData | null>(null);
@@ -699,11 +710,16 @@ export default function DriverDashboardPage() {
             ) : (
               <>
                 <div className="bg-forest rounded-2xl p-5 text-white">
-                  <p className="text-lime/60 text-xs mb-1">
-                    ★ {profile?.avg_rating?.toFixed(1) ?? "—"} · {profile?.total_trips ?? 0} trips
-                  </p>
                   <p className="font-display text-2xl text-lime">{profile?.name ?? "—"}</p>
-                  <p className="text-lime/60 text-sm">{profile?.phone ?? "—"}</p>
+                  <p className="text-lime/60 text-sm mb-2">{profile?.phone ?? "—"}</p>
+                  {profile?.avg_rating && profile.avg_rating > 0 ? (
+                    <>
+                      <StarRating rating={profile.avg_rating} />
+                      <p className="text-[10px] text-sub mt-1">Based on passenger ratings</p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-sub">No ratings yet</p>
+                  )}
                 </div>
 
                 {(() => {

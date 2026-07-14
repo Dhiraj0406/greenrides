@@ -552,7 +552,7 @@
         "src/app/drivers/dashboard/page.tsx"
       ],
       "prompt_hint": "Find where the driver's avg_rating is displayed (on the Me/Profile tab). Replace the raw number display with a star row. Create a StarRating component inline: function StarRating({ rating }: { rating: number }) { return (<div className='flex items-center gap-0.5'>{[1,2,3,4,5].map(i => (<span key={i} className={i <= Math.round(rating) ? 'text-gold' : 'text-pale'} style={{fontSize:'18px'}}>★</span>))}<span className='text-xs text-sub ml-1.5'>{rating.toFixed(1)}</span></div>); }. Show it below the driver's name. Also add a context label below the stars: text-[10px] text-sub 'Based on passenger ratings'. If avg_rating is 0 or null, show 'No ratings yet' in text-sub text-sm instead of the stars.",
-      "status": "pending",
+      "status": "in_progress",
       "completed_at": null,
       "deployment_id": null
     },
